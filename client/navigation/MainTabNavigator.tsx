@@ -2,14 +2,13 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing } from "@/constants/theme";
 
 export type MainTabParamList = {
   CollectionTab: undefined;
@@ -64,15 +63,8 @@ export default function MainTabNavigator() {
         component={AddRecipeStackNavigator}
         options={{
           title: "Add",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[
-                styles.addButton,
-                { backgroundColor: focused ? theme.primary : theme.backgroundSecondary },
-              ]}
-            >
-              <Feather name="plus" size={22} color={focused ? "#FFF" : color} />
-            </View>
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="plus-circle" size={size} color={color} />
           ),
         }}
       />
@@ -100,13 +92,4 @@ export default function MainTabNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.xs,
-  },
-});
+const styles = StyleSheet.create({});
