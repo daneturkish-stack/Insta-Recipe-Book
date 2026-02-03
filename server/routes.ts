@@ -2,6 +2,13 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
+import { writeFile, unlink, readFile } from "node:fs/promises";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+import os from "node:os";
+
+const execAsync = promisify(exec);
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -192,6 +199,64 @@ async function fetchPageContent(url: string): Promise<PageContent> {
   }
 }
 
+async function transcribeVideoFromUrl(videoUrl: string): Promise<string | null> {
+  const tempId = randomUUID();
+  const tempDir = os.tmpdir();
+  const videoPath = path.join(tempDir, `video_${tempId}.mp4`);
+  const audioPath = path.join(tempDir, `audio_${tempId}.mp3`);
+  
+  try {
+    console.log(`Downloading video for transcription...`);
+    
+    // Download video
+    const videoResponse = await fetch(videoUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+      },
+    });
+    
+    if (!videoResponse.ok) {
+      console.log(`Failed to download video: ${videoResponse.status}`);
+      return null;
+    }
+    
+    const videoBuffer = await videoResponse.arrayBuffer();
+    await writeFile(videoPath, Buffer.from(videoBuffer));
+    console.log(`Video downloaded to ${videoPath}`);
+    
+    // Extract audio using ffmpeg
+    console.log(`Extracting audio...`);
+    await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -q:a 4 -y "${audioPath}" 2>/dev/null`);
+    console.log(`Audio extracted to ${audioPath}`);
+    
+    // Read audio file for transcription
+    const audioBuffer = await readFile(audioPath);
+    const audioFile = new File([audioBuffer], "audio.mp3", { type: "audio/mpeg" });
+    
+    // Transcribe with OpenAI Whisper
+    console.log(`Transcribing audio with Whisper...`);
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: "whisper-1",
+      language: "en",
+    });
+    
+    console.log(`Transcription complete: ${transcription.text.substring(0, 100)}...`);
+    
+    // Cleanup temp files
+    await unlink(videoPath).catch(() => {});
+    await unlink(audioPath).catch(() => {});
+    
+    return transcription.text;
+  } catch (error) {
+    console.error("Error transcribing video:", error);
+    // Cleanup on error
+    await unlink(videoPath).catch(() => {});
+    await unlink(audioPath).catch(() => {});
+    return null;
+  }
+}
+
 interface GenerateRecipeRequest {
   url: string;
 }
@@ -237,6 +302,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Image URL: ${pageData.imageUrl || 'none'}`);
       console.log(`Video URL: ${pageData.videoUrl || 'none'}`);
 
+      // Try to transcribe video if available
+      let videoTranscript: string | null = null;
+      if (pageData.videoUrl) {
+        console.log(`Attempting video transcription...`);
+        videoTranscript = await transcribeVideoFromUrl(pageData.videoUrl);
+        console.log(`Video transcript: ${videoTranscript ? 'Success' : 'Failed/None'}`);
+      }
+
       const systemPrompt = `You are a professional recipe extraction assistant for the Kitch app. Your job is to extract and structure recipes from social media food posts.
 
 CRITICAL: You MUST extract the ACTUAL recipe from the provided content. Do NOT make up or hallucinate recipes. The recipe title, ingredients, and instructions should come directly from the content provided.
@@ -275,15 +348,31 @@ Respond ONLY with a valid JSON object:
 
       let userPrompt: string;
       
+      // Build the content sections
+      const contentSections: string[] = [];
+      
+      if (videoTranscript) {
+        contentSections.push(`VIDEO TRANSCRIPT (what the creator said):
+${videoTranscript}`);
+      }
+      
       if (pageData.text) {
+        contentSections.push(`POST CAPTION/DESCRIPTION:
+${pageData.text}`);
+      }
+      
+      if (contentSections.length > 0) {
         userPrompt = `Extract the recipe from this ${platform} food post.
 
 SOURCE URL: ${url}
 
-EXTRACTED CONTENT FROM THE POST:
-${pageData.text}
+${contentSections.join('\n\n---\n\n')}
 
-Based on the above content, extract the EXACT recipe being shown. The recipe title and dish type MUST match what's described in the content. Include:
+Based on the above content, extract the EXACT recipe being shown. 
+
+PRIORITY: The VIDEO TRANSCRIPT is the most reliable source - use it for ingredients and instructions when available. The post caption may have additional context.
+
+Include:
 - The actual recipe title from the post
 - Brief description
 - Prep and cook times (estimate if not provided)
@@ -291,10 +380,10 @@ Based on the above content, extract the EXACT recipe being shown. The recipe tit
 - Appropriate dish type category
 - 2-4 relevant tags
 - Creator info if available
-- Complete ingredient list with measurements
-- Step-by-step instructions
+- Complete ingredient list with measurements (use exact amounts from transcript if spoken)
+- Step-by-step instructions (match what the creator actually said/did)
 
-IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the post.`;
+IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the content. Set isEstimated to false if the transcript provides all ingredients and steps explicitly.`;
       } else {
         userPrompt = `I need to extract a recipe from this ${platform} URL, but I couldn't fetch the full content: ${url}
 
@@ -350,7 +439,7 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         creatorAvatar: pageData.profileImageUrl || null,
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
-        originalTranscript: pageData.text || null,
+        originalTranscript: videoTranscript || null,
         isEstimated: recipeData.isEstimated ?? true,
         platform,
         createdAt: new Date().toISOString(),
