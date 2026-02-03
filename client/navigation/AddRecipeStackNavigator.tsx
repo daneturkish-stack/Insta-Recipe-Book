@@ -5,7 +5,7 @@ import AddRecipeScreen from "@/screens/AddRecipeScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type AddRecipeStackParamList = {
-  AddRecipe: undefined;
+  AddRecipe: { sharedUrl?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<AddRecipeStackParamList>();
