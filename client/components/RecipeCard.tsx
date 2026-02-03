@@ -54,7 +54,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   };
 
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
-  const thumbnailSource = recipe.videoThumbnail || recipe.imageUrl;
+  const thumbnailSource = recipe.imageUrl;
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
 
   return (

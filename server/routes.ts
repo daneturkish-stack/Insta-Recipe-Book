@@ -8,7 +8,13 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
-async function fetchPageContent(url: string): Promise<string | null> {
+interface PageContent {
+  text: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+}
+
+async function fetchPageContent(url: string): Promise<PageContent> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -21,12 +27,63 @@ async function fetchPageContent(url: string): Promise<string | null> {
 
     if (!response.ok) {
       console.log(`Failed to fetch ${url}: ${response.status}`);
-      return null;
+      return { text: null, imageUrl: null, videoUrl: null };
     }
 
     const html = await response.text();
     
     const extractedContent: string[] = [];
+    let imageUrl: string | null = null;
+    let videoUrl: string | null = null;
+    
+    // Extract image URL (og:image)
+    const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    if (ogImageMatch) {
+      imageUrl = ogImageMatch[1];
+    }
+    
+    // Extract video URL (og:video)
+    const ogVideoMatch = html.match(/<meta[^>]*property=["']og:video["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video["']/i) ||
+                         html.match(/<meta[^>]*property=["']og:video:url["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video:url["']/i);
+    if (ogVideoMatch) {
+      videoUrl = ogVideoMatch[1];
+    }
+    
+    // Also try to find video URLs in JSON data
+    const videoUrlPatterns = [
+      /"video_url"\s*:\s*"([^"]+)"/,
+      /"playback_url"\s*:\s*"([^"]+)"/,
+      /"contentUrl"\s*:\s*"([^"]+)"/,
+    ];
+    
+    if (!videoUrl) {
+      for (const pattern of videoUrlPatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          videoUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          break;
+        }
+      }
+    }
+    
+    // Also try to find high-res images in JSON
+    const imageUrlPatterns = [
+      /"display_url"\s*:\s*"([^"]+)"/,
+      /"thumbnail_url"\s*:\s*"([^"]+)"/,
+    ];
+    
+    if (!imageUrl) {
+      for (const pattern of imageUrlPatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          imageUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+          break;
+        }
+      }
+    }
     
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) {
@@ -64,6 +121,13 @@ async function fetchPageContent(url: string): Promise<string | null> {
         if (jsonData.caption) {
           extractedContent.push(`Caption: ${jsonData.caption}`);
         }
+        // Extract media from JSON-LD
+        if (jsonData.thumbnailUrl && !imageUrl) {
+          imageUrl = jsonData.thumbnailUrl;
+        }
+        if (jsonData.contentUrl && !videoUrl) {
+          videoUrl = jsonData.contentUrl;
+        }
       } catch (e) {
       }
     }
@@ -84,14 +148,16 @@ async function fetchPageContent(url: string): Promise<string | null> {
       }
     }
 
-    if (extractedContent.length === 0) {
-      return null;
-    }
+    console.log(`Extracted media - Image: ${imageUrl ? 'found' : 'none'}, Video: ${videoUrl ? 'found' : 'none'}`);
 
-    return extractedContent.join('\n\n');
+    return {
+      text: extractedContent.length > 0 ? extractedContent.join('\n\n') : null,
+      imageUrl,
+      videoUrl,
+    };
   } catch (error) {
     console.error("Error fetching page content:", error);
-    return null;
+    return { text: null, imageUrl: null, videoUrl: null };
   }
 }
 
@@ -135,8 +201,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch actual content from the page
       console.log(`Fetching content from: ${url}`);
-      const pageContent = await fetchPageContent(url);
-      console.log(`Extracted content: ${pageContent ? 'Found content' : 'No content found'}`);
+      const pageData = await fetchPageContent(url);
+      console.log(`Extracted content: ${pageData.text ? 'Found text' : 'No text'}, Image: ${pageData.imageUrl ? 'found' : 'none'}, Video: ${pageData.videoUrl ? 'found' : 'none'}`);
 
       const systemPrompt = `You are a professional recipe extraction assistant for the Kitch app. Your job is to extract and structure recipes from social media food posts.
 
@@ -174,13 +240,13 @@ Respond ONLY with a valid JSON object:
 
       let userPrompt: string;
       
-      if (pageContent) {
+      if (pageData.text) {
         userPrompt = `Extract the recipe from this ${platform} food post.
 
 SOURCE URL: ${url}
 
 EXTRACTED CONTENT FROM THE POST:
-${pageContent}
+${pageData.text}
 
 Based on the above content, extract the EXACT recipe being shown. The recipe title and dish type MUST match what's described in the content. Include:
 - The actual recipe title from the post
@@ -236,8 +302,8 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         id: randomUUID(),
         title: recipeData.title,
         description: recipeData.description || "",
-        imageUrl: null,
-        videoThumbnail: null,
+        imageUrl: pageData.imageUrl || null,
+        videoUrl: pageData.videoUrl || null,
         sourceUrl: url,
         prepTime: recipeData.prepTime || null,
         cookTime: recipeData.cookTime || null,

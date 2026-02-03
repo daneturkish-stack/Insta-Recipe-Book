@@ -9,7 +9,7 @@ export interface Recipe {
   title: string;
   description?: string;
   imageUrl?: string;
-  videoThumbnail?: string;
+  videoUrl?: string;
   sourceUrl: string;
   prepTime?: number;
   cookTime?: number;

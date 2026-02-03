@@ -92,7 +92,7 @@ export default function RecipeDetailScreen() {
         {/* Hero Image with Video Indicator */}
         <View style={styles.heroContainer}>
           <Image
-            source={recipe.imageUrl || recipe.videoThumbnail ? { uri: recipe.imageUrl || recipe.videoThumbnail } : placeholderImage}
+            source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage}
             style={styles.heroImage}
             contentFit="cover"
             transition={200}
