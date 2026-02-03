@@ -8,6 +8,93 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
+async function fetchPageContent(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      console.log(`Failed to fetch ${url}: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    
+    const extractedContent: string[] = [];
+    
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      extractedContent.push(`Page Title: ${titleMatch[1]}`);
+    }
+    
+    const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+    if (metaDescMatch) {
+      extractedContent.push(`Description: ${metaDescMatch[1]}`);
+    }
+    
+    const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
+                        html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+    if (ogDescMatch) {
+      extractedContent.push(`Post Content: ${ogDescMatch[1]}`);
+    }
+    
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+    if (ogTitleMatch) {
+      extractedContent.push(`Post Title: ${ogTitleMatch[1]}`);
+    }
+
+    const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonData = JSON.parse(match[1]);
+        if (jsonData.description) {
+          extractedContent.push(`Structured Data: ${jsonData.description}`);
+        }
+        if (jsonData.name) {
+          extractedContent.push(`Name: ${jsonData.name}`);
+        }
+        if (jsonData.caption) {
+          extractedContent.push(`Caption: ${jsonData.caption}`);
+        }
+      } catch (e) {
+      }
+    }
+
+    const captionPatterns = [
+      /"caption"\s*:\s*"([^"]+)"/g,
+      /"text"\s*:\s*"([^"]+)"/g,
+      /"description"\s*:\s*"([^"]+)"/g,
+    ];
+    
+    for (const pattern of captionPatterns) {
+      const matches = html.matchAll(pattern);
+      for (const match of matches) {
+        const text = match[1];
+        if (text.length > 50 && text.length < 5000 && !extractedContent.some(c => c.includes(text))) {
+          extractedContent.push(`Content: ${text.replace(/\\n/g, '\n').replace(/\\u[\dA-Fa-f]{4}/g, '')}`);
+        }
+      }
+    }
+
+    if (extractedContent.length === 0) {
+      return null;
+    }
+
+    return extractedContent.join('\n\n');
+  } catch (error) {
+    console.error("Error fetching page content:", error);
+    return null;
+  }
+}
+
 interface GenerateRecipeRequest {
   url: string;
 }
@@ -46,17 +133,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const creatorMatch = url.match(/@([\w.]+)/);
       const creatorHandle = creatorMatch ? `@${creatorMatch[1]}` : null;
 
-      const systemPrompt = `You are a professional recipe extraction and categorization assistant for the Kitch app. Your job is to take social media food post URLs and generate complete, cookbook-quality recipes with smart categorization.
+      // Fetch actual content from the page
+      console.log(`Fetching content from: ${url}`);
+      const pageContent = await fetchPageContent(url);
+      console.log(`Extracted content: ${pageContent ? 'Found content' : 'No content found'}`);
 
-When given a URL, generate a realistic, detailed recipe. Since you cannot access the actual content, create a plausible recipe based on the URL patterns.
+      const systemPrompt = `You are a professional recipe extraction assistant for the Kitch app. Your job is to extract and structure recipes from social media food posts.
 
-IMPORTANT: You must also categorize the recipe with:
-1. dishType: One category from [Breakfast, Lunch, Dinner, Dessert, Snack, Appetizer, Soup, Salad, Pasta, Rice & Grains, Sandwich, Pizza, Seafood, Meat, Vegetarian, Baked Goods, Drinks, Sauce]
-2. vibeTags: 2-4 relevant tags from [Quick & Easy, 15-Min Meals, 30-Min Meals, One-Pot, Meal Prep, Budget-Friendly, High-Protein, Low-Carb, Vegan, Vegetarian, Gluten-Free, Dairy-Free, Keto, Comfort Food, Healthy, Indulgent, Kid-Friendly, Date Night, Lazy Sunday, Party Food, Batch Cooking]
-3. creatorHandle: Extract from URL or generate a realistic food creator handle
-4. creatorName: A realistic name for the creator
+CRITICAL: You MUST extract the ACTUAL recipe from the provided content. Do NOT make up or hallucinate recipes. The recipe title, ingredients, and instructions should come directly from the content provided.
 
-Generate diverse recipes including various cuisines and dietary preferences.
+If the content describes a specific dish (like "almond tart", "chocolate cake", "pasta carbonara"), the recipe you output MUST be for that exact dish.
+
+Extract and categorize with:
+1. dishType: One from [Breakfast, Lunch, Dinner, Dessert, Snack, Appetizer, Soup, Salad, Pasta, Rice & Grains, Sandwich, Pizza, Seafood, Meat, Vegetarian, Baked Goods, Drinks, Sauce]
+2. vibeTags: 2-4 tags from [Quick & Easy, 15-Min Meals, 30-Min Meals, One-Pot, Meal Prep, Budget-Friendly, High-Protein, Low-Carb, Vegan, Vegetarian, Gluten-Free, Dairy-Free, Keto, Comfort Food, Healthy, Indulgent, Kid-Friendly, Date Night, Lazy Sunday, Party Food, Batch Cooking]
+3. creatorHandle: Extract from content if available
+4. creatorName: Extract from content if available
+
+If specific measurements or steps are not provided, make reasonable estimates based on the dish type, but NEVER change what dish it is.
 
 Respond ONLY with a valid JSON object:
 {
@@ -65,8 +159,8 @@ Respond ONLY with a valid JSON object:
   "prepTime": 15,
   "cookTime": 30,
   "servings": 4,
-  "dishType": "Pasta",
-  "vibeTags": ["Quick & Easy", "Comfort Food"],
+  "dishType": "Dessert",
+  "vibeTags": ["Quick & Easy", "Indulgent"],
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
   "ingredients": [
@@ -78,20 +172,41 @@ Respond ONLY with a valid JSON object:
   ]
 }`;
 
-      const userPrompt = `Generate a complete, detailed recipe from this social media food post: ${url}
+      let userPrompt: string;
+      
+      if (pageContent) {
+        userPrompt = `Extract the recipe from this ${platform} food post.
 
-Create a realistic, delicious recipe that someone might share on ${platform}. Include:
-- A catchy, appetizing title
-- Brief description (2-3 sentences)
-- Realistic prep and cook times in minutes
-- Number of servings
-- Dish type category
-- 2-4 vibe/diet tags
-- Creator handle and name
-- Complete ingredient list with precise measurements (8-15 ingredients)
-- Detailed step-by-step cooking instructions (6-12 steps)
+SOURCE URL: ${url}
 
-Respond only with the JSON object, no additional text.`;
+EXTRACTED CONTENT FROM THE POST:
+${pageContent}
+
+Based on the above content, extract the EXACT recipe being shown. The recipe title and dish type MUST match what's described in the content. Include:
+- The actual recipe title from the post
+- Brief description
+- Prep and cook times (estimate if not provided)
+- Number of servings (estimate if not provided)
+- Appropriate dish type category
+- 2-4 relevant tags
+- Creator info if available
+- Complete ingredient list with measurements
+- Step-by-step instructions
+
+IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the post.`;
+      } else {
+        userPrompt = `I need to extract a recipe from this ${platform} URL, but I couldn't fetch the full content: ${url}
+
+Please analyze the URL carefully. If it contains any hints about the recipe (like keywords in the URL path), use those to determine what dish this is.
+
+If you cannot determine the specific recipe from the URL, respond with this error format:
+{
+  "error": "Could not extract recipe content. Please try pasting the recipe description or ingredients directly.",
+  "title": null
+}
+
+Otherwise, if you can identify the dish from the URL, provide a complete recipe for that specific dish.`
+      }
 
       const response = await openai.chat.completions.create({
         model: "gpt-5.2",
@@ -110,9 +225,16 @@ Respond only with the JSON object, no additional text.`;
 
       const recipeData = JSON.parse(content);
 
+      // Check if AI returned an error response
+      if (recipeData.error || !recipeData.title) {
+        return res.status(400).json({
+          error: recipeData.error || "Could not extract recipe from this post. The content may not contain a recipe, or try pasting the recipe text directly.",
+        });
+      }
+
       const recipe = {
         id: randomUUID(),
-        title: recipeData.title || "Untitled Recipe",
+        title: recipeData.title,
         description: recipeData.description || "",
         imageUrl: null,
         videoThumbnail: null,
