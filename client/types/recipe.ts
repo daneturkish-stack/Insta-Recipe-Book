@@ -22,6 +22,7 @@ export interface Recipe {
   creatorHandle?: string; // @username from source
   creatorName?: string;
   creatorAvatar?: string; // Profile picture URL
+  creatorRecipeUrl?: string; // Link to full recipe on creator's website/blog
   // Transparency & verification
   originalTranscript?: string; // Raw extracted text from post for user verification
   isEstimated?: boolean; // True if AI had to infer details not explicitly stated

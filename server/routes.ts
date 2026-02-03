@@ -257,6 +257,200 @@ async function transcribeVideoFromUrl(videoUrl: string): Promise<string | null> 
   }
 }
 
+interface WebSearchResult {
+  url: string;
+  title: string;
+  snippet: string;
+}
+
+async function searchForCreatorRecipe(recipeName: string, creatorHandle: string | null): Promise<WebSearchResult | null> {
+  try {
+    const creatorName = creatorHandle ? creatorHandle.replace('@', '') : '';
+    const searchQuery = creatorName 
+      ? `${recipeName} recipe ${creatorName} site:*.com`
+      : `${recipeName} recipe`;
+    
+    console.log(`Searching web for full recipe: "${searchQuery}"`);
+    
+    const encodedQuery = encodeURIComponent(searchQuery);
+    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+    
+    const response = await fetch(searchUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    
+    if (!response.ok) {
+      console.log(`Web search failed: ${response.status}`);
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    const resultPattern = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([^<]+)</gi;
+    const matches = [...html.matchAll(resultPattern)];
+    
+    const recipeKeywords = ['recipe', 'cook', 'ingredients', 'instructions', 'make', 'prepare'];
+    const blogDomains = ['.com/', '.net/', '.org/', '.co/', '.blog'];
+    const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com'];
+    
+    for (const match of matches) {
+      const resultUrl = match[1];
+      const title = match[2];
+      const snippet = match[3];
+      
+      const decodedUrl = decodeURIComponent(resultUrl.replace(/.*uddg=([^&]+).*/, '$1'));
+      
+      const isExcluded = excludeDomains.some(domain => decodedUrl.includes(domain));
+      if (isExcluded) continue;
+      
+      const isBlogLike = blogDomains.some(domain => decodedUrl.includes(domain));
+      const hasRecipeContent = recipeKeywords.some(keyword => 
+        title.toLowerCase().includes(keyword) || snippet.toLowerCase().includes(keyword)
+      );
+      
+      if (isBlogLike && hasRecipeContent) {
+        console.log(`Found potential recipe page: ${decodedUrl}`);
+        return {
+          url: decodedUrl,
+          title: title.trim(),
+          snippet: snippet.trim(),
+        };
+      }
+    }
+    
+    console.log('No suitable recipe page found in search results');
+    return null;
+  } catch (error) {
+    console.error("Error searching for recipe:", error);
+    return null;
+  }
+}
+
+async function fetchRecipeFromWebsite(url: string): Promise<string | null> {
+  try {
+    console.log(`Fetching full recipe from: ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+    
+    if (!response.ok) {
+      console.log(`Failed to fetch recipe page: ${response.status}`);
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    const jsonLdPattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    const jsonLdMatches = [...html.matchAll(jsonLdPattern)];
+    
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonData = JSON.parse(match[1]);
+        const recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+        
+        for (const item of recipes) {
+          if (item['@type'] === 'Recipe' || (item['@graph'] && item['@graph'].find((g: any) => g['@type'] === 'Recipe'))) {
+            const recipe = item['@type'] === 'Recipe' ? item : item['@graph'].find((g: any) => g['@type'] === 'Recipe');
+            if (recipe) {
+              console.log('Found structured recipe data (JSON-LD)');
+              return JSON.stringify(recipe, null, 2);
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+    
+    const textContent: string[] = [];
+    
+    const recipeCardPattern = /<div[^>]+class="[^"]*recipe[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+    const cardMatches = html.matchAll(recipeCardPattern);
+    for (const match of cardMatches) {
+      const cleanText = match[1]
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (cleanText.length > 100) {
+        textContent.push(cleanText);
+      }
+    }
+    
+    const ingredientPatterns = [
+      /<(ul|ol)[^>]+class="[^"]*ingredient[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
+      /<div[^>]+class="[^"]*ingredient[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+    ];
+    
+    for (const pattern of ingredientPatterns) {
+      const matches = html.matchAll(pattern);
+      for (const match of matches) {
+        const cleanText = match[0]
+          .replace(/<[^>]+>/g, '\n')
+          .replace(/\n+/g, '\n')
+          .trim();
+        if (cleanText.length > 20) {
+          textContent.push(`INGREDIENTS:\n${cleanText}`);
+        }
+      }
+    }
+    
+    const instructionPatterns = [
+      /<(ul|ol)[^>]+class="[^"]*instruction[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
+      /<(ul|ol)[^>]+class="[^"]*step[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
+      /<div[^>]+class="[^"]*instruction[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+    ];
+    
+    for (const pattern of instructionPatterns) {
+      const matches = html.matchAll(pattern);
+      for (const match of matches) {
+        const cleanText = match[0]
+          .replace(/<[^>]+>/g, '\n')
+          .replace(/\n+/g, '\n')
+          .trim();
+        if (cleanText.length > 20) {
+          textContent.push(`INSTRUCTIONS:\n${cleanText}`);
+        }
+      }
+    }
+    
+    if (textContent.length > 0) {
+      console.log('Extracted recipe content from HTML');
+      return textContent.join('\n\n');
+    }
+    
+    const bodyText = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<aside[\s\S]*?<\/aside>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (bodyText.length > 500) {
+      console.log('Returning general page content');
+      return bodyText.substring(0, 10000);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error fetching recipe from website:", error);
+    return null;
+  }
+}
+
 interface GenerateRecipeRequest {
   url: string;
 }
@@ -413,13 +607,88 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         throw new Error("No response from AI");
       }
 
-      const recipeData = JSON.parse(content);
+      let recipeData = JSON.parse(content);
 
       // Check if AI returned an error response
       if (recipeData.error || !recipeData.title) {
         return res.status(400).json({
           error: recipeData.error || "Could not extract recipe from this post. The content may not contain a recipe, or try pasting the recipe text directly.",
         });
+      }
+
+      let creatorRecipeUrl: string | null = null;
+
+      // Check if recipe extraction seems incomplete (no ingredients or very few, or isEstimated)
+      const ingredientCount = recipeData.ingredients?.length || 0;
+      const instructionCount = recipeData.instructions?.length || 0;
+      const isIncomplete = ingredientCount < 3 || instructionCount < 2 || recipeData.isEstimated;
+
+      if (isIncomplete) {
+        console.log(`Recipe seems incomplete (${ingredientCount} ingredients, ${instructionCount} instructions, isEstimated: ${recipeData.isEstimated}). Searching for full recipe...`);
+        
+        const extractedCreatorHandle = recipeData.creatorHandle || creatorHandle;
+        const searchResult = await searchForCreatorRecipe(recipeData.title, extractedCreatorHandle);
+        
+        if (searchResult) {
+          console.log(`Found potential full recipe at: ${searchResult.url}`);
+          creatorRecipeUrl = searchResult.url;
+          
+          const websiteContent = await fetchRecipeFromWebsite(searchResult.url);
+          
+          if (websiteContent) {
+            console.log(`Got additional recipe content (${websiteContent.length} chars). Re-extracting with enhanced data...`);
+            
+            const enhancedPrompt = `Extract the recipe from this ${platform} food post. I've also found additional content from the creator's website.
+
+SOURCE URL (social media post): ${url}
+
+${contentSections.length > 0 ? contentSections.join('\n\n---\n\n') + '\n\n---\n\n' : ''}FULL RECIPE FROM CREATOR'S WEBSITE (${searchResult.url}):
+${websiteContent}
+
+Based on ALL the above content, extract the complete recipe. 
+
+PRIORITY:
+1. Use the WEBSITE CONTENT for complete ingredient list and detailed instructions
+2. Use the VIDEO TRANSCRIPT for any verbal instructions or tips not in the written recipe
+3. Use the POST CAPTION for context and serving suggestions
+
+Include:
+- The recipe title (matching the dish shown in the video)
+- Brief appetizing description
+- Prep and cook times (from website if available)
+- Number of servings
+- Appropriate dish type category
+- 2-4 relevant tags
+- Creator info
+- COMPLETE ingredient list with exact measurements from the website
+- DETAILED step-by-step instructions from the website
+
+Since we have the full recipe from the creator's website, set isEstimated to false if all measurements are explicit.`;
+
+            const enhancedResponse = await openai.chat.completions.create({
+              model: "gpt-5.2",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: enhancedPrompt },
+              ],
+              response_format: { type: "json_object" },
+              max_completion_tokens: 2048,
+            });
+
+            const enhancedContent = enhancedResponse.choices[0]?.message?.content;
+            if (enhancedContent) {
+              try {
+                const enhancedRecipeData = JSON.parse(enhancedContent);
+                if (enhancedRecipeData.title && !enhancedRecipeData.error) {
+                  console.log(`Enhanced recipe extraction successful: "${enhancedRecipeData.title}" with ${enhancedRecipeData.ingredients?.length || 0} ingredients`);
+                  recipeData = enhancedRecipeData;
+                }
+              } catch (e) {
+                console.log('Failed to parse enhanced recipe, using original extraction');
+              }
+            }
+          }
+        }
       }
 
       const recipe = {
@@ -437,6 +706,7 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         creatorHandle: recipeData.creatorHandle || creatorHandle || null,
         creatorName: recipeData.creatorName || null,
         creatorAvatar: pageData.profileImageUrl || null,
+        creatorRecipeUrl,
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
         originalTranscript: videoTranscript || null,
