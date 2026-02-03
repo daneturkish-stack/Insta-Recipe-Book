@@ -37,6 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **AI Integration**: OpenAI API via Replit AI Integrations for:
   - Recipe extraction from social media URLs (`/api/recipes/generate`)
   - Video transcription with Whisper for accurate ingredient/instruction extraction
+  - Web search fallback to find creator's full recipe on their website/blog when social media post is incomplete
   - Smart search across recipe collection (`/api/recipes/search`)
   - Pantry ingredient matching (`/api/recipes/pantry-match`)
   - Remy AI chat assistant (`/api/remy/chat`) with recipe context awareness
