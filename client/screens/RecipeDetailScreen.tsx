@@ -286,7 +286,7 @@ export default function RecipeDetailScreen() {
         style={[
           styles.floatingButtonContainer, 
           { 
-            bottom: tabBarHeight + Spacing.md,
+            bottom: tabBarHeight,
           }
         ]}
       >
