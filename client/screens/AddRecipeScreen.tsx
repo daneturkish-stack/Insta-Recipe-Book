@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Keyboard, ActivityIndicator } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Keyboard, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
@@ -18,23 +18,53 @@ import { useGenerateRecipe, useSaveRecipe } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
+type Platform = "instagram" | "tiktok" | null;
+
 export default function AddRecipeScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
 
   const generateRecipe = useGenerateRecipe();
   const saveRecipe = useSaveRecipe();
 
+  useEffect(() => {
+    if (route.params?.sharedUrl) {
+      setUrl(route.params.sharedUrl);
+      if (isValidInstagramUrl(route.params.sharedUrl)) {
+        setSelectedPlatform("instagram");
+      } else if (isValidTikTokUrl(route.params.sharedUrl)) {
+        setSelectedPlatform("tiktok");
+      }
+    }
+  }, [route.params?.sharedUrl]);
+
   const isValidInstagramUrl = (url: string) => {
     const pattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels)\/[\w-]+/i;
     return pattern.test(url);
+  };
+
+  const isValidTikTokUrl = (url: string) => {
+    const pattern = /^https?:\/\/(www\.)?(tiktok\.com|vm\.tiktok\.com)\//i;
+    return pattern.test(url);
+  };
+
+  const isValidUrl = (url: string) => {
+    return isValidInstagramUrl(url) || isValidTikTokUrl(url);
+  };
+
+  const getPlatformFromUrl = (url: string): Platform => {
+    if (isValidInstagramUrl(url)) return "instagram";
+    if (isValidTikTokUrl(url)) return "tiktok";
+    return null;
   };
 
   const handleGenerate = async () => {
@@ -43,12 +73,12 @@ export default function AddRecipeScreen() {
     setGeneratedRecipe(null);
 
     if (!url.trim()) {
-      setError("Please enter an Instagram URL");
+      setError("Please enter a URL");
       return;
     }
 
-    if (!isValidInstagramUrl(url)) {
-      setError("Please enter a valid Instagram post or reel URL");
+    if (!isValidUrl(url)) {
+      setError("Please enter a valid Instagram or TikTok URL");
       return;
     }
 
@@ -70,6 +100,7 @@ export default function AddRecipeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setUrl("");
       setGeneratedRecipe(null);
+      setSelectedPlatform(null);
       navigation.navigate("CollectionTab");
     } catch (err: any) {
       setError(err.message || "Failed to save recipe");
@@ -81,6 +112,17 @@ export default function AddRecipeScreen() {
     setGeneratedRecipe(null);
     setUrl("");
     setError("");
+    setSelectedPlatform(null);
+  };
+
+  const handleUrlChange = (text: string) => {
+    setUrl(text);
+    if (error) setError("");
+    
+    const platform = getPlatformFromUrl(text);
+    if (platform) {
+      setSelectedPlatform(platform);
+    }
   };
 
   return (
@@ -123,25 +165,75 @@ export default function AddRecipeScreen() {
       ) : (
         <Animated.View entering={FadeInUp.duration(400)}>
           <View style={styles.header}>
-            <View style={[styles.iconContainer, { backgroundColor: theme.primary + "15" }]}>
-              <Feather name="instagram" size={32} color={theme.primary} />
+            <View style={styles.platformToggle}>
+              <Pressable
+                style={[
+                  styles.platformButton,
+                  {
+                    backgroundColor: selectedPlatform === "instagram" ? theme.primary : theme.backgroundDefault,
+                  },
+                ]}
+                onPress={() => setSelectedPlatform("instagram")}
+              >
+                <Feather
+                  name="instagram"
+                  size={24}
+                  color={selectedPlatform === "instagram" ? "#FFF" : theme.text}
+                />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: selectedPlatform === "instagram" ? "#FFF" : theme.text,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Instagram
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.platformButton,
+                  {
+                    backgroundColor: selectedPlatform === "tiktok" ? theme.primary : theme.backgroundDefault,
+                  },
+                ]}
+                onPress={() => setSelectedPlatform("tiktok")}
+              >
+                <Feather
+                  name="video"
+                  size={24}
+                  color={selectedPlatform === "tiktok" ? "#FFF" : theme.text}
+                />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: selectedPlatform === "tiktok" ? "#FFF" : theme.text,
+                    marginTop: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  TikTok
+                </ThemedText>
+              </Pressable>
             </View>
+
             <ThemedText type="h3" style={styles.title}>
-              Add from Instagram
+              Add Recipe
             </ThemedText>
             <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Paste a link to an Instagram post or reel and we'll transform it into a complete recipe
+              Paste a link from Instagram or TikTok and we'll transform it into a complete recipe
             </ThemedText>
           </View>
 
           <View style={styles.form}>
             <Input
-              placeholder="https://instagram.com/p/..."
+              placeholder={selectedPlatform === "tiktok" 
+                ? "https://tiktok.com/@user/video/..." 
+                : "https://instagram.com/p/..."
+              }
               value={url}
-              onChangeText={(text) => {
-                setUrl(text);
-                if (error) setError("");
-              }}
+              onChangeText={handleUrlChange}
               error={error}
               autoCapitalize="none"
               autoCorrect={false}
@@ -168,6 +260,18 @@ export default function AddRecipeScreen() {
             </Animated.View>
           ) : null}
 
+          <View style={[styles.shareTip, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="share" size={20} color={theme.primary} />
+            <View style={styles.shareTipContent}>
+              <ThemedText type="small" style={{ fontWeight: "600" }}>
+                Quick tip
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                Share directly from Instagram or TikTok to Kitch for faster recipe saving
+              </ThemedText>
+            </View>
+          </View>
+
           <View style={styles.tips}>
             <ThemedText type="small" style={[styles.tipsTitle, { color: theme.textSecondary }]}>
               Tips for best results:
@@ -187,7 +291,7 @@ export default function AddRecipeScreen() {
             <View style={styles.tipItem}>
               <Feather name="check-circle" size={14} color={theme.accent} />
               <ThemedText type="caption" style={[styles.tipText, { color: theme.textSecondary }]}>
-                Food bloggers' posts with ingredient lists
+                Food creators' posts with ingredient lists
               </ThemedText>
             </View>
           </View>
@@ -208,13 +312,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing["3xl"],
   },
-  iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  platformToggle: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginBottom: Spacing["2xl"],
+  },
+  platformButton: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing["2xl"],
+    borderRadius: BorderRadius.md,
+    minWidth: 100,
   },
   title: {
     marginBottom: Spacing.sm,
@@ -237,8 +346,18 @@ const styles = StyleSheet.create({
   loadingText: {
     textAlign: "center",
   },
+  shareTip: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.xl,
+  },
+  shareTipContent: {
+    marginLeft: Spacing.md,
+    flex: 1,
+  },
   tips: {
-    marginTop: Spacing.xl,
     padding: Spacing.lg,
     backgroundColor: "transparent",
   },
