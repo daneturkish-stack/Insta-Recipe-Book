@@ -202,7 +202,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch actual content from the page
       console.log(`Fetching content from: ${url}`);
       const pageData = await fetchPageContent(url);
-      console.log(`Extracted content: ${pageData.text ? 'Found text' : 'No text'}, Image: ${pageData.imageUrl ? 'found' : 'none'}, Video: ${pageData.videoUrl ? 'found' : 'none'}`);
+      console.log(`Extracted content: ${pageData.text ? 'Found text' : 'No text'}`);
+      console.log(`Image URL: ${pageData.imageUrl || 'none'}`);
+      console.log(`Video URL: ${pageData.videoUrl || 'none'}`);
 
       const systemPrompt = `You are a professional recipe extraction assistant for the Kitch app. Your job is to extract and structure recipes from social media food posts.
 
