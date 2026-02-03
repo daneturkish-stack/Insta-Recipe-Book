@@ -1,17 +1,19 @@
 import { Platform } from "react-native";
 
-// Kitch Design System - Modern, clean, and light
+// Kitch Design System - Soft pastel palette with elegant typography
 // Designed to complement vibrant food photography
 
 export const KitchColors = {
-  primary: "#4A90E2", // Soft blue - fresh, trustworthy
-  background: "#FAFAFA", // Soft white - airy, clean
+  primary: "#d0cfe1", // Lavender pastel - buttons and interactive elements
+  background: "#FFFFFF", // Pure white - clean canvas
   surface: "#FFFFFF", // Pure white - cards, inputs
-  textPrimary: "#1A1A1A", // Near-black - crisp readability
-  textSecondary: "#6B6B6B", // Medium gray
-  border: "#E5E5E5", // Subtle gray
-  accent: "#7DC579", // Fresh green - organic, positive
-  error: "#E85D5D", // Soft red
+  textPrimary: "#231212", // Dark brown - warm readability
+  textSecondary: "#5C5252", // Muted brown
+  border: "#eceaea", // Soft warm gray
+  accent: "#e3e6d0", // Sage green pastel - organic, fresh
+  highlight: "#d0cfe1", // Lavender pastel - gentle emphasis
+  neutral: "#eceaea", // Light warm gray - subtle backgrounds
+  error: "#D85858", // Soft red
   // Dark mode variants
   darkBackground: "#121212",
   darkSurface: "#1E1E1E",
@@ -24,16 +26,17 @@ export const Colors = {
   light: {
     text: KitchColors.textPrimary,
     textSecondary: KitchColors.textSecondary,
-    buttonText: "#FFFFFF",
+    buttonText: KitchColors.textPrimary, // Dark brown text on pastel buttons
     tabIconDefault: KitchColors.textSecondary,
-    tabIconSelected: KitchColors.primary,
+    tabIconSelected: KitchColors.textPrimary, // Dark brown for selected tab
     link: KitchColors.primary,
     backgroundRoot: KitchColors.background,
     backgroundDefault: KitchColors.surface,
-    backgroundSecondary: "#F5F5F5",
-    backgroundTertiary: "#EEEEEE",
+    backgroundSecondary: KitchColors.neutral,
+    backgroundTertiary: KitchColors.accent,
     border: KitchColors.border,
     accent: KitchColors.accent,
+    highlight: KitchColors.highlight,
     error: KitchColors.error,
     primary: KitchColors.primary,
   },
@@ -42,16 +45,17 @@ export const Colors = {
     textSecondary: KitchColors.darkTextSecondary,
     buttonText: "#FFFFFF",
     tabIconDefault: KitchColors.darkTextSecondary,
-    tabIconSelected: KitchColors.primary,
-    link: KitchColors.primary,
+    tabIconSelected: "#d0cfe1",
+    link: "#d0cfe1",
     backgroundRoot: KitchColors.darkBackground,
     backgroundDefault: KitchColors.darkSurface,
     backgroundSecondary: "#252525",
     backgroundTertiary: "#2E2E2E",
     border: KitchColors.darkBorder,
     accent: KitchColors.accent,
+    highlight: KitchColors.highlight,
     error: KitchColors.error,
-    primary: KitchColors.primary,
+    primary: "#d0cfe1",
   },
 };
 
@@ -61,11 +65,11 @@ export const CookModeColors = {
   surface: "#1A1A1A",
   text: "#FFFFFF",
   textSecondary: "#B0B0B0",
-  primary: "#4A90E2",
-  accent: "#7DC579",
+  primary: "#d0cfe1",
+  accent: "#e3e6d0",
   border: "#333333",
-  stepActive: "#4A90E2",
-  stepCompleted: "#7DC579",
+  stepActive: "#d0cfe1",
+  stepCompleted: "#e3e6d0",
   stepPending: "#444444",
 };
 
@@ -95,61 +99,61 @@ export const BorderRadius = {
 };
 
 export const Typography = {
-  // Headings use Crimson Text (serif) for editorial feel
+  // Headings use DM Sans Bold for modern, clean feel
   h1: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "CrimsonText_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
   h2: {
     fontSize: 28,
     lineHeight: 36,
     fontWeight: "700" as const,
-    fontFamily: "CrimsonText_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
   h3: {
     fontSize: 24,
     lineHeight: 32,
     fontWeight: "600" as const,
-    fontFamily: "CrimsonText_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
   },
   h4: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600" as const,
-    fontFamily: "CrimsonText_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
   },
-  // Body text uses Inter (sans-serif) for clean readability
+  // Body text uses DM Sans for consistent modern look
   body: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "400" as const,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   bodyMedium: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "500" as const,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_500Medium",
   },
   small: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400" as const,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   caption: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "400" as const,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   link: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "500" as const,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_500Medium",
   },
 };
 
@@ -159,54 +163,54 @@ export const CookModeTypography = {
     fontSize: 48,
     lineHeight: 56,
     fontWeight: "700" as const,
-    fontFamily: "CrimsonText_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
   stepText: {
     fontSize: 26,
     lineHeight: 38,
     fontWeight: "400" as const,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   ingredient: {
     fontSize: 22,
     lineHeight: 32,
     fontWeight: "500" as const,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_500Medium",
   },
   title: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "CrimsonText_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
   timer: {
     fontSize: 64,
     lineHeight: 72,
     fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
 };
 
 // Minimal shadows - let content breathe
 export const Shadows = {
   card: {
-    shadowColor: "#000000",
+    shadowColor: "#231212",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
   },
   button: {
-    shadowColor: "#000000",
+    shadowColor: "#231212",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
   floating: {
-    shadowColor: "#000000",
+    shadowColor: "#231212",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
@@ -214,18 +218,18 @@ export const Shadows = {
 
 export const Fonts = Platform.select({
   ios: {
-    sans: "Inter_400Regular",
-    serif: "CrimsonText_400Regular",
+    sans: "DMSans_400Regular",
+    sansBold: "DMSans_700Bold",
     mono: "ui-monospace",
   },
   default: {
-    sans: "Inter_400Regular",
-    serif: "CrimsonText_400Regular",
+    sans: "DMSans_400Regular",
+    sansBold: "DMSans_700Bold",
     mono: "monospace",
   },
   web: {
-    sans: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    serif: "'Crimson Text', Georgia, 'Times New Roman', serif",
+    sans: "'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    sansBold: "'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });

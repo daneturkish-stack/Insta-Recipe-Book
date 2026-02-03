@@ -10,16 +10,11 @@ import * as Linking from "expo-linking";
 
 import {
   useFonts,
-  CrimsonText_400Regular,
-  CrimsonText_600SemiBold,
-  CrimsonText_700Bold,
-} from "@expo-google-fonts/crimson-text";
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -77,13 +72,10 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   
   const [fontsLoaded, fontError] = useFonts({
-    CrimsonText_400Regular,
-    CrimsonText_600SemiBold,
-    CrimsonText_700Bold,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
   });
 
   const handleDeepLink = useCallback((event: { url: string }) => {

@@ -25,9 +25,9 @@ Preferred communication style: Simple, everyday language.
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
 - **Animations**: React Native Reanimated for smooth micro-interactions
-- **Styling**: Custom design system in `client/constants/theme.ts` with modern, clean aesthetic (soft blue #4A90E2 primary, light #FAFAFA background)
-- **Typography**: Google Fonts (Crimson Text for headings, Inter for body)
-- **Design Philosophy**: Light, airy layouts that let vibrant food photos pop; minimal shadows; generous spacing
+- **Styling**: Custom design system in `client/constants/theme.ts` with soft pastel palette (lavender #d0cfe1 primary, sage #e3e6d0 accent, white background)
+- **Typography**: Google Fonts (DM Sans for all text - modern geometric sans-serif)
+- **Design Philosophy**: Light, airy layouts with pastel accents; dark brown (#231212) text for warmth; generous spacing to let food photos shine
 
 ### Backend Architecture
 - **Runtime**: Express.js on Node.js with TypeScript

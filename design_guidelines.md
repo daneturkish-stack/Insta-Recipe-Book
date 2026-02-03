@@ -4,160 +4,168 @@
 
 **Purpose**: Kitch transforms ephemeral Instagram food content into permanent, organized recipes. For home cooks who discover recipes on social media but want them preserved and accessible.
 
-**Aesthetic Direction**: Minimalist/clean - soft, airy, and refined. Maximum whitespace, subtle details, letting vibrant food photography shine as the hero. Think gallery-like presentation where the food is art and the interface fades into the background.
+**Aesthetic Direction**: Soft, warm, and refined with pastel accents. Pure white canvas lets vibrant food photography shine as the hero. Pastel colors (lavender, sage, warm gray) highlight sections and create visual hierarchy.
 
-**Memorable Element**: The dramatic contrast between social media chaos and pristine recipe presentation. Each saved recipe feels like a professional food magazine layout.
-
----
-
-## Navigation Architecture
-
-**Root Navigation**: Tab Bar (3 tabs)
-- **Collection** (tab 1): Browse saved recipes in grid
-- **Add** (tab 2, center): Core action - add from Instagram URL
-- **Profile** (tab 3): User settings and preferences
-
-**Authentication**: Not required (local storage only)
-
-**Stack Structure**:
-- Collection tab → Recipe Detail (pushed)
-- No modals for MVP
-
----
-
-## Screen Specifications
-
-### 1. Collection Screen
-**Purpose**: Browse and search saved recipes
-
-**Layout**:
-- Header: Transparent, large title "Recipes", right button (search icon)
-- Content: 2-column grid, scrollable
-- Safe area: top = headerHeight + 32, bottom = tabBarHeight + 32
-
-**Components**:
-- Recipe cards: Full-bleed image (1:1 aspect), thin gradient overlay at bottom, recipe title (white, bottom-left), prep time badge (top-right, frosted glass effect)
-- Empty state: Center-aligned illustration, "No recipes yet" heading, "Save your first from Instagram" subtext
-- Search bar (when activated): Filters by name/ingredients
-- Pull-to-refresh
-
-**Visual Details**:
-- Cards: 8px rounded corners, no visible shadows (images float cleanly)
-- Grid spacing: 12px
-- Press feedback: opacity 0.85
-
----
-
-### 2. Add Recipe Screen
-**Purpose**: Input Instagram URL and generate recipe
-
-**Layout**:
-- Header: Transparent, large title "Add Recipe"
-- Content: Scrollable form, centered vertically when not loading
-- Safe area: top = headerHeight + 32, bottom = tabBarHeight + 32
-
-**Components**:
-- Instagram URL input: Large, borderless with light gray background, placeholder "Paste Instagram link..."
-- "Generate Recipe" button: Primary color, full-width, 48px height
-- Loading state: Spinner with "Extracting recipe..." below
-- Success state: Preview card (matches Collection style) with "Save" button
-- Error state: Inline message below input, subtle red text
-
-**Visual Details**:
-- Input: 12px rounded, subtle fill color, no border
-- Button: 12px rounded, press opacity 0.85
-- Generous vertical spacing (32px between elements)
-
----
-
-### 3. Recipe Detail Screen
-**Purpose**: View complete recipe with ingredients and instructions
-
-**Layout**:
-- Header: Default navigation, back button, title (recipe name), right button (share icon, placeholder)
-- Content: Scrollable
-- Safe area: top = 16, bottom = insets.bottom + 32
-
-**Components**:
-- Hero image: Full-width, 375px height
-- Quick stats row (below image): Prep time, servings, difficulty - horizontal layout with icons, light gray background, rounded
-- Ingredients section: Title, list with tap-to-check circles (non-functional MVP)
-- Instructions section: Title, numbered steps with generous line spacing
-- Source footer: "Saved from Instagram" with small link icon
-
-**Visual Details**:
-- Sections: 32px vertical spacing
-- Quick stats: 16px padding, 8px rounded, centered text
-- Instructions: 20px line height for readability
-- No section dividers - whitespace defines hierarchy
-
----
-
-### 4. Profile Screen
-**Purpose**: User preferences (no authentication)
-
-**Layout**:
-- Header: Transparent, large title "Profile"
-- Content: Scrollable form
-- Safe area: top = headerHeight + 32, bottom = tabBarHeight + 32
-
-**Components**:
-- Avatar: 88px circle, generated preset
-- Display name field: Editable text input
-- Preferences: Theme toggle (light/dark), notifications toggle
-- About section: App version, privacy policy link, terms link (all placeholders)
+**Memorable Element**: The elegant contrast between social media chaos and pristine recipe presentation. Each saved recipe feels like a curated cookbook page.
 
 ---
 
 ## Color Palette
 
-**Primary**: #4A90E2 (soft blue - fresh, trustworthy)
-**Background**: #FAFAFA (soft white - airy, clean)
-**Surface**: #FFFFFF (pure white - cards, inputs)
-**Text Primary**: #1A1A1A (near-black - crisp readability)
-**Text Secondary**: #6B6B6B (medium gray)
-**Border**: #E5E5E5 (subtle gray)
-**Accent**: #7DC579 (fresh green - organic, positive)
-**Error**: #E85D5D (soft red)
+### Core Colors
+- **Font Color**: `#231212` - Rich dark brown for all text, elegant and warm
+- **Background**: `#FFFFFF` - Pure white canvas for clean, airy layouts
+
+### Pastel Accent Colors
+- **Lavender**: `#d0cfe1` - Headers, active states, primary buttons
+- **Sage Green**: `#e3e6d0` - Success states, tags, secondary accents
+- **Warm Gray**: `#eceaea` - Section backgrounds, dividers, subtle borders
+
+### Usage Guidelines
+- Use lavender (`#d0cfe1`) for section headers and primary interactive elements
+- Use sage green (`#e3e6d0`) for success indicators, tags, and organic accents
+- Use warm gray (`#eceaea`) for subtle backgrounds and dividers
+- All text should use the dark brown (`#231212`) for consistency
+- White background (`#FFFFFF`) lets food photos and content pop
 
 ---
 
 ## Typography
 
-**Fonts**: SF Pro (iOS system font) for consistency and legibility
-- **Large Title**: SF Pro Bold, 32px
-- **Title**: SF Pro Semibold, 24px
-- **Headline**: SF Pro Semibold, 18px
-- **Body**: SF Pro Regular, 16px
-- **Caption**: SF Pro Regular, 14px
-- **Small**: SF Pro Regular, 12px
+### Font Family
+**DM Sans** - Modern, geometric sans-serif with clean lines (similar to Satoshi)
+- Regular (400) - Body text, descriptions
+- Medium (500) - Labels, links, emphasis
+- SemiBold (600) - Subheadings, important text
+- Bold (700) - Headings, titles
+
+### Type Scale
+- **H1**: 32px / 40px line-height - Page titles
+- **H2**: 28px / 36px line-height - Section headings
+- **H3**: 24px / 32px line-height - Card titles
+- **H4**: 20px / 28px line-height - Subsection titles
+- **Body**: 16px / 24px line-height - Regular text
+- **Small**: 14px / 20px line-height - Secondary info
+- **Caption**: 12px / 16px line-height - Labels, timestamps
+
+---
+
+## Navigation Architecture
+
+**Root Navigation**: Tab Bar (4 tabs)
+- **Collection** (tab 1): Browse saved recipes in grid
+- **Add** (tab 2): Add from Instagram/TikTok URL
+- **Pantry** (tab 3): Manage ingredients
+- **Profile** (tab 4): User settings and preferences
+
+**Stack Structure**:
+- Collection tab → Recipe Detail (pushed) → Cook Mode (modal)
+
+---
+
+## Components
+
+### Cards
+- White background (`#FFFFFF`)
+- Subtle border using warm gray (`#eceaea`)
+- Minimal shadow (barely visible)
+- Border radius: 12-16px
+- Content padding: 16px
+
+### Buttons
+- **Primary**: Lavender background (`#d0cfe1`), dark text (`#231212`)
+- **Secondary**: White background, dark border, dark text
+- **Success/Action**: Sage green background (`#e3e6d0`), dark text
+- Height: 48px
+- Border radius: 12px
+- Font: DM Sans Medium
+
+### Section Headers
+- Background: Lavender (`#d0cfe1`) or Sage (`#e3e6d0`)
+- Padding: 12px 16px
+- Border radius: 8px
+- Font: DM Sans SemiBold
+
+### Tags/Badges
+- Background: Sage green (`#e3e6d0`)
+- Text: Dark brown (`#231212`)
+- Padding: 4px 12px
+- Border radius: 16px (pill shape)
+- Font: DM Sans Regular, 12-14px
+
+### Input Fields
+- White background
+- Warm gray border (`#eceaea`)
+- Border radius: 12px
+- Height: 52px
+- Placeholder: Muted brown (`#5C5252`)
+
+---
+
+## Screen Specifications
+
+### Recipe Cards
+- Image: Full width at top, 4:3 aspect ratio
+- Content: Below image with 16px padding
+- Title: DM Sans SemiBold, 18px
+- Meta row: Time, servings icons with values
+- Tags: Pill-shaped, sage green background
+
+### Collection Screen
+- 2-column grid with 12px spacing
+- Pull-to-refresh enabled
+- Empty state: Centered illustration with helpful text
+
+### Add Recipe Screen
+- Platform toggle (Instagram/TikTok) at top
+- URL input with lavender Generate button
+- Tips section with sage green checkmarks
+
+### Recipe Detail Screen
+- Hero image (full width)
+- Quick stats row with lavender background
+- Ingredients section with sage green backgrounds for grouping
+- Instructions with generous spacing
+- Floating "Start Cooking" button
+
+### Cook Mode
+- High-contrast dark theme for kitchen visibility
+- Background: Near-black (`#0A0A0A`)
+- Text: White (`#FFFFFF`)
+- Active step: Lavender (`#d0cfe1`)
+- Completed: Sage (`#e3e6d0`)
+- Extra large typography (26px+ body text)
+
+---
+
+## Spacing System
+
+Using 4px base unit:
+- **xs**: 4px
+- **sm**: 8px
+- **md**: 12px
+- **lg**: 16px
+- **xl**: 20px
+- **2xl**: 24px
+- **3xl**: 32px
+- **4xl**: 40px
 
 ---
 
 ## Visual Design
 
 - Icons: Feather icons from @expo/vector-icons
-- Minimal shadows: Only use for floating elements
-- "Generate Recipe" button shadow: offset {width: 0, height: 2}, opacity 0.10, radius 2
+- Minimal shadows: Only for floating elements
 - All touchables: opacity 0.85 on press
-- Rounded corners: 12px inputs/buttons, 8px cards
-- Generous spacing: 32px between major sections, 16px between related elements
+- Rounded corners: 12px inputs/buttons, 8-12px cards
+- Generous spacing: 32px between major sections
 
 ---
 
-## Assets to Generate
+## Design Principles
 
-1. **icon.png** - Minimalist cookbook icon, soft blue accent on white
-   - WHERE USED: Device home screen
-
-2. **splash-icon.png** - Same as icon.png, centered on soft white
-   - WHERE USED: App launch screen
-
-3. **empty-collection.png** - Light, airy illustration of empty recipe book with Instagram icon
-   - WHERE USED: Collection screen when no recipes saved
-
-4. **avatar-preset.png** - Simple circular avatar, light gray background with chef hat icon in soft blue
-   - WHERE USED: Profile screen default avatar
-
-5. **recipe-placeholder.png** - Soft gradient (white to light gray) with subtle cutlery pattern
-   - WHERE USED: Recipe cards when image fails to load
+1. **Let Food Photos Shine**: White backgrounds ensure vibrant food photography pops
+2. **Warm & Inviting**: Brown text and pastel accents create a cozy, cookbook feel
+3. **Clean & Organized**: Generous spacing, clear hierarchy
+4. **Consistent Pastel Usage**: Headers in lavender, success in sage, subtle in warm gray
+5. **Modern Typography**: DM Sans provides clean, contemporary readability
