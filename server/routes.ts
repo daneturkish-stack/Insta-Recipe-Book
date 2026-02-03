@@ -36,11 +36,21 @@ async function fetchPageContent(url: string): Promise<PageContent> {
     let imageUrl: string | null = null;
     let videoUrl: string | null = null;
     
+    // Helper to decode HTML entities
+    const decodeHtmlEntities = (str: string) => {
+      return str
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+    };
+    
     // Extract image URL (og:image)
     const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
                          html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
     if (ogImageMatch) {
-      imageUrl = ogImageMatch[1];
+      imageUrl = decodeHtmlEntities(ogImageMatch[1]);
     }
     
     // Extract video URL (og:video)
@@ -49,7 +59,7 @@ async function fetchPageContent(url: string): Promise<PageContent> {
                          html.match(/<meta[^>]*property=["']og:video:url["'][^>]*content=["']([^"']+)["']/i) ||
                          html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video:url["']/i);
     if (ogVideoMatch) {
-      videoUrl = ogVideoMatch[1];
+      videoUrl = decodeHtmlEntities(ogVideoMatch[1]);
     }
     
     // Also try to find video URLs in JSON data
