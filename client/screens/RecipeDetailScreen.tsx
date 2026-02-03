@@ -30,6 +30,7 @@ export default function RecipeDetailScreen() {
   const deleteRecipe = useDeleteRecipe();
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const toggleIngredient = (index: number) => {
     Haptics.selectionAsync();
@@ -48,6 +49,19 @@ export default function RecipeDetailScreen() {
     if (recipe?.sourceUrl) {
       await WebBrowser.openBrowserAsync(recipe.sourceUrl);
     }
+  };
+
+  const handleSearchFullRecipe = async () => {
+    if (recipe) {
+      Haptics.selectionAsync();
+      const searchQuery = encodeURIComponent(`${recipe.title} ${recipe.creatorHandle || ''} recipe`);
+      await WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${searchQuery}`);
+    }
+  };
+
+  const toggleTranscript = () => {
+    Haptics.selectionAsync();
+    setShowTranscript(!showTranscript);
   };
 
   const handleStartCookMode = () => {
@@ -185,6 +199,16 @@ export default function RecipeDetailScreen() {
                 </View>
               ) : null}
             </View>
+
+            {/* Transparency Banner */}
+            {recipe.isEstimated ? (
+              <View style={[styles.transparencyBanner, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}>
+                <Feather name="info" size={16} color={theme.accent} />
+                <ThemedText type="caption" style={[styles.transparencyText, { color: theme.textSecondary }]}>
+                  Some details were estimated by AI based on the post. Tap below to verify.
+                </ThemedText>
+              </View>
+            ) : null}
           </Animated.View>
 
           {/* Ingredients */}
@@ -253,8 +277,51 @@ export default function RecipeDetailScreen() {
             </View>
           </Animated.View>
 
-          {/* Source & Delete */}
+          {/* Verification Section */}
           <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+            {/* Original Post Transcript */}
+            {recipe.originalTranscript ? (
+              <View style={styles.section}>
+                <Pressable onPress={toggleTranscript} style={styles.transcriptHeader}>
+                  <View style={styles.transcriptTitleRow}>
+                    <Feather name="file-text" size={18} color={theme.primary} />
+                    <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
+                      View Original Post Text
+                    </ThemedText>
+                  </View>
+                  <Feather 
+                    name={showTranscript ? "chevron-up" : "chevron-down"} 
+                    size={20} 
+                    color={theme.textSecondary} 
+                  />
+                </Pressable>
+                {showTranscript ? (
+                  <View style={[styles.transcriptContent, { backgroundColor: theme.backgroundDefault }]}>
+                    <ThemedText type="small" style={{ color: theme.textSecondary, lineHeight: 22 }}>
+                      {recipe.originalTranscript}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* Search Full Recipe */}
+            <Pressable
+              onPress={handleSearchFullRecipe}
+              style={[styles.searchRecipeButton, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}
+            >
+              <View style={styles.sourceContent}>
+                <Feather name="search" size={18} color={theme.accent} />
+                <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.accent, fontWeight: "600" }}>
+                  Recipe incomplete? Search the web
+                </ThemedText>
+              </View>
+              <Feather name="external-link" size={16} color={theme.accent} />
+            </Pressable>
+          </Animated.View>
+
+          {/* Source & Delete */}
+          <Animated.View entering={FadeInDown.delay(500).duration(400)}>
             <Pressable
               onPress={handleOpenSource}
               style={[styles.sourceButton, { backgroundColor: theme.backgroundDefault }]}
@@ -481,5 +548,42 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "600",
     marginLeft: Spacing.sm,
+  },
+  transparencyBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  transparencyText: {
+    flex: 1,
+    lineHeight: 18,
+  },
+  transcriptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.sm,
+  },
+  transcriptTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  transcriptContent: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.sm,
+  },
+  searchRecipeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
   },
 });
