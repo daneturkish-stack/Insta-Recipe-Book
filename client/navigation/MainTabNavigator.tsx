@@ -2,13 +2,17 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import { Platform, StyleSheet, View } from "react-native";
+
+import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
+import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { Spacing } from "@/constants/theme";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  CollectionTab: undefined;
+  AddRecipeTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -19,7 +23,7 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="CollectionTab"
       screenOptions={{
         tabBarActiveTintColor: theme.tabIconSelected,
         tabBarInactiveTintColor: theme.tabIconDefault,
@@ -44,12 +48,29 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
+        name="CollectionTab"
+        component={CollectionStackNavigator}
         options={{
-          title: "Home",
+          title: "Recipes",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+            <Feather name="book-open" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AddRecipeTab"
+        component={AddRecipeStackNavigator}
+        options={{
+          title: "Add",
+          tabBarIcon: ({ color, size, focused }) => (
+            <View
+              style={[
+                styles.addButton,
+                { backgroundColor: focused ? theme.primary : theme.backgroundSecondary },
+              ]}
+            >
+              <Feather name="plus" size={22} color={focused ? "#FFF" : color} />
+            </View>
           ),
         }}
       />
@@ -66,3 +87,14 @@ export default function MainTabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xs,
+  },
+});
