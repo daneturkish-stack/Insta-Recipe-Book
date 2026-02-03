@@ -25,8 +25,9 @@ Preferred communication style: Simple, everyday language.
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
 - **Animations**: React Native Reanimated for smooth micro-interactions
-- **Styling**: Custom design system in `client/constants/theme.ts` with Kitch brand colors (terracotta primary, cream background)
+- **Styling**: Custom design system in `client/constants/theme.ts` with modern, clean aesthetic (soft blue #4A90E2 primary, light #FAFAFA background)
 - **Typography**: Google Fonts (Crimson Text for headings, Inter for body)
+- **Design Philosophy**: Light, airy layouts that let vibrant food photos pop; minimal shadows; generous spacing
 
 ### Backend Architecture
 - **Runtime**: Express.js on Node.js with TypeScript
