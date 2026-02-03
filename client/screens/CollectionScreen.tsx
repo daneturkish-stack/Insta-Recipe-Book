@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, TextInput, Pressable } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { StyleSheet, View, FlatList, RefreshControl, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -15,9 +15,10 @@ import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeCardSkeleton } from "@/components/RecipeCardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
-import { useRecipes } from "@/hooks/useRecipes";
+import { useRecipes, useSmartSearch } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
+import { DISH_TYPES } from "@/types/recipe";
 
 const emptyImage = require("../../assets/images/empty-collection.png");
 
@@ -28,22 +29,65 @@ export default function CollectionScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const { data: recipes, isLoading, refetch, isRefetching } = useRecipes();
+  const smartSearch = useSmartSearch();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [smartSearchResults, setSmartSearchResults] = useState<string[] | null>(null);
 
-  const filteredRecipes = recipes?.filter((recipe) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      recipe.title.toLowerCase().includes(query) ||
-      recipe.ingredients?.some((i) => i.name.toLowerCase().includes(query))
-    );
-  });
+  const handleSmartSearch = async () => {
+    if (!searchQuery.trim() || !recipes || recipes.length === 0) return;
+    
+    const result = await smartSearch.mutateAsync({
+      query: searchQuery,
+      recipes,
+    });
+    setSmartSearchResults(result);
+  };
+
+  const filteredRecipes = useMemo(() => {
+    if (!recipes) return [];
+
+    let result = recipes;
+
+    if (smartSearchResults !== null && searchQuery.trim()) {
+      result = result.filter((recipe) => smartSearchResults.includes(recipe.id));
+      const orderMap = new Map(smartSearchResults.map((id, i) => [id, i]));
+      result = [...result].sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+    } else if (searchQuery.trim() && !smartSearch.isPending) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((recipe) =>
+        recipe.title.toLowerCase().includes(query) ||
+        recipe.ingredients?.some((i) => i.name.toLowerCase().includes(query)) ||
+        recipe.creatorHandle?.toLowerCase().includes(query) ||
+        recipe.dishType?.toLowerCase().includes(query) ||
+        recipe.vibeTags?.some((t) => t.toLowerCase().includes(query))
+      );
+    }
+
+    if (selectedFilter) {
+      result = result.filter((recipe) => recipe.dishType === selectedFilter);
+    }
+
+    return result;
+  }, [recipes, searchQuery, selectedFilter, smartSearchResults, smartSearch.isPending]);
+
+  const availableFilters = useMemo(() => {
+    if (!recipes) return [];
+    const types = new Set(recipes.map((r) => r.dishType).filter(Boolean));
+    return DISH_TYPES.filter((t) => types.has(t));
+  }, [recipes]);
 
   const handleRecipePress = useCallback((recipe: Recipe) => {
     navigation.navigate("RecipeDetail", { recipeId: recipe.id });
   }, [navigation]);
+
+  const handleCancelSearch = () => {
+    setIsSearchVisible(false);
+    setSearchQuery("");
+    setSmartSearchResults(null);
+  };
 
   const renderItem = useCallback(({ item, index }: { item: Recipe; index: number }) => (
     <Animated.View
@@ -58,8 +102,11 @@ export default function CollectionScreen() {
     <View style={styles.emptyContainer}>
       <EmptyState
         image={emptyImage}
-        title="No recipes yet"
-        subtitle="Save your first recipe from Instagram and build your personal cookbook"
+        title={searchQuery.trim() ? "No recipes found" : "No recipes yet"}
+        subtitle={searchQuery.trim() 
+          ? "Try a different search term or use AI search"
+          : "Save your first recipe from Instagram or TikTok and build your personal cookbook"
+        }
       />
     </View>
   );
@@ -91,19 +138,26 @@ export default function CollectionScreen() {
             <Feather name="search" size={18} color={theme.textSecondary} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search recipes or ingredients..."
+              placeholder="Try: 'that chicken pasta from TikTok'"
               placeholderTextColor={theme.textSecondary}
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setSmartSearchResults(null);
+              }}
+              onSubmitEditing={handleSmartSearch}
+              returnKeyType="search"
               autoFocus
             />
-            {searchQuery.length > 0 ? (
-              <Pressable onPress={() => setSearchQuery("")}>
+            {smartSearch.isPending ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : searchQuery.length > 0 ? (
+              <Pressable onPress={() => { setSearchQuery(""); setSmartSearchResults(null); }}>
                 <Feather name="x" size={18} color={theme.textSecondary} />
               </Pressable>
             ) : null}
           </View>
-          <Pressable onPress={() => { setIsSearchVisible(false); setSearchQuery(""); }}>
+          <Pressable onPress={handleCancelSearch}>
             <ThemedText type="link" style={{ marginLeft: Spacing.md }}>Cancel</ThemedText>
           </Pressable>
         </Animated.View>
@@ -126,6 +180,53 @@ export default function CollectionScreen() {
         renderItem={isLoading ? () => null : renderItem}
         numColumns={2}
         columnWrapperStyle={isLoading || (filteredRecipes?.length ?? 0) === 0 ? undefined : styles.row}
+        ListHeaderComponent={
+          !isSearchVisible && availableFilters.length > 0 && (recipes?.length ?? 0) > 0 ? (
+            <Animated.ScrollView
+              entering={FadeIn.duration(300)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filtersContainer}
+              contentContainerStyle={styles.filtersContent}
+            >
+              <Pressable
+                onPress={() => setSelectedFilter(null)}
+                style={[
+                  styles.filterChip,
+                  { 
+                    backgroundColor: selectedFilter === null ? theme.primary : theme.backgroundDefault,
+                  },
+                ]}
+              >
+                <ThemedText 
+                  type="caption" 
+                  style={{ color: selectedFilter === null ? "#FFF" : theme.text, fontWeight: "600" }}
+                >
+                  All
+                </ThemedText>
+              </Pressable>
+              {availableFilters.map((filter) => (
+                <Pressable
+                  key={filter}
+                  onPress={() => setSelectedFilter(filter === selectedFilter ? null : filter)}
+                  style={[
+                    styles.filterChip,
+                    { 
+                      backgroundColor: selectedFilter === filter ? theme.primary : theme.backgroundDefault,
+                    },
+                  ]}
+                >
+                  <ThemedText 
+                    type="caption" 
+                    style={{ color: selectedFilter === filter ? "#FFF" : theme.text, fontWeight: "500" }}
+                  >
+                    {filter}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </Animated.ScrollView>
+          ) : null
+        }
         ListEmptyComponent={isLoading ? renderLoading : renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -136,22 +237,16 @@ export default function CollectionScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {!isSearchVisible && (recipes?.length ?? 0) > 0 ? (
+        <Pressable
+          onPress={() => setIsSearchVisible(true)}
+          style={[styles.searchFab, { backgroundColor: theme.backgroundDefault }]}
+        >
+          <Feather name="search" size={20} color={theme.text} />
+        </Pressable>
+      ) : null}
     </View>
-  );
-}
-
-export function CollectionHeaderRight() {
-  const { theme } = useTheme();
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-
-  return (
-    <Pressable
-      onPress={() => setIsSearchVisible(true)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-      hitSlop={8}
-    >
-      <Feather name="search" size={22} color={theme.text} />
-    </Pressable>
   );
 }
 
@@ -205,5 +300,34 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.sm,
     fontSize: 16,
+  },
+  filtersContainer: {
+    marginBottom: Spacing.lg,
+    marginHorizontal: -Spacing.lg,
+  },
+  filtersContent: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginRight: Spacing.sm,
+  },
+  searchFab: {
+    position: "absolute",
+    top: 100,
+    right: Spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

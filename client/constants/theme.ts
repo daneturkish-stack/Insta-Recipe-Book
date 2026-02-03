@@ -54,6 +54,20 @@ export const Colors = {
   },
 };
 
+// Cook Mode - High contrast theme for kitchen use (readable from 3 feet away)
+export const CookModeColors = {
+  background: "#0A0908",
+  surface: "#1A1816",
+  text: "#FFFFFF",
+  textSecondary: "#B8B0A8",
+  primary: "#FF9F5A",
+  accent: "#A8C896",
+  border: "#3D3835",
+  stepActive: "#FF9F5A",
+  stepCompleted: "#A8C896",
+  stepPending: "#4A4644",
+};
+
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -138,6 +152,40 @@ export const Typography = {
   },
 };
 
+// Cook Mode Typography - Extra large for kitchen visibility
+export const CookModeTypography = {
+  stepNumber: {
+    fontSize: 48,
+    lineHeight: 56,
+    fontWeight: "700" as const,
+    fontFamily: "CrimsonText_700Bold",
+  },
+  stepText: {
+    fontSize: 26,
+    lineHeight: 38,
+    fontWeight: "400" as const,
+    fontFamily: "Inter_400Regular",
+  },
+  ingredient: {
+    fontSize: 22,
+    lineHeight: 32,
+    fontWeight: "500" as const,
+    fontFamily: "Inter_500Medium",
+  },
+  title: {
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: "700" as const,
+    fontFamily: "CrimsonText_700Bold",
+  },
+  timer: {
+    fontSize: 64,
+    lineHeight: 72,
+    fontWeight: "700" as const,
+    fontFamily: "Inter_700Bold",
+  },
+};
+
 export const Shadows = {
   card: {
     shadowColor: "#2D2520",
@@ -152,6 +200,13 @@ export const Shadows = {
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  floating: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
 };
 

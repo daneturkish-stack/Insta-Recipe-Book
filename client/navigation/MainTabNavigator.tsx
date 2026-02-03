@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from "react-native";
 
 import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
+import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
@@ -13,6 +14,7 @@ import { Spacing } from "@/constants/theme";
 export type MainTabParamList = {
   CollectionTab: undefined;
   AddRecipeTab: undefined;
+  PantryTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -71,6 +73,16 @@ export default function MainTabNavigator() {
             >
               <Feather name="plus" size={22} color={focused ? "#FFF" : color} />
             </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="PantryTab"
+        component={PantryStackNavigator}
+        options={{
+          title: "Pantry",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="package" size={size} color={color} />
           ),
         }}
       />

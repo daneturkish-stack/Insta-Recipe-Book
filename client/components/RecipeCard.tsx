@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Pressable, ImageBackground } from "react-native";
+import { StyleSheet, View, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -53,6 +54,9 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
     onPress?.();
   };
 
+  const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
+  const thumbnailSource = recipe.videoThumbnail || recipe.imageUrl;
+
   return (
     <AnimatedPressable
       onPress={handlePress}
@@ -63,27 +67,50 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
     >
       <View style={styles.imageContainer}>
         <Image
-          source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage}
+          source={thumbnailSource ? { uri: thumbnailSource } : placeholderImage}
           style={styles.image}
           contentFit="cover"
           placeholder={placeholderImage}
           transition={200}
         />
         <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
+          colors={["transparent", "rgba(0,0,0,0.75)"]}
           style={styles.gradient}
         />
+        
+        {isVideo ? (
+          <View style={styles.videoIndicator}>
+            <Feather name="play-circle" size={24} color="#FFF" />
+          </View>
+        ) : null}
+
         {recipe.prepTime ? (
           <View style={[styles.timeBadge, { backgroundColor: theme.primary }]}>
             <ThemedText type="caption" style={styles.badgeText}>
-              {recipe.prepTime} min
+              {recipe.prepTime + (recipe.cookTime || 0)} min
             </ThemedText>
           </View>
         ) : null}
+
+        {recipe.creatorHandle ? (
+          <View style={styles.creatorBadge}>
+            <ThemedText type="caption" style={styles.creatorText} numberOfLines={1}>
+              {recipe.creatorHandle}
+            </ThemedText>
+          </View>
+        ) : null}
+
         <View style={styles.titleContainer}>
           <ThemedText type="bodyMedium" style={styles.title} numberOfLines={2}>
             {recipe.title}
           </ThemedText>
+          {recipe.dishType ? (
+            <View style={[styles.categoryTag, { backgroundColor: theme.accent + "40" }]}>
+              <ThemedText type="caption" style={[styles.categoryText, { color: theme.accent }]}>
+                {recipe.dishType}
+              </ThemedText>
+            </View>
+          ) : null}
         </View>
       </View>
     </AnimatedPressable>
@@ -109,7 +136,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: "60%",
+    height: "70%",
+  },
+  videoIndicator: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    marginTop: -20,
+    marginLeft: -12,
+    opacity: 0.9,
   },
   timeBadge: {
     position: "absolute",
@@ -123,6 +158,20 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "600",
   },
+  creatorBadge: {
+    position: "absolute",
+    top: Spacing.sm,
+    left: Spacing.sm,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+    maxWidth: "60%",
+  },
+  creatorText: {
+    color: "#FFF",
+    fontWeight: "500",
+  },
   titleContainer: {
     position: "absolute",
     bottom: 0,
@@ -133,5 +182,16 @@ const styles = StyleSheet.create({
   title: {
     color: "#FFF",
     fontWeight: "600",
+    marginBottom: Spacing.xs,
+  },
+  categoryTag: {
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  categoryText: {
+    fontWeight: "600",
+    fontSize: 10,
   },
 });
