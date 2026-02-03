@@ -227,6 +227,7 @@ Extract and categorize with:
 2. vibeTags: 2-4 tags from [Quick & Easy, 15-Min Meals, 30-Min Meals, One-Pot, Meal Prep, Budget-Friendly, High-Protein, Low-Carb, Vegan, Vegetarian, Gluten-Free, Dairy-Free, Keto, Comfort Food, Healthy, Indulgent, Kid-Friendly, Date Night, Lazy Sunday, Party Food, Batch Cooking]
 3. creatorHandle: Extract from content if available
 4. creatorName: Extract from content if available
+5. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated in the source content. Set to false only if all details were explicitly provided.
 
 If specific measurements or steps are not provided, make reasonable estimates based on the dish type, but NEVER change what dish it is.
 
@@ -241,6 +242,7 @@ Respond ONLY with a valid JSON object:
   "vibeTags": ["Quick & Easy", "Indulgent"],
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
+  "isEstimated": true,
   "ingredients": [
     {"name": "ingredient name", "amount": "1", "unit": "cup"}
   ],
@@ -326,6 +328,8 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         creatorName: recipeData.creatorName || null,
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
+        originalTranscript: pageData.text || null,
+        isEstimated: recipeData.isEstimated ?? true,
         platform,
         createdAt: new Date().toISOString(),
       };

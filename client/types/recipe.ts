@@ -21,6 +21,9 @@ export interface Recipe {
   vibeTags?: string[]; // Vegan, High-Protein, Quick, etc.
   creatorHandle?: string; // @username from source
   creatorName?: string;
+  // Transparency & verification
+  originalTranscript?: string; // Raw extracted text from post for user verification
+  isEstimated?: boolean; // True if AI had to infer details not explicitly stated
   // Metadata
   createdAt: string;
   platform?: "instagram" | "tiktok" | "manual";
