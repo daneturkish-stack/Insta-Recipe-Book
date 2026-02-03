@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, View, ScrollView, Pressable, Alert, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -19,6 +20,7 @@ const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
 export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -284,8 +286,7 @@ export default function RecipeDetailScreen() {
         style={[
           styles.floatingButtonContainer, 
           { 
-            paddingBottom: insets.bottom + Spacing["2xl"],
-            backgroundColor: theme.backgroundRoot,
+            bottom: tabBarHeight + Spacing.md,
           }
         ]}
       >
@@ -465,10 +466,8 @@ const styles = StyleSheet.create({
   },
   floatingButtonContainer: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: Spacing.lg,
+    left: Spacing.lg,
+    right: Spacing.lg,
     zIndex: 100,
   },
   cookModeButton: {
