@@ -11,6 +11,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
+import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useDeleteRecipe } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -31,6 +32,7 @@ export default function RecipeDetailScreen() {
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showRemyChat, setShowRemyChat] = useState(false);
 
   const toggleIngredient = (index: number) => {
     Haptics.selectionAsync();
@@ -376,6 +378,17 @@ export default function RecipeDetailScreen() {
           </ThemedText>
         </Pressable>
       </View>
+
+      <RemyFloatingButton 
+        onPress={() => setShowRemyChat(true)} 
+        testID="remy-floating-button"
+      />
+      
+      <RemyChat
+        visible={showRemyChat}
+        onClose={() => setShowRemyChat(false)}
+        currentRecipe={recipe}
+      />
     </View>
   );
 }

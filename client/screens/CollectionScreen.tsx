@@ -14,6 +14,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeCardSkeleton } from "@/components/RecipeCardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipes, useSmartSearch } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -35,6 +36,7 @@ export default function CollectionScreen() {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [smartSearchResults, setSmartSearchResults] = useState<string[] | null>(null);
+  const [showRemyChat, setShowRemyChat] = useState(false);
 
   const handleSmartSearch = async () => {
     if (!searchQuery.trim() || !recipes || recipes.length === 0) return;
@@ -246,6 +248,17 @@ export default function CollectionScreen() {
           <Feather name="search" size={20} color={theme.text} />
         </Pressable>
       ) : null}
+
+      <RemyFloatingButton 
+        onPress={() => setShowRemyChat(true)} 
+        testID="remy-floating-button-collection"
+      />
+      
+      <RemyChat
+        visible={showRemyChat}
+        onClose={() => setShowRemyChat(false)}
+        allRecipes={recipes}
+      />
     </View>
   );
 }
