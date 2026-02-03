@@ -6,9 +6,11 @@ Kitch is a React Native/Expo mobile application that transforms ephemeral Instag
 
 Key capabilities:
 - Extract recipes from Instagram Reels/Posts and TikTok videos via AI
+- Video transcription using OpenAI Whisper for accurate recipe extraction
 - Local recipe storage with search and smart AI-powered filtering
 - Pantry management with ingredient matching to find makeable recipes
 - Cook Mode for step-by-step guided cooking
+- Remy AI assistant for cooking questions, substitutions, and recipe recommendations
 - Cross-platform support (iOS, Android, Web)
 
 ## User Preferences
@@ -34,8 +36,11 @@ Preferred communication style: Simple, everyday language.
 - **API Design**: RESTful endpoints under `/api/` prefix
 - **AI Integration**: OpenAI API via Replit AI Integrations for:
   - Recipe extraction from social media URLs (`/api/recipes/generate`)
-  - Smart search across recipe collection (`/api/recipes/smart-search`)
+  - Video transcription with Whisper for accurate ingredient/instruction extraction
+  - Smart search across recipe collection (`/api/recipes/search`)
   - Pantry ingredient matching (`/api/recipes/pantry-match`)
+  - Remy AI chat assistant (`/api/remy/chat`) with recipe context awareness
+  - Voice transcription for Remy (`/api/remy/transcribe`)
 
 ### Data Storage
 - **Client-side**: AsyncStorage for recipes and pantry items (offline-first approach)
