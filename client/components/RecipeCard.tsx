@@ -1,6 +1,5 @@
 import React from "react";
 import { StyleSheet, View, Pressable } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -42,7 +41,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.97, springConfig);
+    scale.value = withSpring(0.98, springConfig);
   };
 
   const handlePressOut = () => {
@@ -56,13 +55,18 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
 
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
   const thumbnailSource = recipe.videoThumbnail || recipe.imageUrl;
+  const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
 
   return (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[styles.container, Shadows.card, animatedStyle]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.backgroundDefault },
+        animatedStyle,
+      ]}
       testID={`recipe-card-${recipe.id}`}
     >
       <View style={styles.imageContainer}>
@@ -73,45 +77,92 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
           placeholder={placeholderImage}
           transition={200}
         />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.75)"]}
-          style={styles.gradient}
-        />
         
         {isVideo ? (
           <View style={styles.videoIndicator}>
-            <Feather name="play-circle" size={24} color="#FFF" />
+            <View style={styles.playButton}>
+              <Feather name="play" size={16} color="#FFF" style={{ marginLeft: 2 }} />
+            </View>
           </View>
         ) : null}
 
-        {recipe.prepTime ? (
-          <View style={[styles.timeBadge, { backgroundColor: theme.primary }]}>
-            <ThemedText type="caption" style={styles.badgeText}>
-              {recipe.prepTime + (recipe.cookTime || 0)} min
-            </ThemedText>
+        {recipe.platform ? (
+          <View style={styles.platformBadge}>
+            <Feather 
+              name={recipe.platform === "tiktok" ? "video" : "instagram"} 
+              size={12} 
+              color="#FFF" 
+            />
           </View>
         ) : null}
+      </View>
 
-        {recipe.creatorHandle ? (
-          <View style={styles.creatorBadge}>
-            <ThemedText type="caption" style={styles.creatorText} numberOfLines={1}>
-              {recipe.creatorHandle}
-            </ThemedText>
-          </View>
-        ) : null}
+      <View style={styles.content}>
+        <ThemedText 
+          type="bodyMedium" 
+          style={[styles.title, { color: theme.text }]} 
+          numberOfLines={2}
+        >
+          {recipe.title}
+        </ThemedText>
 
-        <View style={styles.titleContainer}>
-          <ThemedText type="bodyMedium" style={styles.title} numberOfLines={2}>
-            {recipe.title}
-          </ThemedText>
-          {recipe.dishType ? (
-            <View style={[styles.categoryTag, { backgroundColor: theme.accent + "40" }]}>
-              <ThemedText type="caption" style={[styles.categoryText, { color: theme.accent }]}>
-                {recipe.dishType}
+        <View style={styles.metaRow}>
+          {totalTime > 0 ? (
+            <View style={styles.metaItem}>
+              <Feather name="clock" size={12} color={theme.textSecondary} />
+              <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
+                {totalTime} min
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {recipe.servings ? (
+            <View style={styles.metaItem}>
+              <Feather name="users" size={12} color={theme.textSecondary} />
+              <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
+                {recipe.servings}
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {recipe.ingredients && recipe.ingredients.length > 0 ? (
+            <View style={styles.metaItem}>
+              <Feather name="list" size={12} color={theme.textSecondary} />
+              <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
+                {recipe.ingredients.length}
               </ThemedText>
             </View>
           ) : null}
         </View>
+
+        {recipe.dishType || (recipe.vibeTags && recipe.vibeTags.length > 0) ? (
+          <View style={styles.tagsRow}>
+            {recipe.dishType ? (
+              <View style={[styles.tag, { backgroundColor: theme.primary + "15" }]}>
+                <ThemedText type="caption" style={[styles.tagText, { color: theme.primary }]}>
+                  {recipe.dishType}
+                </ThemedText>
+              </View>
+            ) : null}
+            {recipe.vibeTags?.slice(0, 1).map((tag, index) => (
+              <View key={index} style={[styles.tag, { backgroundColor: theme.accent + "15" }]}>
+                <ThemedText type="caption" style={[styles.tagText, { color: theme.accent }]}>
+                  {tag}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {recipe.creatorHandle ? (
+          <ThemedText 
+            type="caption" 
+            style={[styles.creator, { color: theme.textSecondary }]} 
+            numberOfLines={1}
+          >
+            {recipe.creatorHandle}
+          </ThemedText>
+        ) : null}
       </View>
     </AnimatedPressable>
   );
@@ -121,77 +172,77 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: BorderRadius.sm,
     overflow: "hidden",
-    backgroundColor: "#FFF",
   },
   imageContainer: {
-    aspectRatio: 16 / 12,
+    aspectRatio: 4 / 3,
     position: "relative",
   },
   image: {
     width: "100%",
     height: "100%",
   },
-  gradient: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "70%",
-  },
   videoIndicator: {
     position: "absolute",
     top: "50%",
     left: "50%",
-    marginTop: -20,
-    marginLeft: -12,
-    opacity: 0.9,
+    marginTop: -16,
+    marginLeft: -16,
   },
-  timeBadge: {
+  playButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  platformBadge: {
     position: "absolute",
     top: Spacing.sm,
     right: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.xs,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  badgeText: {
-    color: "#FFF",
-    fontWeight: "600",
-  },
-  creatorBadge: {
-    position: "absolute",
-    top: Spacing.sm,
-    left: Spacing.sm,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.xs,
-    maxWidth: "60%",
-  },
-  creatorText: {
-    color: "#FFF",
-    fontWeight: "500",
-  },
-  titleContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  content: {
     padding: Spacing.md,
+    gap: Spacing.xs,
   },
   title: {
-    color: "#FFF",
     fontWeight: "600",
-    marginBottom: Spacing.xs,
   },
-  categoryTag: {
-    alignSelf: "flex-start",
+  metaRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.xs,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
+    fontWeight: "500",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  tag: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.xs,
   },
-  categoryText: {
+  tagText: {
     fontWeight: "600",
-    fontSize: 10,
+    fontSize: 11,
+  },
+  creator: {
+    marginTop: Spacing.xs,
   },
 });

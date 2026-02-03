@@ -1,22 +1,23 @@
 import { Platform } from "react-native";
 
-// Kitch Design System - Organic/Editorial fusion with warm cookbook aesthetic
+// Kitch Design System - Modern, clean, and light
+// Designed to complement vibrant food photography
 
 export const KitchColors = {
-  primary: "#D97E43", // Warm terracotta
-  background: "#FFFBF7", // Cream
-  surface: "#FFFFFF", // White cards
-  textPrimary: "#2D2520", // Dark brown
-  textSecondary: "#7A6F68", // Muted brown
-  border: "#E8DFD8", // Subtle taupe
-  accent: "#8FA67C", // Sage green
-  error: "#C94528", // Warm red
+  primary: "#4A90E2", // Soft blue - fresh, trustworthy
+  background: "#FAFAFA", // Soft white - airy, clean
+  surface: "#FFFFFF", // Pure white - cards, inputs
+  textPrimary: "#1A1A1A", // Near-black - crisp readability
+  textSecondary: "#6B6B6B", // Medium gray
+  border: "#E5E5E5", // Subtle gray
+  accent: "#7DC579", // Fresh green - organic, positive
+  error: "#E85D5D", // Soft red
   // Dark mode variants
-  darkBackground: "#1A1614",
-  darkSurface: "#252220",
-  darkTextPrimary: "#F5F0EB",
-  darkTextSecondary: "#9A918A",
-  darkBorder: "#3D3835",
+  darkBackground: "#121212",
+  darkSurface: "#1E1E1E",
+  darkTextPrimary: "#FAFAFA",
+  darkTextSecondary: "#A0A0A0",
+  darkBorder: "#2E2E2E",
 };
 
 export const Colors = {
@@ -29,8 +30,8 @@ export const Colors = {
     link: KitchColors.primary,
     backgroundRoot: KitchColors.background,
     backgroundDefault: KitchColors.surface,
-    backgroundSecondary: "#F7F2ED",
-    backgroundTertiary: "#EFE8E1",
+    backgroundSecondary: "#F5F5F5",
+    backgroundTertiary: "#EEEEEE",
     border: KitchColors.border,
     accent: KitchColors.accent,
     error: KitchColors.error,
@@ -45,8 +46,8 @@ export const Colors = {
     link: KitchColors.primary,
     backgroundRoot: KitchColors.darkBackground,
     backgroundDefault: KitchColors.darkSurface,
-    backgroundSecondary: "#2D2926",
-    backgroundTertiary: "#3A3532",
+    backgroundSecondary: "#252525",
+    backgroundTertiary: "#2E2E2E",
     border: KitchColors.darkBorder,
     accent: KitchColors.accent,
     error: KitchColors.error,
@@ -56,16 +57,16 @@ export const Colors = {
 
 // Cook Mode - High contrast theme for kitchen use (readable from 3 feet away)
 export const CookModeColors = {
-  background: "#0A0908",
-  surface: "#1A1816",
+  background: "#0A0A0A",
+  surface: "#1A1A1A",
   text: "#FFFFFF",
-  textSecondary: "#B8B0A8",
-  primary: "#FF9F5A",
-  accent: "#A8C896",
-  border: "#3D3835",
-  stepActive: "#FF9F5A",
-  stepCompleted: "#A8C896",
-  stepPending: "#4A4644",
+  textSecondary: "#B0B0B0",
+  primary: "#4A90E2",
+  accent: "#7DC579",
+  border: "#333333",
+  stepActive: "#4A90E2",
+  stepCompleted: "#7DC579",
+  stepPending: "#444444",
 };
 
 export const Spacing = {
@@ -79,22 +80,22 @@ export const Spacing = {
   "4xl": 40,
   "5xl": 48,
   inputHeight: 52,
-  buttonHeight: 52,
+  buttonHeight: 48,
 };
 
 export const BorderRadius = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-  "2xl": 32,
-  "3xl": 40,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  "2xl": 24,
+  "3xl": 32,
   full: 9999,
 };
 
 export const Typography = {
-  // Headings use Crimson Text (serif)
+  // Headings use Crimson Text (serif) for editorial feel
   h1: {
     fontSize: 32,
     lineHeight: 40,
@@ -119,7 +120,7 @@ export const Typography = {
     fontWeight: "600" as const,
     fontFamily: "CrimsonText_600SemiBold",
   },
-  // Body text uses Inter (sans-serif)
+  // Body text uses Inter (sans-serif) for clean readability
   body: {
     fontSize: 16,
     lineHeight: 24,
@@ -186,27 +187,28 @@ export const CookModeTypography = {
   },
 };
 
+// Minimal shadows - let content breathe
 export const Shadows = {
   card: {
-    shadowColor: "#2D2520",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   button: {
-    shadowColor: "#2D2520",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   floating: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
 };
 
