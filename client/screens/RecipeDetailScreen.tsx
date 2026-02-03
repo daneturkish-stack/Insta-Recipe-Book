@@ -280,10 +280,19 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {/* Floating Cook Mode Button */}
-      <View style={[styles.floatingButtonContainer, { paddingBottom: insets.bottom + Spacing.lg }]}>
+      <View 
+        style={[
+          styles.floatingButtonContainer, 
+          { 
+            paddingBottom: insets.bottom + Spacing["2xl"],
+            backgroundColor: theme.backgroundRoot,
+          }
+        ]}
+      >
         <Pressable
           onPress={handleStartCookMode}
           style={[styles.cookModeButton, { backgroundColor: theme.primary }, Shadows.floating]}
+          testID="button-start-cooking"
         >
           <Feather name="play-circle" size={22} color="#FFF" />
           <ThemedText type="bodyMedium" style={styles.cookModeButtonText}>
@@ -460,6 +469,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: Spacing.lg,
+    zIndex: 100,
   },
   cookModeButton: {
     flexDirection: "row",
