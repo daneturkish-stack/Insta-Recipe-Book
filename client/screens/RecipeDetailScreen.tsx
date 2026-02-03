@@ -127,9 +127,17 @@ export default function RecipeDetailScreen() {
             {/* Creator & Tags */}
             {recipe.creatorHandle ? (
               <Pressable onPress={handleOpenSource} style={styles.creatorRow}>
-                <View style={[styles.creatorAvatar, { backgroundColor: theme.primary }]}>
-                  <Feather name="user" size={14} color="#FFF" />
-                </View>
+                {recipe.creatorAvatar ? (
+                  <Image
+                    source={{ uri: recipe.creatorAvatar }}
+                    style={styles.creatorAvatarImage}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={[styles.creatorAvatar, { backgroundColor: theme.primary }]}>
+                    <Feather name="user" size={14} color="#FFF" />
+                  </View>
+                )}
                 <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
                   {recipe.creatorHandle}
                 </ThemedText>
@@ -418,6 +426,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  creatorAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     marginRight: Spacing.sm,
   },
   platformBadge: {

@@ -12,6 +12,7 @@ interface PageContent {
   text: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
+  profileImageUrl: string | null;
 }
 
 async function fetchPageContent(url: string): Promise<PageContent> {
@@ -27,7 +28,7 @@ async function fetchPageContent(url: string): Promise<PageContent> {
 
     if (!response.ok) {
       console.log(`Failed to fetch ${url}: ${response.status}`);
-      return { text: null, imageUrl: null, videoUrl: null };
+      return { text: null, imageUrl: null, videoUrl: null, profileImageUrl: null };
     }
 
     const html = await response.text();
@@ -35,6 +36,7 @@ async function fetchPageContent(url: string): Promise<PageContent> {
     const extractedContent: string[] = [];
     let imageUrl: string | null = null;
     let videoUrl: string | null = null;
+    let profileImageUrl: string | null = null;
     
     // Helper to decode HTML entities
     const decodeHtmlEntities = (str: string) => {
@@ -158,16 +160,35 @@ async function fetchPageContent(url: string): Promise<PageContent> {
       }
     }
 
-    console.log(`Extracted media - Image: ${imageUrl ? 'found' : 'none'}, Video: ${videoUrl ? 'found' : 'none'}`);
+    // Extract profile/avatar image
+    const profileImagePatterns = [
+      /"profile_pic_url"\s*:\s*"([^"]+)"/,
+      /"profile_pic_url_hd"\s*:\s*"([^"]+)"/,
+      /"avatarThumb"\s*:\s*"([^"]+)"/,
+      /"avatarMedium"\s*:\s*"([^"]+)"/,
+      /"avatar"\s*:\s*"([^"]+)"/,
+      /"owner"\s*:\s*\{[^}]*"profile_pic_url"\s*:\s*"([^"]+)"/,
+    ];
+    
+    for (const pattern of profileImagePatterns) {
+      const match = html.match(pattern);
+      if (match) {
+        profileImageUrl = decodeHtmlEntities(match[1].replace(/\\u0026/g, '&').replace(/\\/g, ''));
+        break;
+      }
+    }
+
+    console.log(`Extracted media - Image: ${imageUrl ? 'found' : 'none'}, Video: ${videoUrl ? 'found' : 'none'}, Profile: ${profileImageUrl ? 'found' : 'none'}`);
 
     return {
       text: extractedContent.length > 0 ? extractedContent.join('\n\n') : null,
       imageUrl,
       videoUrl,
+      profileImageUrl,
     };
   } catch (error) {
     console.error("Error fetching page content:", error);
-    return { text: null, imageUrl: null, videoUrl: null };
+    return { text: null, imageUrl: null, videoUrl: null, profileImageUrl: null };
   }
 }
 
@@ -326,6 +347,7 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         vibeTags: recipeData.vibeTags || [],
         creatorHandle: recipeData.creatorHandle || creatorHandle || null,
         creatorName: recipeData.creatorName || null,
+        creatorAvatar: pageData.profileImageUrl || null,
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
         originalTranscript: pageData.text || null,
