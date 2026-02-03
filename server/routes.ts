@@ -569,6 +569,130 @@ Only include recipes with at least 50% ingredient match.`;
     }
   });
 
+  // Remy AI assistant chat
+  app.post("/api/remy/chat", async (req: Request, res: Response) => {
+    try {
+      const { message, conversationHistory, currentRecipe, allRecipes } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Build context about recipes
+      let recipeContext = "";
+      
+      if (currentRecipe) {
+        recipeContext = `
+CURRENT RECIPE THE USER IS VIEWING:
+Title: ${currentRecipe.title}
+Description: ${currentRecipe.description || "N/A"}
+Prep Time: ${currentRecipe.prepTime || "Not specified"} minutes
+Cook Time: ${currentRecipe.cookTime || "Not specified"} minutes
+Servings: ${currentRecipe.servings || "Not specified"}
+Dish Type: ${currentRecipe.dishType || "Not specified"}
+Tags: ${currentRecipe.vibeTags?.join(", ") || "None"}
+
+Ingredients:
+${currentRecipe.ingredients?.map((i: any) => `- ${i.amount} ${i.unit} ${i.name}`).join("\n") || "None listed"}
+
+Instructions:
+${currentRecipe.instructions?.map((step: string, i: number) => `${i + 1}. ${step}`).join("\n") || "None listed"}
+`;
+      }
+
+      if (allRecipes && allRecipes.length > 0) {
+        const recipeSummaries = allRecipes.map((r: any) => 
+          `- "${r.title}" (${r.dishType || "uncategorized"}): ${r.ingredients?.map((i: any) => i.name).join(", ") || "no ingredients"}`
+        ).join("\n");
+        
+        recipeContext += `
+USER'S SAVED RECIPE COLLECTION (${allRecipes.length} recipes):
+${recipeSummaries}
+`;
+      }
+
+      const systemPrompt = `You are Remy, a friendly and knowledgeable AI cooking assistant in the Kitch recipe app. You have a warm, encouraging personality like a supportive friend in the kitchen.
+
+Your capabilities:
+1. Answer cooking questions about recipes the user is viewing
+2. Suggest ingredient substitutions (dietary restrictions, missing ingredients)
+3. Recommend recipes from their saved collection based on ingredients they have
+4. Explain cooking techniques and temperatures
+5. Help adapt recipes for dietary needs (vegan, gluten-free, etc.)
+6. Provide cooking tips and troubleshooting
+
+${recipeContext}
+
+Guidelines:
+- Be concise but helpful (2-4 sentences typically)
+- Use a friendly, encouraging tone
+- If asked about a specific recipe, reference the current recipe context
+- When recommending recipes from their collection, mention specific titles
+- For substitutions, explain the impact on the dish
+- If you don't know something, be honest and suggest they verify
+- Use cooking emojis sparingly for warmth 🍳
+
+Remember: You're helping real home cooks feel confident in the kitchen!`;
+
+      const messages: any[] = [
+        { role: "system", content: systemPrompt },
+      ];
+
+      // Add conversation history if provided
+      if (conversationHistory && Array.isArray(conversationHistory)) {
+        messages.push(...conversationHistory.slice(-10)); // Keep last 10 messages for context
+      }
+
+      messages.push({ role: "user", content: message });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages,
+        max_completion_tokens: 512,
+      });
+
+      const reply = response.choices[0]?.message?.content;
+      if (!reply) {
+        throw new Error("No response from AI");
+      }
+
+      res.json({ reply });
+    } catch (error: any) {
+      console.error("Error in Remy chat:", error);
+      res.status(500).json({
+        error: "Remy had a hiccup! Please try again.",
+      });
+    }
+  });
+
+  // Transcribe voice message for Remy
+  app.post("/api/remy/transcribe", async (req: Request, res: Response) => {
+    try {
+      const audioData = req.body.audio;
+      
+      if (!audioData) {
+        return res.status(400).json({ error: "Audio data is required" });
+      }
+
+      // Convert base64 audio to buffer
+      const audioBuffer = Buffer.from(audioData, "base64");
+      const audioFile = new File([audioBuffer], "voice.mp3", { type: "audio/mpeg" });
+
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-1",
+        language: "en",
+      });
+
+      res.json({ text: transcription.text });
+    } catch (error: any) {
+      console.error("Error transcribing voice:", error);
+      res.status(500).json({
+        error: "Could not transcribe voice. Please try again or type your message.",
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
