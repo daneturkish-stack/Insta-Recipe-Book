@@ -61,6 +61,13 @@ export default function RecipeDetailScreen() {
     }
   };
 
+  const handleOpenCreatorRecipe = async () => {
+    if (recipe?.creatorRecipeUrl) {
+      Haptics.selectionAsync();
+      await WebBrowser.openBrowserAsync(recipe.creatorRecipeUrl);
+    }
+  };
+
   const toggleTranscript = () => {
     Haptics.selectionAsync();
     setShowTranscript(!showTranscript);
@@ -315,19 +322,40 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Search Full Recipe */}
-            <Pressable
-              onPress={handleSearchFullRecipe}
-              style={[styles.searchRecipeButton, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}
-            >
-              <View style={styles.sourceContent}>
-                <Feather name="search" size={18} color={theme.accent} />
-                <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.accent, fontWeight: "600" }}>
-                  Recipe incomplete? Search the web
-                </ThemedText>
-              </View>
-              <Feather name="external-link" size={16} color={theme.accent} />
-            </Pressable>
+            {/* Creator's Full Recipe Link or Search */}
+            {recipe.creatorRecipeUrl ? (
+              <Pressable
+                onPress={handleOpenCreatorRecipe}
+                style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+                testID="button-creator-recipe"
+              >
+                <View style={styles.sourceContent}>
+                  <Feather name="book-open" size={18} color={theme.primary} />
+                  <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
+                    <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
+                      View Full Recipe
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                      {recipe.creatorRecipeUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                    </ThemedText>
+                  </View>
+                </View>
+                <Feather name="external-link" size={16} color={theme.primary} />
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleSearchFullRecipe}
+                style={[styles.searchRecipeButton, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}
+              >
+                <View style={styles.sourceContent}>
+                  <Feather name="search" size={18} color={theme.accent} />
+                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.accent, fontWeight: "600" }}>
+                    Recipe incomplete? Search the web
+                  </ThemedText>
+                </View>
+                <Feather name="external-link" size={16} color={theme.accent} />
+              </Pressable>
+            )}
           </Animated.View>
 
           {/* Source & Delete */}
@@ -605,6 +633,15 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   searchRecipeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  creatorRecipeButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
