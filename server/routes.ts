@@ -346,6 +346,106 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
   }
 }
 
+async function performWebSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+  const encodedQuery = encodeURIComponent(query);
+  
+  // Try Google search first
+  const googleResults = await performGoogleSearch(query);
+  if (googleResults.length > 0) {
+    return googleResults;
+  }
+  
+  // Fallback to DuckDuckGo
+  console.log(`Google returned no results, trying DuckDuckGo for: "${query}"`);
+  return performDuckDuckGoSearch(query);
+}
+
+async function performGoogleSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+  const encodedQuery = encodeURIComponent(query);
+  const searchUrl = `https://www.google.com/search?q=${encodedQuery}&num=10`;
+  
+  console.log(`Google search: "${query}"`);
+  
+  try {
+    const response = await fetch(searchUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+      },
+    });
+    
+    if (!response.ok) {
+      console.log(`Google search failed: ${response.status}`);
+      return [];
+    }
+    
+    const html = await response.text();
+    const results: Array<{url: string, title: string, snippet: string}> = [];
+    
+    // Parse Google search results - look for result links
+    // Google results have URLs in various formats, try multiple patterns
+    
+    // Pattern 1: Standard search result links with /url?q=
+    const urlPattern = /\/url\?q=([^&"]+)/gi;
+    const urlMatches = [...html.matchAll(urlPattern)];
+    
+    // Pattern 2: Direct href links to results (data-ved links usually have real URLs)
+    const hrefPattern = /href="(https?:\/\/(?!www\.google|google|accounts\.google|support\.google|maps\.google)[^"]+)"/gi;
+    const hrefMatches = [...html.matchAll(hrefPattern)];
+    
+    const seenUrls = new Set<string>();
+    
+    // Process /url?q= matches
+    for (const match of urlMatches) {
+      try {
+        const decodedUrl = decodeURIComponent(match[1]);
+        // Skip Google's own URLs and tracking
+        if (decodedUrl.includes('google.com') || 
+            decodedUrl.includes('youtube.com') ||
+            decodedUrl.includes('webcache') ||
+            seenUrls.has(decodedUrl)) {
+          continue;
+        }
+        seenUrls.add(decodedUrl);
+        results.push({
+          url: decodedUrl,
+          title: '',
+          snippet: '',
+        });
+      } catch (e) {
+        // Skip malformed URLs
+      }
+    }
+    
+    // Also check direct hrefs if we didn't get enough results
+    if (results.length < 5) {
+      for (const match of hrefMatches) {
+        const url = match[1];
+        if (!seenUrls.has(url) && 
+            !url.includes('google.com') &&
+            !url.includes('gstatic.com') &&
+            !url.includes('youtube.com')) {
+          seenUrls.add(url);
+          results.push({
+            url: url,
+            title: '',
+            snippet: '',
+          });
+        }
+      }
+    }
+    
+    console.log(`Found ${results.length} results from Google`);
+    return results.slice(0, 10);
+  } catch (error) {
+    console.log(`Google search error: ${error}`);
+    return [];
+  }
+}
+
 async function performDuckDuckGoSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
   const encodedQuery = encodeURIComponent(query);
   const searchUrl = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
@@ -411,7 +511,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     // Strategy 1: Search specifically on creator's likely domain
     if (creatorName) {
       const siteSearchQuery = `site:${normalizedCreatorName}.* ${recipeName} recipe`;
-      const siteResults = await performDuckDuckGoSearch(siteSearchQuery);
+      const siteResults = await performWebSearch(siteSearchQuery);
       
       for (const result of siteResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
@@ -430,7 +530,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     // Strategy 2: Search with creator name and recipe
     if (creatorName) {
       const creatorSearchQuery = `${creatorName} ${recipeName} recipe`;
-      const creatorResults = await performDuckDuckGoSearch(creatorSearchQuery);
+      const creatorResults = await performWebSearch(creatorSearchQuery);
       
       for (const result of creatorResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
@@ -456,7 +556,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     
     // Strategy 3: Generic recipe search as fallback (quoted)
     const genericSearchQuery = `"${recipeName}" recipe`;
-    const genericResults = await performDuckDuckGoSearch(genericSearchQuery);
+    const genericResults = await performWebSearch(genericSearchQuery);
     
     for (const result of genericResults) {
       const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
@@ -478,7 +578,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     // Strategy 4: If still no results, try simpler unquoted search
     if (allCandidates.length === 0) {
       const simpleSearchQuery = `${recipeName} recipe`;
-      const simpleResults = await performDuckDuckGoSearch(simpleSearchQuery);
+      const simpleResults = await performWebSearch(simpleSearchQuery);
       
       for (const result of simpleResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
@@ -501,7 +601,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     if (allCandidates.length === 0 && creatorName) {
       // First find creator's website
       const creatorWebsiteQuery = `${creatorName} official website recipes`;
-      const websiteResults = await performDuckDuckGoSearch(creatorWebsiteQuery);
+      const websiteResults = await performWebSearch(creatorWebsiteQuery);
       
       for (const result of websiteResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
@@ -518,7 +618,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
           const siteSpecificQuery = `site:${domain} ${simplifiedRecipeName}`;
           console.log(`Found creator website ${domain}, searching for recipe: ${siteSpecificQuery}`);
           
-          const siteRecipeResults = await performDuckDuckGoSearch(siteSpecificQuery);
+          const siteRecipeResults = await performWebSearch(siteSpecificQuery);
           for (const siteResult of siteRecipeResults) {
             allCandidates.push({
               ...siteResult,
