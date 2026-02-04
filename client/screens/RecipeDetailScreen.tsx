@@ -518,13 +518,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: {
-    padding: Spacing.lg,
-    marginTop: -Spacing.xl,
+    padding: Spacing.xl,
+    paddingTop: Spacing["2xl"],
   },
   creatorRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   creatorAvatar: {
     width: 28,
@@ -547,25 +547,26 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
   },
   title: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.lg,
   },
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   tag: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
   },
   description: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
+    lineHeight: 24,
   },
   metaRow: {
     flexDirection: "row",
-    gap: Spacing.sm,
+    gap: Spacing.md,
     marginBottom: Spacing["2xl"],
   },
   metaCard: {
@@ -579,10 +580,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   section: {
-    marginBottom: Spacing["2xl"],
+    marginBottom: Spacing["3xl"],
   },
   sectionTitle: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   ingredientsList: {
     borderRadius: BorderRadius.sm,
@@ -591,7 +592,7 @@ const styles = StyleSheet.create({
   ingredientItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
+    padding: Spacing.lg,
   },
   checkbox: {
     width: 22,
@@ -607,7 +608,7 @@ const styles = StyleSheet.create({
   },
   instructionItem: {
     flexDirection: "row",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   stepNumber: {
     width: 28,
@@ -625,7 +626,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     flex: 1,
-    lineHeight: 26,
+    lineHeight: 28,
   },
   sourceButton: {
     flexDirection: "row",
@@ -672,11 +673,11 @@ const styles = StyleSheet.create({
   transparencyBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
   },
   transparencyText: {
     flex: 1,
@@ -716,10 +717,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   confidenceBadge: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   confidenceHeader: {
     flexDirection: "row",
