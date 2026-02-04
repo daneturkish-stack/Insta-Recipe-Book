@@ -19,8 +19,8 @@ Key capabilities:
 Kitch provides full transparency about where recipe information comes from and how accurate it is:
 
 **Confidence Levels:**
-- **High**: Full recipe found on creator's website with explicit measurements
-- **Medium**: Extracted from video transcript OR filled in from authoritative culinary sources
+- **High**: Full recipe found on **verified** creator's website with explicit measurements
+- **Medium**: Extracted from video transcript, filled from authoritative sources, OR found on unverified website
 - **Low**: Reconstructed from social post caption only - details may be estimated
 
 **Source Types:**
@@ -28,6 +28,14 @@ Kitch provides full transparency about where recipe information comes from and h
 - `authoritative_source`: Missing details filled from trusted culinary references
 - `video_transcript`: Extracted from video audio with OpenAI Whisper
 - `social_post_only`: Only post caption available
+
+**Website Verification System:**
+When a recipe is found via web search, Kitch verifies whether the website belongs to the content creator:
+- `domain_match`: Domain closely matches the creator's handle (e.g., @thehappypear → thehappypear.ie)
+- `instagram_link`: Website contains an Instagram link matching the creator's handle
+- `unverified`: No verification found - recipe may not be from the original creator
+
+Only verified sources receive "High Accuracy" status. Unverified websites are capped at "Medium Accuracy" even if the recipe content is complete.
 
 **Authoritative References:**
 When the AI fills in missing measurements or techniques, it references trusted sources:
