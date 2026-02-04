@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, TextInput, Pressable, ActivityIndicator, ScrollView } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { StyleSheet, View, FlatList, RefreshControl, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -16,6 +16,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeCardSkeleton } from "@/components/RecipeCardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { RemyChatBar } from "@/components/RemyChatBar";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipes, useSmartSearch, usePantry } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -41,9 +42,7 @@ export default function CollectionScreen() {
   const { data: recipes, isLoading, refetch, isRefetching } = useRecipes();
   const { data: pantryItems } = usePantry();
   const smartSearch = useSmartSearch();
-  const inputRef = useRef<TextInput>(null);
 
-  const [chatQuery, setChatQuery] = useState("");
   const [isRemyThinking, setIsRemyThinking] = useState(false);
   const [remyResponse, setRemyResponse] = useState<RemyResponse | null>(null);
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
@@ -118,22 +117,18 @@ export default function CollectionScreen() {
 
   const handleQuickAction = (action: QuickAction) => {
     setActiveQuickAction(action);
-    setChatQuery("");
     askRemy("", action);
   };
 
-  const handleChatSubmit = () => {
-    if (!chatQuery.trim()) return;
+  const handleChatSubmit = useCallback((query: string) => {
     setActiveQuickAction(null);
-    askRemy(chatQuery.trim());
-    inputRef.current?.blur();
-  };
+    askRemy(query);
+  }, [askRemy]);
 
   const handleShowAll = () => {
     setRemyResponse(null);
     setFilteredIds(null);
     setActiveQuickAction(null);
-    setChatQuery("");
     Haptics.selectionAsync();
   };
 
@@ -187,28 +182,10 @@ export default function CollectionScreen() {
   const renderHeader = () => (
     <View style={styles.headerSection}>
       {/* Remy Greeting & Chat Bar */}
-      <View style={[styles.remyBar, { backgroundColor: theme.backgroundDefault }]}>
-        <View style={[styles.remyAvatar, { backgroundColor: theme.primary }]}>
-          <ThemedText style={styles.remyEmoji}>👨‍🍳</ThemedText>
-        </View>
-        <View style={styles.remyChatInput}>
-          <TextInput
-            ref={inputRef}
-            style={[styles.chatInput, { color: theme.text }]}
-            placeholder="Hi! I'm Remy. What can I help you cook?"
-            placeholderTextColor={theme.textSecondary}
-            value={chatQuery}
-            onChangeText={setChatQuery}
-            onSubmitEditing={handleChatSubmit}
-            returnKeyType="search"
-          />
-          {chatQuery.length > 0 ? (
-            <Pressable onPress={handleChatSubmit} style={[styles.sendButton, { backgroundColor: theme.primary }]}>
-              <Feather name="arrow-right" size={18} color="#FFF" />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      <RemyChatBar 
+        onSubmit={handleChatSubmit}
+        disabled={isRemyThinking}
+      />
 
       {/* Quick Action Chips */}
       <ScrollView
@@ -344,42 +321,6 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     marginBottom: Spacing.lg,
-  },
-  remyBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
-  },
-  remyAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.md,
-  },
-  remyEmoji: {
-    fontSize: 22,
-  },
-  remyChatInput: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  chatInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: Spacing.sm,
-  },
-  sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: Spacing.sm,
   },
   quickActionsContainer: {
     marginBottom: Spacing.md,
