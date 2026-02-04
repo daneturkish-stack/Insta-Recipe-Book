@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, TextInput, Pressable, ActivityIndicator } from "react-native";
+import React, { useState, useCallback, useMemo, useRef } from "react";
+import { StyleSheet, View, FlatList, RefreshControl, TextInput, Pressable, ActivityIndicator, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -8,20 +8,29 @@ import { Feather } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   FadeIn,
+  FadeOut,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { RecipeCard } from "@/components/RecipeCard";
 import { RecipeCardSkeleton } from "@/components/RecipeCardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
-import { useRecipes, useSmartSearch } from "@/hooks/useRecipes";
+import { useRecipes, useSmartSearch, usePantry } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
-import { DISH_TYPES } from "@/types/recipe";
+import { getApiUrl } from "@/lib/query-client";
 
 const emptyImage = require("../../assets/images/empty-collection.png");
+
+type QuickAction = "pantry" | "quick" | "healthy" | null;
+
+interface RemyResponse {
+  message: string;
+  matchedRecipeIds: string[];
+  suggestion?: string;
+}
 
 export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
@@ -30,66 +39,118 @@ export default function CollectionScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const { data: recipes, isLoading, refetch, isRefetching } = useRecipes();
+  const { data: pantryItems } = usePantry();
   const smartSearch = useSmartSearch();
+  const inputRef = useRef<TextInput>(null);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
-  const [smartSearchResults, setSmartSearchResults] = useState<string[] | null>(null);
-  const [showRemyChat, setShowRemyChat] = useState(false);
+  const [chatQuery, setChatQuery] = useState("");
+  const [isRemyThinking, setIsRemyThinking] = useState(false);
+  const [remyResponse, setRemyResponse] = useState<RemyResponse | null>(null);
+  const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
+  const [filteredIds, setFilteredIds] = useState<string[] | null>(null);
 
-  const handleSmartSearch = async () => {
-    if (!searchQuery.trim() || !recipes || recipes.length === 0) return;
-    
-    const result = await smartSearch.mutateAsync({
-      query: searchQuery,
-      recipes,
-    });
-    setSmartSearchResults(result);
+  const quickActions = [
+    { id: "pantry" as QuickAction, label: "What can I make?", icon: "package" as const },
+    { id: "quick" as QuickAction, label: "15-min meals", icon: "zap" as const },
+    { id: "healthy" as QuickAction, label: "Healthy options", icon: "heart" as const },
+  ];
+
+  const askRemy = useCallback(async (query: string, quickAction?: QuickAction) => {
+    if (!recipes || recipes.length === 0) {
+      setRemyResponse({
+        message: "You don't have any saved recipes yet! Save some recipes from Instagram or TikTok and I'll help you find the perfect dish.",
+        matchedRecipeIds: [],
+      });
+      return;
+    }
+
+    setIsRemyThinking(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const pantryContext = pantryItems?.map(item => item.name).join(", ") || "";
+      
+      let systemPrompt = "";
+      if (quickAction === "pantry") {
+        systemPrompt = `User wants to know what they can cook with their pantry items: ${pantryContext || "No pantry items saved"}. Find recipes that match their available ingredients.`;
+      } else if (quickAction === "quick") {
+        systemPrompt = "User wants quick meals that take 15 minutes or less total time (prep + cook).";
+      } else if (quickAction === "healthy") {
+        systemPrompt = "User wants healthy recipe options. Look for recipes with 'Healthy', 'Light', 'Vegan', 'Vegetarian', or low-calorie vibes.";
+      }
+
+      const response = await fetch(
+        new URL("/api/remy/search", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: query || systemPrompt,
+            recipes,
+            pantryItems: pantryItems || [],
+            quickAction,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setRemyResponse({
+        message: data.message,
+        matchedRecipeIds: data.matchedRecipeIds || [],
+        suggestion: data.suggestion,
+      });
+      setFilteredIds(data.matchedRecipeIds || null);
+    } catch (error) {
+      setRemyResponse({
+        message: "Oops! I had a little hiccup. Let me show you all your recipes instead.",
+        matchedRecipeIds: [],
+      });
+      setFilteredIds(null);
+    } finally {
+      setIsRemyThinking(false);
+    }
+  }, [recipes, pantryItems]);
+
+  const handleQuickAction = (action: QuickAction) => {
+    setActiveQuickAction(action);
+    setChatQuery("");
+    askRemy("", action);
   };
 
-  const filteredRecipes = useMemo(() => {
+  const handleChatSubmit = () => {
+    if (!chatQuery.trim()) return;
+    setActiveQuickAction(null);
+    askRemy(chatQuery.trim());
+    inputRef.current?.blur();
+  };
+
+  const handleShowAll = () => {
+    setRemyResponse(null);
+    setFilteredIds(null);
+    setActiveQuickAction(null);
+    setChatQuery("");
+    Haptics.selectionAsync();
+  };
+
+  const displayedRecipes = useMemo(() => {
     if (!recipes) return [];
-
-    let result = recipes;
-
-    if (smartSearchResults !== null && searchQuery.trim()) {
-      result = result.filter((recipe) => smartSearchResults.includes(recipe.id));
-      const orderMap = new Map(smartSearchResults.map((id, i) => [id, i]));
-      result = [...result].sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
-    } else if (searchQuery.trim() && !smartSearch.isPending) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((recipe) =>
-        recipe.title.toLowerCase().includes(query) ||
-        recipe.ingredients?.some((i) => i.name.toLowerCase().includes(query)) ||
-        recipe.creatorHandle?.toLowerCase().includes(query) ||
-        recipe.dishType?.toLowerCase().includes(query) ||
-        recipe.vibeTags?.some((t) => t.toLowerCase().includes(query))
-      );
-    }
-
-    if (selectedFilter) {
-      result = result.filter((recipe) => recipe.dishType === selectedFilter);
-    }
-
-    return result;
-  }, [recipes, searchQuery, selectedFilter, smartSearchResults, smartSearch.isPending]);
-
-  const availableFilters = useMemo(() => {
-    if (!recipes) return [];
-    const types = new Set(recipes.map((r) => r.dishType).filter(Boolean));
-    return DISH_TYPES.filter((t) => types.has(t));
-  }, [recipes]);
+    if (filteredIds === null) return recipes;
+    if (filteredIds.length === 0) return [];
+    
+    const orderMap = new Map(filteredIds.map((id, i) => [id, i]));
+    return recipes
+      .filter((r) => filteredIds.includes(r.id))
+      .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+  }, [recipes, filteredIds]);
 
   const handleRecipePress = useCallback((recipe: Recipe) => {
     navigation.navigate("RecipeDetail", { recipeId: recipe.id });
   }, [navigation]);
-
-  const handleCancelSearch = () => {
-    setIsSearchVisible(false);
-    setSearchQuery("");
-    setSmartSearchResults(null);
-  };
 
   const renderItem = useCallback(({ item, index }: { item: Recipe; index: number }) => (
     <Animated.View
@@ -104,9 +165,9 @@ export default function CollectionScreen() {
     <View style={styles.emptyContainer}>
       <EmptyState
         image={emptyImage}
-        title={searchQuery.trim() ? "No recipes found" : "No recipes yet"}
-        subtitle={searchQuery.trim() 
-          ? "Try a different search term or use AI search"
+        title={remyResponse ? "No matching recipes" : "No recipes yet"}
+        subtitle={remyResponse 
+          ? remyResponse.suggestion || "Try a different question or save more recipes"
           : "Save your first recipe from Instagram or TikTok and build your personal cookbook"
         }
       />
@@ -123,112 +184,139 @@ export default function CollectionScreen() {
     </View>
   );
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      {isSearchVisible ? (
-        <Animated.View
-          entering={FadeIn.duration(200)}
-          style={[
-            styles.searchContainer,
-            {
-              paddingTop: headerHeight + Spacing.sm,
-              backgroundColor: theme.backgroundRoot,
-            },
-          ]}
-        >
-          <View style={[styles.searchInputContainer, { backgroundColor: theme.backgroundDefault }]}>
-            <Feather name="search" size={18} color={theme.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Try: 'that chicken pasta from TikTok'"
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                setSmartSearchResults(null);
-              }}
-              onSubmitEditing={handleSmartSearch}
-              returnKeyType="search"
-              autoFocus
+  const renderHeader = () => (
+    <View style={styles.headerSection}>
+      {/* Remy Greeting & Chat Bar */}
+      <View style={[styles.remyBar, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={[styles.remyAvatar, { backgroundColor: theme.primary }]}>
+          <ThemedText style={styles.remyEmoji}>👨‍🍳</ThemedText>
+        </View>
+        <View style={styles.remyChatInput}>
+          <TextInput
+            ref={inputRef}
+            style={[styles.chatInput, { color: theme.text }]}
+            placeholder="Hi! I'm Remy. What can I help you cook?"
+            placeholderTextColor={theme.textSecondary}
+            value={chatQuery}
+            onChangeText={setChatQuery}
+            onSubmitEditing={handleChatSubmit}
+            returnKeyType="search"
+          />
+          {chatQuery.length > 0 ? (
+            <Pressable onPress={handleChatSubmit} style={[styles.sendButton, { backgroundColor: theme.primary }]}>
+              <Feather name="arrow-right" size={18} color="#FFF" />
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Quick Action Chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.quickActionsContainer}
+        contentContainerStyle={styles.quickActionsContent}
+      >
+        {quickActions.map((action) => (
+          <Pressable
+            key={action.id}
+            onPress={() => handleQuickAction(action.id)}
+            style={[
+              styles.quickActionChip,
+              { 
+                backgroundColor: activeQuickAction === action.id ? theme.primary : theme.backgroundDefault,
+                borderColor: activeQuickAction === action.id ? theme.primary : theme.border,
+              },
+            ]}
+          >
+            <Feather 
+              name={action.icon} 
+              size={14} 
+              color={activeQuickAction === action.id ? "#FFF" : theme.text} 
             />
-            {smartSearch.isPending ? (
-              <ActivityIndicator size="small" color={theme.primary} />
-            ) : searchQuery.length > 0 ? (
-              <Pressable onPress={() => { setSearchQuery(""); setSmartSearchResults(null); }}>
-                <Feather name="x" size={18} color={theme.textSecondary} />
-              </Pressable>
-            ) : null}
+            <ThemedText 
+              type="caption" 
+              style={{ 
+                color: activeQuickAction === action.id ? "#FFF" : theme.text,
+                fontWeight: "600",
+                marginLeft: Spacing.xs,
+              }}
+            >
+              {action.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* Remy Response Bubble */}
+      {isRemyThinking ? (
+        <Animated.View 
+          entering={FadeIn.duration(200)}
+          style={[styles.remyResponseBubble, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+        >
+          <View style={styles.thinkingContainer}>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <ThemedText type="body" style={[styles.thinkingText, { color: theme.textSecondary }]}>
+              Remy is thinking...
+            </ThemedText>
           </View>
-          <Pressable onPress={handleCancelSearch}>
-            <ThemedText type="link" style={{ marginLeft: Spacing.md }}>Cancel</ThemedText>
+        </Animated.View>
+      ) : remyResponse ? (
+        <Animated.View 
+          entering={FadeIn.duration(300)}
+          style={[styles.remyResponseBubble, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+        >
+          <View style={styles.responseHeader}>
+            <View style={[styles.remyAvatarSmall, { backgroundColor: theme.primary }]}>
+              <ThemedText style={styles.remyEmojiSmall}>👨‍🍳</ThemedText>
+            </View>
+            <ThemedText type="bodyMedium" style={{ color: theme.text, flex: 1 }}>
+              {remyResponse.message}
+            </ThemedText>
+          </View>
+          <Pressable onPress={handleShowAll} style={styles.showAllLink}>
+            <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600" }}>
+              Show all recipes
+            </ThemedText>
+            <Feather name="x" size={14} color={theme.primary} style={{ marginLeft: 4 }} />
           </Pressable>
         </Animated.View>
       ) : null}
 
+      {/* Results Count */}
+      {!isLoading && recipes && recipes.length > 0 ? (
+        <View style={styles.resultsHeader}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            {filteredIds !== null 
+              ? `${displayedRecipes.length} recipe${displayedRecipes.length !== 1 ? 's' : ''} found`
+              : `${recipes.length} saved recipe${recipes.length !== 1 ? 's' : ''}`
+            }
+          </ThemedText>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
         key="recipe-grid"
         style={styles.list}
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingTop: isSearchVisible ? Spacing.lg : headerHeight + Spacing.xl,
+            paddingTop: headerHeight + Spacing.md,
             paddingBottom: tabBarHeight + Spacing.xl,
-            flexGrow: isLoading || filteredRecipes?.length === 0 ? 1 : undefined,
+            flexGrow: isLoading || displayedRecipes?.length === 0 ? 1 : undefined,
           },
         ]}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
-        data={isLoading ? [] : filteredRecipes}
+        data={isLoading ? [] : displayedRecipes}
         keyExtractor={(item) => item.id}
         renderItem={isLoading ? () => null : renderItem}
         numColumns={2}
-        columnWrapperStyle={isLoading || (filteredRecipes?.length ?? 0) === 0 ? undefined : styles.row}
-        ListHeaderComponent={
-          !isSearchVisible && availableFilters.length > 0 && (recipes?.length ?? 0) > 0 ? (
-            <Animated.ScrollView
-              entering={FadeIn.duration(300)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.filtersContainer}
-              contentContainerStyle={styles.filtersContent}
-            >
-              <Pressable
-                onPress={() => setSelectedFilter(null)}
-                style={[
-                  styles.filterChip,
-                  { 
-                    backgroundColor: selectedFilter === null ? theme.primary : theme.backgroundDefault,
-                  },
-                ]}
-              >
-                <ThemedText 
-                  type="caption" 
-                  style={{ color: selectedFilter === null ? "#FFF" : theme.text, fontWeight: "600" }}
-                >
-                  All
-                </ThemedText>
-              </Pressable>
-              {availableFilters.map((filter) => (
-                <Pressable
-                  key={filter}
-                  onPress={() => setSelectedFilter(filter === selectedFilter ? null : filter)}
-                  style={[
-                    styles.filterChip,
-                    { 
-                      backgroundColor: selectedFilter === filter ? theme.primary : theme.backgroundDefault,
-                    },
-                  ]}
-                >
-                  <ThemedText 
-                    type="caption" 
-                    style={{ color: selectedFilter === filter ? "#FFF" : theme.text, fontWeight: "500" }}
-                  >
-                    {filter}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </Animated.ScrollView>
-          ) : null
-        }
+        columnWrapperStyle={isLoading || (displayedRecipes?.length ?? 0) === 0 ? undefined : styles.row}
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={isLoading ? renderLoading : renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -238,26 +326,7 @@ export default function CollectionScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
-      />
-
-      {!isSearchVisible && (recipes?.length ?? 0) > 0 ? (
-        <Pressable
-          onPress={() => setIsSearchVisible(true)}
-          style={[styles.searchFab, { backgroundColor: theme.backgroundDefault }]}
-        >
-          <Feather name="search" size={20} color={theme.text} />
-        </Pressable>
-      ) : null}
-
-      <RemyFloatingButton 
-        onPress={() => setShowRemyChat(true)} 
-        testID="remy-floating-button-collection"
-      />
-      
-      <RemyChat
-        visible={showRemyChat}
-        onClose={() => setShowRemyChat(false)}
-        allRecipes={recipes}
+        keyboardShouldPersistTaps="handled"
       />
     </View>
   );
@@ -272,6 +341,99 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
+  },
+  headerSection: {
+    marginBottom: Spacing.lg,
+  },
+  remyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+  },
+  remyAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  remyEmoji: {
+    fontSize: 22,
+  },
+  remyChatInput: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  chatInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: Spacing.sm,
+  },
+  sendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: Spacing.sm,
+  },
+  quickActionsContainer: {
+    marginBottom: Spacing.md,
+    marginHorizontal: -Spacing.lg,
+  },
+  quickActionsContent: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  quickActionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    marginRight: Spacing.sm,
+  },
+  remyResponseBubble: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  responseHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  remyAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  remyEmojiSmall: {
+    fontSize: 14,
+  },
+  thinkingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  thinkingText: {
+    marginLeft: Spacing.sm,
+  },
+  showAllLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.md,
+    alignSelf: "flex-end",
+  },
+  resultsHeader: {
+    marginTop: Spacing.sm,
   },
   row: {
     justifyContent: "space-between",
@@ -289,58 +451,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-  },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    height: 44,
-    borderRadius: BorderRadius.xs,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: Spacing.sm,
-    fontSize: 16,
-  },
-  filtersContainer: {
-    marginBottom: Spacing.lg,
-    marginHorizontal: -Spacing.lg,
-  },
-  filtersContent: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    marginRight: Spacing.sm,
-  },
-  searchFab: {
-    position: "absolute",
-    top: 100,
-    right: Spacing.lg,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
 });

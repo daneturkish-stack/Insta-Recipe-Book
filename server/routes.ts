@@ -1429,6 +1429,105 @@ Only include recipes with at least 50% ingredient match.`;
     }
   });
 
+  // Remy AI search - returns matching recipe IDs with a friendly message
+  app.post("/api/remy/search", async (req: Request, res: Response) => {
+    try {
+      const { query, recipes, pantryItems, quickAction } = req.body;
+
+      if (!recipes || recipes.length === 0) {
+        return res.json({
+          message: "You don't have any saved recipes yet! Save some from Instagram or TikTok and I'll help you find the perfect dish.",
+          matchedRecipeIds: [],
+        });
+      }
+
+      // Build the recipe summaries for context
+      const recipeSummaries = recipes.map((r: any, index: number) => {
+        const totalTime = (r.prepTime || 0) + (r.cookTime || 0);
+        const tags = [r.dishType, ...(r.vibeTags || [])].filter(Boolean).join(", ");
+        const ingredients = r.ingredients?.map((i: any) => i.name).join(", ") || "no ingredients listed";
+        return `[${index}] ID: ${r.id} | "${r.title}" | Time: ${totalTime || "unknown"} min | Tags: ${tags || "none"} | Ingredients: ${ingredients}`;
+      }).join("\n");
+
+      const pantryList = pantryItems?.map((p: any) => p.name).join(", ") || "none";
+
+      let contextPrompt = "";
+      if (quickAction === "pantry") {
+        contextPrompt = `The user wants to know what they can make with their pantry. Pantry items: ${pantryList}. Find recipes where they have most of the ingredients.`;
+      } else if (quickAction === "quick") {
+        contextPrompt = "The user wants quick meals. Find recipes with total time (prep + cook) of 15 minutes or less, or recipes tagged as 'Quick' or 'Easy'.";
+      } else if (quickAction === "healthy") {
+        contextPrompt = "The user wants healthy options. Find recipes tagged as 'Healthy', 'Light', 'Vegan', 'Vegetarian', 'Low-Calorie', or that appear to be health-conscious.";
+      } else if (query) {
+        contextPrompt = `The user asked: "${query}". Search their recipes for matches based on title, ingredients, dish type, tags, or cooking style.`;
+      }
+
+      const systemPrompt = `You are Remy, a friendly sous-chef AI helping users find recipes from their saved collection.
+
+USER'S SAVED RECIPES (${recipes.length} total):
+${recipeSummaries}
+
+${pantryList !== "none" ? `USER'S PANTRY ITEMS: ${pantryList}` : ""}
+
+${contextPrompt}
+
+YOUR TASK:
+1. Analyze the recipes and find the best matches for the user's request
+2. Return the matching recipe IDs (from the ID field, not the index)
+3. Write a SHORT, friendly message (1-2 sentences) explaining your findings
+4. If suggesting based on pantry, mention which key ingredients they have
+5. Be encouraging and sound like a friendly sous-chef!
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "message": "Your friendly response here",
+  "matchedRecipeIds": ["id1", "id2", "id3"],
+  "suggestion": "Optional suggestion if no matches found"
+}
+
+IMPORTANT: 
+- matchedRecipeIds should contain the actual recipe ID strings from the data
+- Order them by relevance (best match first)
+- If no good matches, return empty array and a helpful suggestion
+- Keep message conversational and warm (you're a friendly sous-chef!)`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: query || contextPrompt },
+        ],
+        max_completion_tokens: 512,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+
+      // Parse JSON from response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Invalid response format");
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+      
+      res.json({
+        message: result.message || "Here's what I found!",
+        matchedRecipeIds: result.matchedRecipeIds || [],
+        suggestion: result.suggestion,
+      });
+    } catch (error: any) {
+      console.error("Error in Remy search:", error);
+      res.status(500).json({
+        error: "Remy had a hiccup searching your recipes.",
+        message: "Let me show you all your recipes instead!",
+        matchedRecipeIds: [],
+      });
+    }
+  });
+
   // Remy AI assistant chat
   app.post("/api/remy/chat", async (req: Request, res: Response) => {
     try {
