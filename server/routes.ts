@@ -1652,6 +1652,70 @@ Remember: You're helping real home cooks feel confident in the kitchen!`;
     }
   });
 
+  // Categorize shopping list ingredients by aisle
+  app.post("/api/shopping-list/categorize", async (req: Request, res: Response) => {
+    try {
+      const { ingredients } = req.body;
+
+      if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+        return res.status(400).json({ error: "Ingredients array is required" });
+      }
+
+      const ingredientList = ingredients.join(", ");
+
+      const systemPrompt = `You are a grocery store expert. Categorize each ingredient into the appropriate store aisle.
+
+AVAILABLE AISLES (use these exact values):
+- produce: Fresh fruits, vegetables, herbs, salad greens
+- meat: Beef, pork, lamb, poultry (fresh chicken, turkey, duck)
+- seafood: Fish, shrimp, shellfish, crab, lobster
+- dairy: Milk, cheese, yogurt, butter, cream, eggs
+- bakery: Bread, rolls, bagels, tortillas, pastries
+- frozen: Frozen vegetables, frozen meals, ice cream, frozen fruits
+- pantry: Pasta, rice, flour, sugar, canned goods, oils, vinegars, sauces, condiments, beans, lentils, nuts, cereals
+- spices: Spices, seasonings, dried herbs, salt, pepper, extracts
+- beverages: Water, juice, soda, coffee, tea, wine, beer
+- other: Anything that doesn't fit above
+
+INGREDIENTS TO CATEGORIZE:
+${ingredientList}
+
+Respond ONLY with valid JSON array. Each object must have "name" (exact ingredient name from input) and "aisle" (one of the aisle values above).
+
+Example response:
+[{"name": "chicken breast", "aisle": "meat"}, {"name": "olive oil", "aisle": "pantry"}]`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Categorize these ingredients: ${ingredientList}` },
+        ],
+        max_completion_tokens: 1024,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from AI");
+      }
+
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        throw new Error("Invalid response format");
+      }
+
+      const categories = JSON.parse(jsonMatch[0]);
+
+      res.json({ categories });
+    } catch (error: any) {
+      console.error("Error categorizing ingredients:", error);
+      res.status(500).json({
+        error: "Could not categorize ingredients",
+        categories: [],
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
