@@ -454,7 +454,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       }
     }
     
-    // Strategy 3: Generic recipe search as fallback
+    // Strategy 3: Generic recipe search as fallback (quoted)
     const genericSearchQuery = `"${recipeName}" recipe`;
     const genericResults = await performDuckDuckGoSearch(genericSearchQuery);
     
@@ -473,6 +473,70 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         domainMatchScore: domainMatches ? 10 : 1,
         source: 'generic-search',
       });
+    }
+    
+    // Strategy 4: If still no results, try simpler unquoted search
+    if (allCandidates.length === 0) {
+      const simpleSearchQuery = `${recipeName} recipe`;
+      const simpleResults = await performDuckDuckGoSearch(simpleSearchQuery);
+      
+      for (const result of simpleResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
+        
+        if (allCandidates.some(c => c.url === result.url)) continue;
+        
+        const domain = extractDomain(result.url);
+        const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
+        
+        allCandidates.push({
+          ...result,
+          domainMatchScore: domainMatches ? 8 : 1,
+          source: 'simple-search',
+        });
+      }
+    }
+    
+    // Strategy 5: If STILL no results and we have creator name, search for creator's website directly
+    if (allCandidates.length === 0 && creatorName) {
+      // First find creator's website
+      const creatorWebsiteQuery = `${creatorName} official website recipes`;
+      const websiteResults = await performDuckDuckGoSearch(creatorWebsiteQuery);
+      
+      for (const result of websiteResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
+        
+        if (allCandidates.some(c => c.url === result.url)) continue;
+        
+        const domain = extractDomain(result.url);
+        const domainMatches = checkDomainMatchesCreator(domain, creatorName);
+        
+        if (domainMatches) {
+          // Found creator's website, now search on that site for the recipe
+          const simplifiedRecipeName = recipeName.split(' ').slice(0, 3).join(' ');
+          const siteSpecificQuery = `site:${domain} ${simplifiedRecipeName}`;
+          console.log(`Found creator website ${domain}, searching for recipe: ${siteSpecificQuery}`);
+          
+          const siteRecipeResults = await performDuckDuckGoSearch(siteSpecificQuery);
+          for (const siteResult of siteRecipeResults) {
+            allCandidates.push({
+              ...siteResult,
+              domainMatchScore: 12,
+              source: 'creator-website-search',
+            });
+          }
+          
+          // Even if no specific recipe found, include the website as a candidate
+          if (siteRecipeResults.length === 0) {
+            allCandidates.push({
+              ...result,
+              domainMatchScore: 6,
+              source: 'creator-website-fallback',
+            });
+          }
+        }
+      }
     }
     
     // Sort by domain match score (highest first)
