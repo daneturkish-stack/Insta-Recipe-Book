@@ -186,6 +186,66 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
+            {/* Confidence & Source Attribution Badge */}
+            {recipe.confidence ? (
+              <View style={[
+                styles.confidenceBadge, 
+                { 
+                  backgroundColor: recipe.confidence === 'high' 
+                    ? theme.accent + "15" 
+                    : recipe.confidence === 'medium' 
+                      ? theme.primary + "15" 
+                      : theme.error + "15",
+                  borderColor: recipe.confidence === 'high' 
+                    ? theme.accent + "40" 
+                    : recipe.confidence === 'medium' 
+                      ? theme.primary + "40" 
+                      : theme.error + "40",
+                }
+              ]}>
+                <View style={styles.confidenceHeader}>
+                  <View style={[
+                    styles.confidenceIndicator,
+                    { 
+                      backgroundColor: recipe.confidence === 'high' 
+                        ? theme.accent 
+                        : recipe.confidence === 'medium' 
+                          ? theme.primary 
+                          : theme.error,
+                    }
+                  ]} />
+                  <ThemedText type="caption" style={{ 
+                    fontWeight: "600",
+                    color: recipe.confidence === 'high' 
+                      ? theme.accent 
+                      : recipe.confidence === 'medium' 
+                        ? theme.primary 
+                        : theme.error,
+                  }}>
+                    {recipe.confidence === 'high' ? 'High Accuracy' : recipe.confidence === 'medium' ? 'Medium Accuracy' : 'Low Accuracy'}
+                  </ThemedText>
+                  {recipe.recipeSource?.name ? (
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
+                      from {recipe.recipeSource.name}
+                    </ThemedText>
+                  ) : null}
+                </View>
+                {recipe.recipeSource?.note ? (
+                  <ThemedText type="caption" style={[styles.sourceNote, { color: theme.textSecondary }]}>
+                    {recipe.recipeSource.note}
+                  </ThemedText>
+                ) : null}
+                {recipe.authoritativeReference ? (
+                  <View style={styles.authorityRow}>
+                    <Feather name="award" size={12} color={theme.primary} />
+                    <ThemedText type="caption" style={{ color: theme.primary, marginLeft: 4, fontWeight: "500" }}>
+                      Referenced: {recipe.authoritativeReference}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
             {recipe.description ? (
               <ThemedText type="body" style={[styles.description, { color: theme.textSecondary }]}>
                 {recipe.description}
@@ -649,5 +709,33 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     marginBottom: Spacing.lg,
+  },
+  confidenceBadge: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  confidenceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  confidenceIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: Spacing.sm,
+  },
+  sourceNote: {
+    marginTop: Spacing.xs,
+    lineHeight: 18,
+  },
+  authorityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
 });
