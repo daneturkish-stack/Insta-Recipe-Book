@@ -4,6 +4,21 @@ export interface Ingredient {
   unit: string;
 }
 
+export type RecipeSourceType = 
+  | "creator_website"      // Full recipe found on creator's website
+  | "authoritative_source" // Details filled in from top chefs/publications
+  | "video_transcript"     // Extracted primarily from video content
+  | "social_post_only";    // Only had caption/post text to work with
+
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export interface RecipeSource {
+  type: RecipeSourceType;
+  name?: string;           // e.g., "halfbakedharvest.com" or "Serious Eats"
+  url?: string;            // Link to the source
+  note?: string;           // Explanation of what was sourced
+}
+
 export interface Recipe {
   id: string;
   title: string;
@@ -26,6 +41,9 @@ export interface Recipe {
   // Transparency & verification
   originalTranscript?: string; // Raw extracted text from post for user verification
   isEstimated?: boolean; // True if AI had to infer details not explicitly stated
+  confidence?: ConfidenceLevel; // How accurate this recipe is to the original
+  recipeSource?: RecipeSource; // Where the recipe details came from
+  authoritativeReference?: string; // If filled from a known source, which one
   // Metadata
   createdAt: string;
   platform?: "instagram" | "tiktok" | "manual";
