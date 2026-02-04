@@ -1,13 +1,57 @@
 import React from "react";
+import { View, Pressable } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { HeaderButton } from "@react-navigation/elements";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
 
-import CollectionScreen from "@/screens/CollectionScreen";
-import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
-import CreateShoppingListScreen from "@/screens/CreateShoppingListScreen";
-import ShoppingListScreen from "@/screens/ShoppingListScreen";
+import CollectionScreen from "../screens/CollectionScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import CreateShoppingListScreen from "../screens/CreateShoppingListScreen";
+import ShoppingListScreen from "../screens/ShoppingListScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
+import { ThemedText } from "@/components/ThemedText";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { useShoppingList } from "@/hooks/useRecipes";
+import { useTheme } from "@/hooks/useTheme";
 import type { Recipe } from "@/types/recipe";
+
+function ShoppingListHeaderButton() {
+  const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const { data: shoppingList } = useShoppingList();
+  
+  const uncheckedCount = shoppingList?.filter(i => !i.isChecked).length || 0;
+
+  return (
+    <HeaderButton
+      onPress={() => navigation.navigate("ShoppingList")}
+      accessibilityLabel="Shopping List"
+    >
+      <View style={{ position: "relative" }}>
+        <Feather name="shopping-cart" size={22} color={theme.text} />
+        {uncheckedCount > 0 ? (
+          <View style={{
+            position: "absolute",
+            top: -6,
+            right: -8,
+            backgroundColor: theme.primary,
+            borderRadius: 8,
+            minWidth: 16,
+            height: 16,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 4,
+          }}>
+            <ThemedText style={{ color: "#FFF", fontSize: 10, fontWeight: "700" }}>
+              {uncheckedCount > 99 ? "99+" : uncheckedCount}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+    </HeaderButton>
+  );
+}
 
 export type CollectionStackParamList = {
   Collection: undefined;
@@ -28,6 +72,7 @@ export default function CollectionStackNavigator() {
         component={CollectionScreen}
         options={{
           headerTitle: () => <HeaderTitle title="Kitch" />,
+          headerRight: () => <ShoppingListHeaderButton />,
         }}
       />
       <Stack.Screen
