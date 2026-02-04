@@ -510,14 +510,26 @@ CRITICAL: You MUST extract the ACTUAL recipe from the provided content. Do NOT m
 
 If the content describes a specific dish (like "almond tart", "chocolate cake", "pasta carbonara"), the recipe you output MUST be for that exact dish.
 
+WHEN FILLING IN MISSING DETAILS:
+If specific measurements, temperatures, or steps are missing from the source content, you may reference standard techniques from renowned chefs and trusted culinary sources. Use these authoritative references:
+- Serious Eats / J. Kenji López-Alt (for technique-driven recipes)
+- NYT Cooking / Melissa Clark (for refined home cooking)
+- Bon Appétit / Claire Saffitz (for baking and pastry)
+- America's Test Kitchen (for tested ratios and methods)
+- Jacques Pépin (for French technique)
+- Marcella Hazan (for Italian classics)
+- Samin Nosrat / Salt Fat Acid Heat (for foundational principles)
+
+When you use an authoritative reference to fill in gaps, you MUST note it in the "authoritativeReference" field.
+
 Extract and categorize with:
 1. dishType: One from [Breakfast, Lunch, Dinner, Dessert, Snack, Appetizer, Soup, Salad, Pasta, Rice & Grains, Sandwich, Pizza, Seafood, Meat, Vegetarian, Baked Goods, Drinks, Sauce]
 2. vibeTags: 2-4 tags from [Quick & Easy, 15-Min Meals, 30-Min Meals, One-Pot, Meal Prep, Budget-Friendly, High-Protein, Low-Carb, Vegan, Vegetarian, Gluten-Free, Dairy-Free, Keto, Comfort Food, Healthy, Indulgent, Kid-Friendly, Date Night, Lazy Sunday, Party Food, Batch Cooking]
 3. creatorHandle: Extract from content if available
 4. creatorName: Extract from content if available
-5. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated in the source content. Set to false only if all details were explicitly provided.
-
-If specific measurements or steps are not provided, make reasonable estimates based on the dish type, but NEVER change what dish it is.
+5. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated
+6. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
+7. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
 
 Respond ONLY with a valid JSON object:
 {
@@ -531,6 +543,8 @@ Respond ONLY with a valid JSON object:
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
   "isEstimated": true,
+  "authoritativeReference": null,
+  "sourceNote": "Full recipe extracted from video transcript with explicit measurements",
   "ingredients": [
     {"name": "ingredient name", "amount": "1", "unit": "cup"}
   ],
@@ -691,6 +705,56 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         }
       }
 
+      // Determine source type and confidence
+      type RecipeSourceType = "creator_website" | "authoritative_source" | "video_transcript" | "social_post_only";
+      type ConfidenceLevel = "high" | "medium" | "low";
+      
+      let sourceType: RecipeSourceType;
+      let confidence: ConfidenceLevel;
+      let sourceName: string | null = null;
+      let sourceNote: string = recipeData.sourceNote || "";
+      
+      if (creatorRecipeUrl) {
+        // Full recipe from creator's website
+        sourceType = "creator_website";
+        confidence = recipeData.isEstimated ? "medium" : "high";
+        try {
+          const urlObj = new URL(creatorRecipeUrl);
+          sourceName = urlObj.hostname.replace('www.', '');
+        } catch {
+          sourceName = "creator's website";
+        }
+        if (!sourceNote) {
+          sourceNote = `Full recipe retrieved from ${sourceName}`;
+        }
+      } else if (recipeData.authoritativeReference) {
+        // Filled in with authoritative sources
+        sourceType = "authoritative_source";
+        confidence = "medium";
+        sourceName = recipeData.authoritativeReference;
+        if (!sourceNote) {
+          sourceNote = `Measurements and techniques referenced from ${sourceName}`;
+        }
+      } else if (videoTranscript && videoTranscript.length > 100) {
+        // Extracted from video transcript
+        sourceType = "video_transcript";
+        confidence = recipeData.isEstimated ? "medium" : "high";
+        sourceName = recipeData.creatorHandle || creatorHandle || "video creator";
+        if (!sourceNote) {
+          sourceNote = recipeData.isEstimated 
+            ? "Extracted from video, some details estimated"
+            : "Full recipe extracted from video with explicit measurements";
+        }
+      } else {
+        // Only social post content
+        sourceType = "social_post_only";
+        confidence = "low";
+        sourceName = platform === "instagram" ? "Instagram post" : platform === "tiktok" ? "TikTok post" : "social media post";
+        if (!sourceNote) {
+          sourceNote = "Recipe reconstructed from post caption - details may be estimated";
+        }
+      }
+
       const recipe = {
         id: randomUUID(),
         title: recipeData.title,
@@ -711,6 +775,14 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         instructions: recipeData.instructions || [],
         originalTranscript: videoTranscript || null,
         isEstimated: recipeData.isEstimated ?? true,
+        confidence,
+        recipeSource: {
+          type: sourceType,
+          name: sourceName,
+          url: creatorRecipeUrl || url,
+          note: sourceNote,
+        },
+        authoritativeReference: recipeData.authoritativeReference || null,
         platform,
         createdAt: new Date().toISOString(),
       };
