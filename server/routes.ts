@@ -899,7 +899,16 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
               try {
                 const enhancedRecipeData = JSON.parse(enhancedContent);
                 if (enhancedRecipeData.title && !enhancedRecipeData.error) {
-                  console.log(`Enhanced recipe extraction successful: "${enhancedRecipeData.title}" with ${enhancedRecipeData.ingredients?.length || 0} ingredients`);
+                  const newIngredientCount = enhancedRecipeData.ingredients?.length || 0;
+                  const newInstructionCount = enhancedRecipeData.instructions?.length || 0;
+                  console.log(`Enhanced recipe extraction successful: "${enhancedRecipeData.title}" with ${newIngredientCount} ingredients, ${newInstructionCount} instructions`);
+                  
+                  // If we got a complete recipe from the website, force isEstimated to false
+                  if (newIngredientCount >= 3 && newInstructionCount >= 2) {
+                    enhancedRecipeData.isEstimated = false;
+                    console.log(`Recipe has complete data from website - setting isEstimated to false`);
+                  }
+                  
                   recipeData = enhancedRecipeData;
                 }
               } catch (e) {

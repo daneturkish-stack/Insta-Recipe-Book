@@ -19,6 +19,70 @@ import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
+// Collapsible Confidence Badge Component
+function ConfidenceBadge({ recipe, theme }: { recipe: any; theme: any }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const confidenceColor = recipe.confidence === 'high' 
+    ? theme.accent 
+    : recipe.confidence === 'medium' 
+      ? theme.primary 
+      : theme.error;
+  
+  const confidenceLabel = recipe.confidence === 'high' 
+    ? 'High Accuracy' 
+    : recipe.confidence === 'medium' 
+      ? 'Medium Accuracy' 
+      : 'Low Accuracy';
+
+  return (
+    <View style={[
+      styles.confidenceBadge, 
+      { 
+        backgroundColor: confidenceColor + "15",
+        borderColor: confidenceColor + "40",
+      }
+    ]}>
+      <Pressable 
+        style={styles.confidenceHeader} 
+        onPress={() => setExpanded(!expanded)}
+      >
+        <View style={[styles.confidenceIndicator, { backgroundColor: confidenceColor }]} />
+        <ThemedText type="caption" style={{ fontWeight: "600", color: confidenceColor, flex: 1 }}>
+          {confidenceLabel}
+        </ThemedText>
+        {recipe.recipeSource?.isVerified ? (
+          <View style={[styles.verifiedBadge, { backgroundColor: theme.accent + "20" }]}>
+            <Feather name="check-circle" size={10} color={theme.accent} />
+            <ThemedText type="caption" style={{ color: theme.accent, fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
+              Verified
+            </ThemedText>
+          </View>
+        ) : null}
+        <Feather 
+          name={expanded ? "chevron-up" : "chevron-down"} 
+          size={16} 
+          color={theme.textSecondary} 
+          style={{ marginLeft: Spacing.sm }}
+        />
+      </Pressable>
+      
+      {expanded && recipe.recipeSource?.name ? (
+        <View style={styles.sourceRow}>
+          <Feather 
+            name={recipe.recipeSource.isVerified ? "link" : "alert-circle"} 
+            size={12} 
+            color={recipe.recipeSource.isVerified ? theme.textSecondary : theme.primary} 
+          />
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }}>
+            {recipe.recipeSource.note || `from ${recipe.recipeSource.name}`}
+          </ThemedText>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -186,74 +250,9 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Confidence & Source Attribution Badge */}
+            {/* Confidence & Source Attribution Badge - Collapsible */}
             {recipe.confidence ? (
-              <View style={[
-                styles.confidenceBadge, 
-                { 
-                  backgroundColor: recipe.confidence === 'high' 
-                    ? theme.accent + "15" 
-                    : recipe.confidence === 'medium' 
-                      ? theme.primary + "15" 
-                      : theme.error + "15",
-                  borderColor: recipe.confidence === 'high' 
-                    ? theme.accent + "40" 
-                    : recipe.confidence === 'medium' 
-                      ? theme.primary + "40" 
-                      : theme.error + "40",
-                }
-              ]}>
-                <View style={styles.confidenceHeader}>
-                  <View style={[
-                    styles.confidenceIndicator,
-                    { 
-                      backgroundColor: recipe.confidence === 'high' 
-                        ? theme.accent 
-                        : recipe.confidence === 'medium' 
-                          ? theme.primary 
-                          : theme.error,
-                    }
-                  ]} />
-                  <ThemedText type="caption" style={{ 
-                    fontWeight: "600",
-                    color: recipe.confidence === 'high' 
-                      ? theme.accent 
-                      : recipe.confidence === 'medium' 
-                        ? theme.primary 
-                        : theme.error,
-                  }}>
-                    {recipe.confidence === 'high' ? 'High Accuracy' : recipe.confidence === 'medium' ? 'Medium Accuracy' : 'Low Accuracy'}
-                  </ThemedText>
-                  {recipe.recipeSource?.isVerified ? (
-                    <View style={[styles.verifiedBadge, { backgroundColor: theme.accent + "20" }]}>
-                      <Feather name="check-circle" size={10} color={theme.accent} />
-                      <ThemedText type="caption" style={{ color: theme.accent, fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
-                        Verified
-                      </ThemedText>
-                    </View>
-                  ) : null}
-                </View>
-                {recipe.recipeSource?.name ? (
-                  <View style={styles.sourceRow}>
-                    <Feather 
-                      name={recipe.recipeSource.isVerified ? "link" : "alert-circle"} 
-                      size={12} 
-                      color={recipe.recipeSource.isVerified ? theme.textSecondary : theme.primary} 
-                    />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }}>
-                      {recipe.recipeSource.note || `from ${recipe.recipeSource.name}`}
-                    </ThemedText>
-                  </View>
-                ) : null}
-                {recipe.authoritativeReference ? (
-                  <View style={styles.authorityRow}>
-                    <Feather name="award" size={12} color={theme.primary} />
-                    <ThemedText type="caption" style={{ color: theme.primary, marginLeft: 4, fontWeight: "500" }}>
-                      Referenced: {recipe.authoritativeReference}
-                    </ThemedText>
-                  </View>
-                ) : null}
-              </View>
+              <ConfidenceBadge recipe={recipe} theme={theme} />
             ) : null}
 
             {recipe.description ? (
