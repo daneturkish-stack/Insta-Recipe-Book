@@ -12,11 +12,15 @@ export type RecipeSourceType =
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
+export type VerificationMethod = 'domain_match' | 'instagram_link' | 'unverified';
+
 export interface RecipeSource {
   type: RecipeSourceType;
   name?: string;           // e.g., "halfbakedharvest.com" or "Serious Eats"
   url?: string;            // Link to the source
   note?: string;           // Explanation of what was sourced
+  isVerified?: boolean;    // Whether the source was verified as the creator's actual site
+  verificationMethod?: VerificationMethod; // How the source was verified
 }
 
 export interface Recipe {

@@ -261,13 +261,96 @@ interface WebSearchResult {
   url: string;
   title: string;
   snippet: string;
+  isVerified: boolean;
+  verificationMethod?: 'domain_match' | 'instagram_link' | 'unverified';
+  domainName?: string;
+}
+
+function normalizeHandle(handle: string): string {
+  return handle.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9]/g, '');
+}
+
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function checkDomainMatchesCreator(domain: string, creatorHandle: string): boolean {
+  const normalizedHandle = normalizeHandle(creatorHandle);
+  const normalizedDomain = domain.toLowerCase().replace(/\.(com|net|org|io|co|ie|uk|ca|blog)$/, '').replace(/[^a-z0-9]/g, '');
+  
+  if (normalizedDomain.includes(normalizedHandle) || normalizedHandle.includes(normalizedDomain)) {
+    return true;
+  }
+  
+  const handleWords = normalizedHandle.replace(/([a-z])([A-Z])/g, '$1 $2').split(/(?=[A-Z])|[^a-z0-9]+/).filter(Boolean);
+  const domainWords = normalizedDomain.split(/[^a-z0-9]+/).filter(Boolean);
+  
+  const matchingWords = handleWords.filter(word => 
+    domainWords.some(dWord => dWord.includes(word) || word.includes(dWord))
+  );
+  
+  return matchingWords.length >= Math.min(2, handleWords.length);
+}
+
+async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): Promise<{ isVerified: boolean; method: 'domain_match' | 'instagram_link' | 'unverified' }> {
+  const domain = extractDomain(websiteUrl);
+  const normalizedHandle = normalizeHandle(creatorHandle);
+  
+  if (checkDomainMatchesCreator(domain, creatorHandle)) {
+    console.log(`Domain "${domain}" matches creator handle "${creatorHandle}" - verified by domain match`);
+    return { isVerified: true, method: 'domain_match' };
+  }
+  
+  try {
+    console.log(`Checking website for Instagram link to verify creator...`);
+    const response = await fetch(websiteUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+    
+    if (!response.ok) {
+      return { isVerified: false, method: 'unverified' };
+    }
+    
+    const html = await response.text();
+    
+    const instagramPatterns = [
+      /instagram\.com\/([a-zA-Z0-9._]+)/gi,
+      /href=["'][^"']*instagram\.com\/([a-zA-Z0-9._]+)["']/gi,
+    ];
+    
+    for (const pattern of instagramPatterns) {
+      const matches = [...html.matchAll(pattern)];
+      for (const match of matches) {
+        const foundHandle = match[1].toLowerCase();
+        if (foundHandle === normalizedHandle || foundHandle === normalizedHandle.replace(/[^a-z0-9]/g, '')) {
+          console.log(`Found matching Instagram link: @${foundHandle} - verified!`);
+          return { isVerified: true, method: 'instagram_link' };
+        }
+      }
+    }
+    
+    console.log(`No matching Instagram link found on website`);
+    return { isVerified: false, method: 'unverified' };
+  } catch (error) {
+    console.log(`Error verifying website: ${error}`);
+    return { isVerified: false, method: 'unverified' };
+  }
 }
 
 async function searchForCreatorRecipe(recipeName: string, creatorHandle: string | null): Promise<WebSearchResult | null> {
   try {
     const creatorName = creatorHandle ? creatorHandle.replace('@', '') : '';
     const searchQuery = creatorName 
-      ? `${recipeName} recipe ${creatorName} site:*.com`
+      ? `"${recipeName}" "${creatorName}" recipe`
       : `${recipeName} recipe`;
     
     console.log(`Searching web for full recipe: "${searchQuery}"`);
@@ -294,8 +377,17 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     const matches = [...html.matchAll(resultPattern)];
     
     const recipeKeywords = ['recipe', 'cook', 'ingredients', 'instructions', 'make', 'prepare'];
-    const blogDomains = ['.com/', '.net/', '.org/', '.co/', '.blog'];
+    const blogDomains = ['.com/', '.net/', '.org/', '.co/', '.blog', '.ie/', '.uk/', '.ca/'];
     const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com'];
+    
+    interface CandidateResult {
+      url: string;
+      title: string;
+      snippet: string;
+      domainMatchScore: number;
+    }
+    
+    const candidates: CandidateResult[] = [];
     
     for (const match of matches) {
       const resultUrl = match[1];
@@ -313,13 +405,57 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       );
       
       if (isBlogLike && hasRecipeContent) {
-        console.log(`Found potential recipe page: ${decodedUrl}`);
-        return {
+        const domain = extractDomain(decodedUrl);
+        let domainMatchScore = 0;
+        
+        if (creatorName && checkDomainMatchesCreator(domain, creatorName)) {
+          domainMatchScore = 10;
+          console.log(`High priority: Domain "${domain}" matches creator "${creatorName}"`);
+        }
+        
+        candidates.push({
           url: decodedUrl,
-          title: title.trim(),
-          snippet: snippet.trim(),
+          title,
+          snippet,
+          domainMatchScore,
+        });
+      }
+    }
+    
+    candidates.sort((a, b) => b.domainMatchScore - a.domainMatchScore);
+    
+    for (const candidate of candidates.slice(0, 3)) {
+      console.log(`Found potential recipe page: ${candidate.url} (score: ${candidate.domainMatchScore})`);
+      
+      const verification = creatorHandle 
+        ? await verifyCreatorWebsite(candidate.url, creatorHandle)
+        : { isVerified: false, method: 'unverified' as const };
+      
+      if (verification.isVerified || candidate.domainMatchScore > 0) {
+        const domain = extractDomain(candidate.url);
+        return {
+          url: candidate.url,
+          title: candidate.title.trim(),
+          snippet: candidate.snippet.trim(),
+          isVerified: verification.isVerified,
+          verificationMethod: verification.method,
+          domainName: domain,
         };
       }
+    }
+    
+    if (candidates.length > 0) {
+      const bestCandidate = candidates[0];
+      const domain = extractDomain(bestCandidate.url);
+      console.log(`No verified match found, returning best unverified candidate: ${bestCandidate.url}`);
+      return {
+        url: bestCandidate.url,
+        title: bestCandidate.title.trim(),
+        snippet: bestCandidate.snippet.trim(),
+        isVerified: false,
+        verificationMethod: 'unverified',
+        domainName: domain,
+      };
     }
     
     console.log('No suitable recipe page found in search results');
@@ -631,6 +767,9 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
       }
 
       let creatorRecipeUrl: string | null = null;
+      let websiteVerified = false;
+      let verificationMethod: 'domain_match' | 'instagram_link' | 'unverified' | null = null;
+      let websiteDomain: string | null = null;
 
       // Check if recipe extraction seems incomplete (no ingredients or very few, or isEstimated)
       const ingredientCount = recipeData.ingredients?.length || 0;
@@ -644,8 +783,11 @@ Otherwise, if you can identify the dish from the URL, provide a complete recipe 
         const searchResult = await searchForCreatorRecipe(recipeData.title, extractedCreatorHandle);
         
         if (searchResult) {
-          console.log(`Found potential full recipe at: ${searchResult.url}`);
+          console.log(`Found potential full recipe at: ${searchResult.url} (verified: ${searchResult.isVerified}, method: ${searchResult.verificationMethod})`);
           creatorRecipeUrl = searchResult.url;
+          websiteVerified = searchResult.isVerified;
+          verificationMethod = searchResult.verificationMethod || null;
+          websiteDomain = searchResult.domainName || null;
           
           const websiteContent = await fetchRecipeFromWebsite(searchResult.url);
           
@@ -715,17 +857,26 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
       let sourceNote: string = recipeData.sourceNote || "";
       
       if (creatorRecipeUrl) {
-        // Full recipe from creator's website
+        // Full recipe from a website - confidence depends on verification
         sourceType = "creator_website";
-        confidence = recipeData.isEstimated ? "medium" : "high";
-        try {
-          const urlObj = new URL(creatorRecipeUrl);
-          sourceName = urlObj.hostname.replace('www.', '');
-        } catch {
-          sourceName = "creator's website";
-        }
-        if (!sourceNote) {
-          sourceNote = `Full recipe retrieved from ${sourceName}`;
+        
+        if (websiteVerified) {
+          // Verified match - high confidence if not estimated
+          confidence = recipeData.isEstimated ? "medium" : "high";
+          sourceName = websiteDomain || "creator's website";
+          if (!sourceNote) {
+            const verifyNote = verificationMethod === 'instagram_link' 
+              ? ' (verified via Instagram link)' 
+              : ' (verified by domain match)';
+            sourceNote = `Full recipe from ${sourceName}${verifyNote}`;
+          }
+        } else {
+          // Unverified website - cap at medium confidence
+          confidence = "medium";
+          sourceName = websiteDomain || "recipe website";
+          if (!sourceNote) {
+            sourceNote = `Recipe found on ${sourceName} - not verified as creator's official site`;
+          }
         }
       } else if (recipeData.authoritativeReference) {
         // Filled in with authoritative sources
@@ -781,6 +932,8 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
           name: sourceName,
           url: creatorRecipeUrl || url,
           note: sourceNote,
+          isVerified: websiteVerified,
+          verificationMethod: verificationMethod,
         },
         authoritativeReference: recipeData.authoritativeReference || null,
         platform,
