@@ -47,6 +47,8 @@ export default function CollectionScreen() {
   const [remyResponse, setRemyResponse] = useState<RemyResponse | null>(null);
   const [activeQuickAction, setActiveQuickAction] = useState<QuickAction>(null);
   const [filteredIds, setFilteredIds] = useState<string[] | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
 
   const quickActions = [
     { id: "pantry" as QuickAction, label: "What can I make?", icon: "package" as const },
@@ -147,14 +149,52 @@ export default function CollectionScreen() {
     navigation.navigate("RecipeDetail", { recipeId: recipe.id });
   }, [navigation]);
 
+  const handleLongPress = useCallback((recipeId: string) => {
+    setIsSelectMode(true);
+    setSelectedRecipeIds(new Set([recipeId]));
+  }, []);
+
+  const handleToggleSelect = useCallback((recipeId: string) => {
+    setSelectedRecipeIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(recipeId)) {
+        newSet.delete(recipeId);
+        if (newSet.size === 0) {
+          setIsSelectMode(false);
+        }
+      } else {
+        newSet.add(recipeId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleCancelSelect = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedRecipeIds(new Set());
+  }, []);
+
+  const handleCreateShoppingList = useCallback(() => {
+    const selectedRecipes = recipes?.filter((r) => selectedRecipeIds.has(r.id)) || [];
+    navigation.navigate("CreateShoppingList", { recipes: selectedRecipes });
+    handleCancelSelect();
+  }, [recipes, selectedRecipeIds, navigation]);
+
   const renderItem = useCallback(({ item, index }: { item: Recipe; index: number }) => (
     <Animated.View
       entering={FadeInDown.delay(index * 50).duration(300)}
       style={styles.cardWrapper}
     >
-      <RecipeCard recipe={item} onPress={() => handleRecipePress(item)} />
+      <RecipeCard 
+        recipe={item} 
+        onPress={() => handleRecipePress(item)}
+        onLongPress={() => handleLongPress(item.id)}
+        isSelectable={isSelectMode}
+        isSelected={selectedRecipeIds.has(item.id)}
+        onSelect={() => handleToggleSelect(item.id)}
+      />
     </Animated.View>
-  ), [handleRecipePress]);
+  ), [handleRecipePress, handleLongPress, isSelectMode, selectedRecipeIds, handleToggleSelect]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -283,7 +323,7 @@ export default function CollectionScreen() {
           styles.listContent,
           {
             paddingTop: headerHeight + Spacing.md,
-            paddingBottom: tabBarHeight + Spacing.xl,
+            paddingBottom: tabBarHeight + Spacing.xl + (isSelectMode ? 80 : 0),
             flexGrow: isLoading || displayedRecipes?.length === 0 ? 1 : undefined,
           },
         ]}
@@ -305,6 +345,38 @@ export default function CollectionScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />
+      
+      {isSelectMode ? (
+        <Animated.View 
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
+          style={[
+            styles.selectionBar,
+            { 
+              backgroundColor: theme.backgroundDefault,
+              paddingBottom: insets.bottom + Spacing.md,
+            }
+          ]}
+        >
+          <View style={styles.selectionBarContent}>
+            <Pressable onPress={handleCancelSelect} style={styles.selectionCancelButton}>
+              <Feather name="x" size={20} color={theme.text} />
+            </Pressable>
+            <ThemedText type="bodyMedium" style={{ color: theme.text, flex: 1, textAlign: "center" }}>
+              {selectedRecipeIds.size} recipe{selectedRecipeIds.size !== 1 ? "s" : ""} selected
+            </ThemedText>
+            <Pressable 
+              onPress={handleCreateShoppingList}
+              style={[styles.shoppingListButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="shopping-cart" size={18} color="#FFF" />
+              <ThemedText type="bodyMedium" style={{ color: "#FFF", marginLeft: Spacing.sm }}>
+                Add to List
+              </ThemedText>
+            </Pressable>
+          </View>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -392,5 +464,36 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  selectionBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  selectionBarContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  selectionCancelButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shoppingListButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
   },
 });

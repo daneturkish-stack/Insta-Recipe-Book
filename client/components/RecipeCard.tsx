@@ -18,6 +18,10 @@ import type { Recipe } from "@/types/recipe";
 interface RecipeCardProps {
   recipe: Recipe;
   onPress?: () => void;
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onLongPress?: () => void;
+  onSelect?: () => void;
 }
 
 const springConfig: WithSpringConfig = {
@@ -32,7 +36,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
-export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
+export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPress, onSelect }: RecipeCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
@@ -50,7 +54,16 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress?.();
+    if (isSelectable) {
+      onSelect?.();
+    } else {
+      onPress?.();
+    }
+  };
+
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onLongPress?.();
   };
 
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
@@ -62,9 +75,12 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      onLongPress={handleLongPress}
+      delayLongPress={400}
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
+        isSelected && { borderWidth: 2, borderColor: theme.primary },
         animatedStyle,
       ]}
       testID={`recipe-card-${recipe.id}`}
@@ -78,7 +94,17 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
           transition={200}
         />
         
-        {isVideo ? (
+        {isSelectable ? (
+          <View style={[styles.selectIndicator, isSelected && { backgroundColor: theme.primary }]}>
+            {isSelected ? (
+              <Feather name="check" size={16} color="#FFF" />
+            ) : (
+              <View style={[styles.selectCircle, { borderColor: theme.backgroundDefault }]} />
+            )}
+          </View>
+        ) : null}
+        
+        {isVideo && !isSelectable ? (
           <View style={styles.videoIndicator}>
             <View style={styles.playButton}>
               <Feather name="play" size={16} color="#FFF" style={{ marginLeft: 2 }} />
@@ -86,7 +112,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
           </View>
         ) : null}
 
-        {recipe.platform ? (
+        {recipe.platform && !isSelectable ? (
           <View style={styles.platformBadge}>
             <Feather 
               name={recipe.platform === "tiktok" ? "video" : "instagram"} 
@@ -206,6 +232,24 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  selectIndicator: {
+    position: "absolute",
+    top: Spacing.sm,
+    left: Spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    backgroundColor: "transparent",
   },
   content: {
     padding: Spacing.md,
