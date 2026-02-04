@@ -347,17 +347,74 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
 }
 
 async function performWebSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
-  const encodedQuery = encodeURIComponent(query);
+  // Try Serper.dev API first (reliable, 2500 free searches/month)
+  const serperApiKey = process.env.SERPER_API_KEY;
+  if (serperApiKey) {
+    const serperResults = await performSerperSearch(query, serperApiKey);
+    if (serperResults.length > 0) {
+      return serperResults;
+    }
+    console.log(`Serper returned no results, falling back to scraping for: "${query}"`);
+  } else {
+    console.log(`No SERPER_API_KEY found, falling back to scraping for: "${query}"`);
+  }
   
-  // Try Google search first
+  // Fallback to Google scraping (may be blocked)
   const googleResults = await performGoogleSearch(query);
   if (googleResults.length > 0) {
     return googleResults;
   }
   
-  // Fallback to DuckDuckGo
+  // Final fallback to DuckDuckGo
   console.log(`Google returned no results, trying DuckDuckGo for: "${query}"`);
   return performDuckDuckGoSearch(query);
+}
+
+async function performSerperSearch(query: string, apiKey: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+  console.log(`Serper search: "${query}"`);
+  
+  try {
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: query,
+        num: 10,
+        gl: 'us',
+        hl: 'en',
+      }),
+    });
+    
+    if (!response.ok) {
+      console.log(`Serper search failed: ${response.status}`);
+      return [];
+    }
+    
+    const data = await response.json();
+    const results: Array<{url: string, title: string, snippet: string}> = [];
+    
+    // Parse organic results
+    if (data.organic && Array.isArray(data.organic)) {
+      for (const result of data.organic) {
+        if (result.link) {
+          results.push({
+            url: result.link,
+            title: result.title || '',
+            snippet: result.snippet || '',
+          });
+        }
+      }
+    }
+    
+    console.log(`Found ${results.length} results from Serper`);
+    return results;
+  } catch (error) {
+    console.log(`Serper search error: ${error}`);
+    return [];
+  }
 }
 
 async function performGoogleSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
