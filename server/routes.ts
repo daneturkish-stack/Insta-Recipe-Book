@@ -346,97 +346,159 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
   }
 }
 
+async function performDuckDuckGoSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+  const encodedQuery = encodeURIComponent(query);
+  const searchUrl = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+  
+  console.log(`DuckDuckGo search: "${query}"`);
+  
+  const response = await fetch(searchUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  
+  if (!response.ok) {
+    console.log(`DuckDuckGo search failed: ${response.status}`);
+    return [];
+  }
+  
+  const html = await response.text();
+  
+  const results: Array<{url: string, title: string, snippet: string}> = [];
+  
+  const resultPattern = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([^<]*)</gi;
+  const matches = [...html.matchAll(resultPattern)];
+  
+  console.log(`Found ${matches.length} raw results from DuckDuckGo`);
+  
+  for (const match of matches) {
+    const resultUrl = match[1];
+    const title = match[2];
+    const snippet = match[3] || '';
+    
+    const decodedUrl = decodeURIComponent(resultUrl.replace(/.*uddg=([^&]+).*/, '$1'));
+    
+    results.push({
+      url: decodedUrl,
+      title: title.trim(),
+      snippet: snippet.trim(),
+    });
+  }
+  
+  return results;
+}
+
 async function searchForCreatorRecipe(recipeName: string, creatorHandle: string | null): Promise<WebSearchResult | null> {
   try {
-    const creatorName = creatorHandle ? creatorHandle.replace('@', '') : '';
-    const searchQuery = creatorName 
-      ? `"${recipeName}" "${creatorName}" recipe`
-      : `${recipeName} recipe`;
+    const creatorName = creatorHandle ? creatorHandle.replace('@', '').replace(/[_.-]/g, ' ') : '';
+    const normalizedCreatorName = normalizeHandle(creatorName);
     
-    console.log(`Searching web for full recipe: "${searchQuery}"`);
-    
-    const encodedQuery = encodeURIComponent(searchQuery);
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
-    
-    const response = await fetch(searchUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-    });
-    
-    if (!response.ok) {
-      console.log(`Web search failed: ${response.status}`);
-      return null;
-    }
-    
-    const html = await response.text();
-    
-    const resultPattern = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([^<]+)</gi;
-    const matches = [...html.matchAll(resultPattern)];
-    
-    const recipeKeywords = ['recipe', 'cook', 'ingredients', 'instructions', 'make', 'prepare'];
-    const blogDomains = ['.com/', '.net/', '.org/', '.co/', '.blog', '.ie/', '.uk/', '.ca/'];
-    const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com'];
+    const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com', 'reddit.com'];
     
     interface CandidateResult {
       url: string;
       title: string;
       snippet: string;
       domainMatchScore: number;
+      source: string;
     }
     
-    const candidates: CandidateResult[] = [];
+    const allCandidates: CandidateResult[] = [];
     
-    for (const match of matches) {
-      const resultUrl = match[1];
-      const title = match[2];
-      const snippet = match[3];
+    // Strategy 1: Search specifically on creator's likely domain
+    if (creatorName) {
+      const siteSearchQuery = `site:${normalizedCreatorName}.* ${recipeName} recipe`;
+      const siteResults = await performDuckDuckGoSearch(siteSearchQuery);
       
-      const decodedUrl = decodeURIComponent(resultUrl.replace(/.*uddg=([^&]+).*/, '$1'));
-      
-      const isExcluded = excludeDomains.some(domain => decodedUrl.includes(domain));
-      if (isExcluded) continue;
-      
-      const isBlogLike = blogDomains.some(domain => decodedUrl.includes(domain));
-      const hasRecipeContent = recipeKeywords.some(keyword => 
-        title.toLowerCase().includes(keyword) || snippet.toLowerCase().includes(keyword)
-      );
-      
-      if (isBlogLike && hasRecipeContent) {
-        const domain = extractDomain(decodedUrl);
-        let domainMatchScore = 0;
+      for (const result of siteResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
         
-        if (creatorName && checkDomainMatchesCreator(domain, creatorName)) {
-          domainMatchScore = 10;
-          console.log(`High priority: Domain "${domain}" matches creator "${creatorName}"`);
-        }
-        
-        candidates.push({
-          url: decodedUrl,
-          title,
-          snippet,
-          domainMatchScore,
+        const domain = extractDomain(result.url);
+        allCandidates.push({
+          ...result,
+          domainMatchScore: 20, // Highest priority for site-specific search
+          source: 'site-search',
         });
+        console.log(`Site search found: ${result.url}`);
       }
     }
     
-    candidates.sort((a, b) => b.domainMatchScore - a.domainMatchScore);
-    
-    for (const candidate of candidates.slice(0, 3)) {
-      console.log(`Found potential recipe page: ${candidate.url} (score: ${candidate.domainMatchScore})`);
+    // Strategy 2: Search with creator name and recipe
+    if (creatorName) {
+      const creatorSearchQuery = `${creatorName} ${recipeName} recipe`;
+      const creatorResults = await performDuckDuckGoSearch(creatorSearchQuery);
       
+      for (const result of creatorResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
+        
+        // Check if this URL is already in candidates
+        if (allCandidates.some(c => c.url === result.url)) continue;
+        
+        const domain = extractDomain(result.url);
+        const domainMatches = checkDomainMatchesCreator(domain, creatorName);
+        
+        allCandidates.push({
+          ...result,
+          domainMatchScore: domainMatches ? 15 : 5,
+          source: 'creator-search',
+        });
+        
+        if (domainMatches) {
+          console.log(`Creator search found matching domain: ${result.url}`);
+        }
+      }
+    }
+    
+    // Strategy 3: Generic recipe search as fallback
+    const genericSearchQuery = `"${recipeName}" recipe`;
+    const genericResults = await performDuckDuckGoSearch(genericSearchQuery);
+    
+    for (const result of genericResults) {
+      const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+      if (isExcluded) continue;
+      
+      // Check if this URL is already in candidates
+      if (allCandidates.some(c => c.url === result.url)) continue;
+      
+      const domain = extractDomain(result.url);
+      const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
+      
+      allCandidates.push({
+        ...result,
+        domainMatchScore: domainMatches ? 10 : 1,
+        source: 'generic-search',
+      });
+    }
+    
+    // Sort by domain match score (highest first)
+    allCandidates.sort((a, b) => b.domainMatchScore - a.domainMatchScore);
+    
+    console.log(`Total candidates found: ${allCandidates.length}`);
+    if (allCandidates.length > 0) {
+      console.log(`Top 5 candidates:`);
+      for (const c of allCandidates.slice(0, 5)) {
+        console.log(`  - ${c.url} (score: ${c.domainMatchScore}, source: ${c.source})`);
+      }
+    }
+    
+    // Try to verify top candidates
+    for (const candidate of allCandidates.slice(0, 5)) {
       const verification = creatorHandle 
         ? await verifyCreatorWebsite(candidate.url, creatorHandle)
         : { isVerified: false, method: 'unverified' as const };
       
-      if (verification.isVerified || candidate.domainMatchScore > 0) {
+      if (verification.isVerified || candidate.domainMatchScore >= 10) {
         const domain = extractDomain(candidate.url);
+        console.log(`Selected verified/high-score candidate: ${candidate.url} (verified: ${verification.isVerified})`);
         return {
           url: candidate.url,
-          title: candidate.title.trim(),
-          snippet: candidate.snippet.trim(),
+          title: candidate.title,
+          snippet: candidate.snippet,
           isVerified: verification.isVerified,
           verificationMethod: verification.method,
           domainName: domain,
@@ -444,21 +506,22 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       }
     }
     
-    if (candidates.length > 0) {
-      const bestCandidate = candidates[0];
+    // Return best unverified candidate if available
+    if (allCandidates.length > 0) {
+      const bestCandidate = allCandidates[0];
       const domain = extractDomain(bestCandidate.url);
-      console.log(`No verified match found, returning best unverified candidate: ${bestCandidate.url}`);
+      console.log(`No verified match found, returning best unverified: ${bestCandidate.url}`);
       return {
         url: bestCandidate.url,
-        title: bestCandidate.title.trim(),
-        snippet: bestCandidate.snippet.trim(),
+        title: bestCandidate.title,
+        snippet: bestCandidate.snippet,
         isVerified: false,
         verificationMethod: 'unverified',
         domainName: domain,
       };
     }
     
-    console.log('No suitable recipe page found in search results');
+    console.log('No suitable recipe page found in any search');
     return null;
   } catch (error) {
     console.error("Error searching for recipe:", error);
