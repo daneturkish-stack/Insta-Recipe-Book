@@ -326,12 +326,13 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   title: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     textAlign: "center",
   },
   subtitle: {
     textAlign: "center",
     paddingHorizontal: Spacing.lg,
+    lineHeight: 22,
   },
   form: {
     marginBottom: Spacing["2xl"],
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   successTitle: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   successSubtitle: {
     textAlign: "center",
