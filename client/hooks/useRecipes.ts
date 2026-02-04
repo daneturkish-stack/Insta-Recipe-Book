@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Recipe, PantryItem } from "@/types/recipe";
+import type { Recipe, PantryItem, ShoppingListItem } from "@/types/recipe";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 const RECIPES_STORAGE_KEY = "@kitch_recipes";
 const PANTRY_STORAGE_KEY = "@kitch_pantry";
+const SHOPPING_LIST_STORAGE_KEY = "@kitch_shopping_list";
 
 // Recipe Storage
 async function getStoredRecipes(): Promise<Recipe[]> {
@@ -173,6 +174,106 @@ export function usePantryMatch() {
       });
       const data = await response.json();
       return data.matches || [];
+    },
+  });
+}
+
+// Shopping List Storage
+async function getStoredShoppingList(): Promise<ShoppingListItem[]> {
+  try {
+    const data = await AsyncStorage.getItem(SHOPPING_LIST_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveShoppingListToStorage(items: ShoppingListItem[]): Promise<void> {
+  await AsyncStorage.setItem(SHOPPING_LIST_STORAGE_KEY, JSON.stringify(items));
+}
+
+// Shopping List Hooks
+export function useShoppingList() {
+  return useQuery<ShoppingListItem[]>({
+    queryKey: ["shoppingList"],
+    queryFn: getStoredShoppingList,
+    staleTime: Infinity,
+  });
+}
+
+export function useSaveShoppingList() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: ShoppingListItem[]) => {
+      await saveShoppingListToStorage(items);
+      return items;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
+    },
+  });
+}
+
+export function useToggleShoppingItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const items = await getStoredShoppingList();
+      const newItems = items.map((item) =>
+        item.id === itemId ? { ...item, isChecked: !item.isChecked } : item
+      );
+      await saveShoppingListToStorage(newItems);
+      return newItems;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
+    },
+  });
+}
+
+export function useRemoveShoppingItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const items = await getStoredShoppingList();
+      const newItems = items.filter((item) => item.id !== itemId);
+      await saveShoppingListToStorage(newItems);
+      return newItems;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
+    },
+  });
+}
+
+export function useClearShoppingList() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      await saveShoppingListToStorage([]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
+    },
+  });
+}
+
+export function useClearCheckedItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const items = await getStoredShoppingList();
+      const newItems = items.filter((item) => !item.isChecked);
+      await saveShoppingListToStorage(newItems);
+      return newItems;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
     },
   });
 }

@@ -113,3 +113,40 @@ export const PANTRY_CATEGORIES = [
   { id: "spices", label: "Spices & Herbs", icon: "leaf" },
   { id: "other", label: "Other", icon: "box" },
 ] as const;
+
+export type AisleCategory = 
+  | "produce"
+  | "meat"
+  | "seafood"
+  | "dairy"
+  | "bakery"
+  | "frozen"
+  | "pantry"
+  | "spices"
+  | "beverages"
+  | "other";
+
+export const AISLE_CATEGORIES: { id: AisleCategory; label: string; icon: string }[] = [
+  { id: "produce", label: "Produce", icon: "leaf" },
+  { id: "meat", label: "Meat & Poultry", icon: "package" },
+  { id: "seafood", label: "Seafood", icon: "droplet" },
+  { id: "dairy", label: "Dairy & Eggs", icon: "circle" },
+  { id: "bakery", label: "Bakery", icon: "box" },
+  { id: "frozen", label: "Frozen", icon: "thermometer" },
+  { id: "pantry", label: "Pantry & Dry Goods", icon: "archive" },
+  { id: "spices", label: "Spices & Seasonings", icon: "sun" },
+  { id: "beverages", label: "Beverages", icon: "coffee" },
+  { id: "other", label: "Other", icon: "more-horizontal" },
+];
+
+export interface ShoppingListItem {
+  id: string;
+  name: string;
+  amount: string;
+  unit: string;
+  aisle: AisleCategory;
+  isChecked: boolean;
+  inPantry: boolean;
+  recipeIds: string[];
+  recipeTitles: string[];
+}
