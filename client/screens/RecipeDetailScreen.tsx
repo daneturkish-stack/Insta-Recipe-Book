@@ -172,8 +172,8 @@ export default function RecipeDetailScreen() {
             {(recipe.dishType || (recipe.vibeTags && recipe.vibeTags.length > 0)) ? (
               <View style={styles.tagsRow}>
                 {recipe.dishType ? (
-                  <View style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
-                    <ThemedText type="caption" style={{ color: theme.accent, fontWeight: "600" }}>
+                  <View style={[styles.tag, { backgroundColor: theme.primary + "25" }]}>
+                    <ThemedText type="caption" style={{ color: theme.text, fontWeight: "600" }}>
                       {recipe.dishType}
                     </ThemedText>
                   </View>
@@ -193,8 +193,8 @@ export default function RecipeDetailScreen() {
               <View style={[
                 styles.confidenceBadge, 
                 { 
-                  backgroundColor: (recipe.confidence === 'high' ? theme.accent : recipe.confidence === 'medium' ? theme.primary : theme.error) + "15",
-                  borderColor: (recipe.confidence === 'high' ? theme.accent : recipe.confidence === 'medium' ? theme.primary : theme.error) + "40",
+                  backgroundColor: recipe.confidence === 'high' ? '#E8F5E9' : recipe.confidence === 'medium' ? theme.primary + "15" : theme.error + "15",
+                  borderColor: recipe.confidence === 'high' ? '#4CAF50' + "40" : recipe.confidence === 'medium' ? theme.primary + "40" : theme.error + "40",
                 }
               ]}>
                 <Pressable 
@@ -203,19 +203,19 @@ export default function RecipeDetailScreen() {
                 >
                   <View style={[
                     styles.confidenceIndicator, 
-                    { backgroundColor: recipe.confidence === 'high' ? theme.accent : recipe.confidence === 'medium' ? theme.primary : theme.error }
+                    { backgroundColor: recipe.confidence === 'high' ? '#4CAF50' : recipe.confidence === 'medium' ? theme.primary : theme.error }
                   ]} />
                   <ThemedText type="caption" style={{ 
                     fontWeight: "600", 
-                    color: recipe.confidence === 'high' ? theme.accent : recipe.confidence === 'medium' ? theme.primary : theme.error, 
+                    color: recipe.confidence === 'high' ? '#2E7D32' : recipe.confidence === 'medium' ? theme.text : theme.error, 
                     flex: 1 
                   }}>
                     {recipe.confidence === 'high' ? 'High Accuracy' : recipe.confidence === 'medium' ? 'Medium Accuracy' : 'Low Accuracy'}
                   </ThemedText>
                   {recipe.recipeSource?.isVerified ? (
-                    <View style={[styles.verifiedBadge, { backgroundColor: theme.accent + "20" }]}>
-                      <Feather name="check-circle" size={10} color={theme.accent} />
-                      <ThemedText type="caption" style={{ color: theme.accent, fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
+                    <View style={[styles.verifiedBadge, { backgroundColor: '#E8F5E9' }]}>
+                      <Feather name="check-circle" size={10} color="#2E7D32" />
+                      <ThemedText type="caption" style={{ color: '#2E7D32', fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
                         Verified
                       </ThemedText>
                     </View>
@@ -229,16 +229,24 @@ export default function RecipeDetailScreen() {
                 </Pressable>
                 
                 {confidenceExpanded && recipe.recipeSource?.name ? (
-                  <View style={styles.sourceRow}>
+                  <Pressable 
+                    style={styles.sourceRow}
+                    onPress={recipe.creatorRecipeUrl ? handleOpenCreatorRecipe : undefined}
+                  >
                     <Feather 
-                      name={recipe.recipeSource.isVerified ? "link" : "alert-circle"} 
+                      name={recipe.recipeSource.isVerified ? "external-link" : "alert-circle"} 
                       size={12} 
-                      color={recipe.recipeSource.isVerified ? theme.textSecondary : theme.primary} 
+                      color={recipe.creatorRecipeUrl ? theme.primary : theme.textSecondary} 
                     />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }}>
-                      {recipe.recipeSource.note || `from ${recipe.recipeSource.name}`}
+                    <ThemedText type="caption" style={{ 
+                      color: recipe.creatorRecipeUrl ? theme.primary : theme.textSecondary, 
+                      marginLeft: 4, 
+                      flex: 1,
+                      textDecorationLine: recipe.creatorRecipeUrl ? 'underline' : 'none'
+                    }}>
+                      {recipe.recipeSource.note || `View full recipe on ${recipe.recipeSource.name}`}
                     </ThemedText>
-                  </View>
+                  </Pressable>
                 ) : null}
               </View>
             ) : null}
@@ -276,8 +284,8 @@ export default function RecipeDetailScreen() {
 
             {/* Transparency Banner */}
             {recipe.isEstimated ? (
-              <View style={[styles.transparencyBanner, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}>
-                <Feather name="info" size={16} color={theme.accent} />
+              <View style={[styles.transparencyBanner, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' + "40" }]}>
+                <Feather name="info" size={16} color="#E65100" />
                 <ThemedText type="caption" style={[styles.transparencyText, { color: theme.textSecondary }]}>
                   Some details were estimated by AI based on the post. Tap below to verify.
                 </ThemedText>
