@@ -553,6 +553,14 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     const creatorName = creatorHandle ? creatorHandle.replace('@', '').replace(/[_.-]/g, ' ') : '';
     const normalizedCreatorName = normalizeHandle(creatorName);
     
+    // Check if we have a valid recipe name (not just "Unknown" or placeholder text)
+    const hasValidRecipeName = recipeName && 
+      !recipeName.toLowerCase().includes('unknown') && 
+      !recipeName.toLowerCase().includes('not provided') &&
+      recipeName.length > 3;
+    
+    console.log(`Searching for recipe: "${recipeName}" (valid: ${hasValidRecipeName}) by creator: "${creatorName || 'unknown'}"`);
+    
     const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com', 'reddit.com'];
     
     interface CandidateResult {
@@ -565,8 +573,50 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     
     const allCandidates: CandidateResult[] = [];
     
+    // Strategy 0: If we only have creator handle but no recipe name, search for their recipes page
+    if (creatorName && !hasValidRecipeName) {
+      console.log(`No valid recipe name - searching for creator's recipe website directly...`);
+      
+      // Try to find creator's recipes page
+      const creatorWebsiteQuery = `${creatorName} recipes`;
+      const websiteResults = await performWebSearch(creatorWebsiteQuery);
+      
+      for (const result of websiteResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
+        
+        const domain = extractDomain(result.url);
+        const domainMatches = checkDomainMatchesCreator(domain, creatorName);
+        
+        // Prioritize results that match creator's domain
+        if (domainMatches) {
+          allCandidates.push({
+            ...result,
+            domainMatchScore: 25, // Highest priority for domain match without recipe name
+            source: 'creator-website-direct',
+          });
+          console.log(`Found creator's website: ${result.url}`);
+        }
+      }
+      
+      // If we found the creator's website, return immediately
+      if (allCandidates.length > 0) {
+        const best = allCandidates[0];
+        const verification = await verifyCreatorWebsite(best.url, creatorHandle || '');
+        console.log(`Returning creator's website directly: ${best.url}`);
+        return {
+          url: best.url,
+          title: best.title,
+          snippet: best.snippet,
+          isVerified: verification.isVerified,
+          verificationMethod: verification.method,
+          domainName: extractDomain(best.url),
+        };
+      }
+    }
+    
     // Strategy 1: Search specifically on creator's likely domain
-    if (creatorName) {
+    if (creatorName && hasValidRecipeName) {
       const siteSearchQuery = `site:${normalizedCreatorName}.* ${recipeName} recipe`;
       const siteResults = await performWebSearch(siteSearchQuery);
       
@@ -585,7 +635,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
     }
     
     // Strategy 2: Search with creator name and recipe
-    if (creatorName) {
+    if (creatorName && hasValidRecipeName) {
       const creatorSearchQuery = `${creatorName} ${recipeName} recipe`;
       const creatorResults = await performWebSearch(creatorSearchQuery);
       
@@ -611,29 +661,31 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       }
     }
     
-    // Strategy 3: Generic recipe search as fallback (quoted)
-    const genericSearchQuery = `"${recipeName}" recipe`;
-    const genericResults = await performWebSearch(genericSearchQuery);
-    
-    for (const result of genericResults) {
-      const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
-      if (isExcluded) continue;
+    // Strategy 3: Generic recipe search as fallback (quoted) - only if we have valid recipe name
+    if (hasValidRecipeName) {
+      const genericSearchQuery = `"${recipeName}" recipe`;
+      const genericResults = await performWebSearch(genericSearchQuery);
       
-      // Check if this URL is already in candidates
-      if (allCandidates.some(c => c.url === result.url)) continue;
-      
-      const domain = extractDomain(result.url);
-      const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
-      
-      allCandidates.push({
-        ...result,
-        domainMatchScore: domainMatches ? 10 : 1,
-        source: 'generic-search',
-      });
+      for (const result of genericResults) {
+        const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
+        if (isExcluded) continue;
+        
+        // Check if this URL is already in candidates
+        if (allCandidates.some(c => c.url === result.url)) continue;
+        
+        const domain = extractDomain(result.url);
+        const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
+        
+        allCandidates.push({
+          ...result,
+          domainMatchScore: domainMatches ? 10 : 1,
+          source: 'generic-search',
+        });
+      }
     }
     
-    // Strategy 4: If still no results, try simpler unquoted search
-    if (allCandidates.length === 0) {
+    // Strategy 4: If still no results, try simpler unquoted search - only if we have valid recipe name
+    if (allCandidates.length === 0 && hasValidRecipeName) {
       const simpleSearchQuery = `${recipeName} recipe`;
       const simpleResults = await performWebSearch(simpleSearchQuery);
       
@@ -906,8 +958,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Extract creator handle from URL if possible
-      const creatorMatch = url.match(/@([\w.]+)/);
-      const creatorHandle = creatorMatch ? `@${creatorMatch[1]}` : null;
+      // Try multiple patterns:
+      // 1. @username in URL (TikTok style)
+      // 2. instagram.com/username/reel/xxx or instagram.com/username/p/xxx
+      // 3. instagram.com/p/xxx (post ID only - no handle available)
+      let creatorHandle: string | null = null;
+      
+      // Pattern 1: @username in URL
+      const atMatch = url.match(/@([\w.]+)/);
+      if (atMatch) {
+        creatorHandle = `@${atMatch[1]}`;
+      }
+      
+      // Pattern 2: Instagram URL with username before /reel/ or /p/
+      if (!creatorHandle && platform === 'instagram') {
+        // Match: instagram.com/thehappypear/reel/xxx or instagram.com/thehappypear/p/xxx
+        const igUserMatch = url.match(/instagram\.com\/([^\/]+)\/(?:reel|p|reels)\//i);
+        if (igUserMatch && igUserMatch[1] && !['reel', 'p', 'reels', 'stories'].includes(igUserMatch[1].toLowerCase())) {
+          creatorHandle = `@${igUserMatch[1]}`;
+        }
+      }
+      
+      console.log(`Extracted creator handle from URL: ${creatorHandle || 'none'}`);
 
       // Fetch actual content from the page
       console.log(`Fetching content from: ${url}`);
