@@ -67,7 +67,7 @@ export function Button({
 
   const getBackgroundColor = () => {
     if (variant === "outline") return "transparent";
-    if (variant === "secondary") return theme.backgroundSecondary;
+    if (variant === "secondary") return theme.secondary || theme.backgroundSecondary;
     return theme.primary;
   };
 
@@ -119,10 +119,10 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: Spacing["2xl"],
+    paddingHorizontal: Spacing["3xl"],
   },
   buttonText: {
     fontWeight: "600",
