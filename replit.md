@@ -7,11 +7,37 @@ Kitch is a React Native/Expo mobile application that transforms ephemeral Instag
 Key capabilities:
 - Extract recipes from Instagram Reels/Posts and TikTok videos via AI
 - Video transcription using OpenAI Whisper for accurate recipe extraction
+- Web search fallback to find creator's full recipe on their website/blog
+- Recipe transparency: confidence levels (high/medium/low), source attribution, authoritative references
 - Local recipe storage with search and smart AI-powered filtering
 - Pantry management with ingredient matching to find makeable recipes
 - Cook Mode for step-by-step guided cooking
 - Remy AI assistant for cooking questions, substitutions, and recipe recommendations
 - Cross-platform support (iOS, Android, Web)
+
+### Recipe Transparency System
+Kitch provides full transparency about where recipe information comes from and how accurate it is:
+
+**Confidence Levels:**
+- **High**: Full recipe found on creator's website with explicit measurements
+- **Medium**: Extracted from video transcript OR filled in from authoritative culinary sources
+- **Low**: Reconstructed from social post caption only - details may be estimated
+
+**Source Types:**
+- `creator_website`: Full recipe retrieved from creator's blog/website
+- `authoritative_source`: Missing details filled from trusted culinary references
+- `video_transcript`: Extracted from video audio with OpenAI Whisper
+- `social_post_only`: Only post caption available
+
+**Authoritative References:**
+When the AI fills in missing measurements or techniques, it references trusted sources:
+- Serious Eats / J. Kenji López-Alt
+- NYT Cooking / Melissa Clark
+- Bon Appétit / Claire Saffitz
+- America's Test Kitchen
+- Jacques Pépin
+- Marcella Hazan
+- Samin Nosrat / Salt Fat Acid Heat
 
 ## User Preferences
 
