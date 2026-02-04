@@ -4,36 +4,40 @@
 
 **Purpose**: Kitch transforms ephemeral Instagram food content into permanent, organized recipes. For home cooks who discover recipes on social media but want them preserved and accessible.
 
-**Aesthetic Direction**: Soft, warm, and refined with pastel accents. Pure white canvas lets vibrant food photography shine as the hero. Pastel colors (lavender, sage, warm gray) highlight sections and create visual hierarchy.
+**Aesthetic Direction**: Playful, vibrant, and energetic - inspired by modern app design (like Maggie). Fresh mint green primary color with sunny yellow accents creates a joyful, food-friendly atmosphere. The design feels fun and approachable, making recipe saving feel like an adventure rather than a chore.
 
-**Memorable Element**: The elegant contrast between social media chaos and pristine recipe presentation. Each saved recipe feels like a curated cookbook page.
+**Memorable Element**: A friendly, organic feel with bold rounded shapes and cheerful colors. Each interaction should spark joy and make cooking feel lighter.
 
 ---
 
 ## Color Palette
 
 ### Core Colors
-- **Font Color**: `#231212` - Rich dark brown for all text, elegant and warm
-- **Background**: `#FFFFFF` - Pure white canvas for clean, airy layouts
+- **Primary**: `#82EDA6` - Fresh mint green for buttons and interactive elements
+- **Accent**: `#FFFF94` - Sunny yellow for highlights and special elements
+- **Background**: `#F9F8F4` - Warm cream/off-white for cozy canvas
+- **Text Primary**: `#03594D` - Deep teal for headings and emphasis
+- **Text Secondary**: `#4A6B65` - Muted teal for body text
 
-### Pastel Accent Colors
-- **Lavender**: `#d0cfe1` - Headers, active states, primary buttons
-- **Sage Green**: `#e3e6d0` - Success states, tags, secondary accents
-- **Warm Gray**: `#eceaea` - Section backgrounds, dividers, subtle borders
+### Supporting Colors
+- **Secondary Button**: `#FCCDDC` - Soft pink for secondary actions
+- **Surface**: `#FFFFFF` - Pure white for cards and inputs
+- **Border**: `#E8E6E0` - Subtle warm gray for dividers
+- **Error**: `#E85858` - Warm red for errors
 
 ### Usage Guidelines
-- Use lavender (`#d0cfe1`) for section headers and primary interactive elements
-- Use sage green (`#e3e6d0`) for success indicators, tags, and organic accents
-- Use warm gray (`#eceaea`) for subtle backgrounds and dividers
-- All text should use the dark brown (`#231212`) for consistency
-- White background (`#FFFFFF`) lets food photos and content pop
+- Use mint green (`#82EDA6`) for primary buttons and key interactive elements
+- Use sunny yellow (`#FFFF94`) sparingly for badges, highlights, and playful accents
+- Use deep teal (`#03594D`) for headings and important text
+- Cream background (`#F9F8F4`) creates warmth; white for cards/inputs
+- Pink (`#FCCDDC`) for secondary buttons and gentle emphasis
 
 ---
 
 ## Typography
 
 ### Font Family
-**DM Sans** - Modern, geometric sans-serif with clean lines (similar to Satoshi)
+**Archivo** - Clean, modern sans-serif with friendly character
 - Regular (400) - Body text, descriptions
 - Medium (500) - Labels, links, emphasis
 - SemiBold (600) - Subheadings, important text
@@ -67,38 +71,38 @@
 
 ### Cards
 - White background (`#FFFFFF`)
-- Subtle border using warm gray (`#eceaea`)
-- Minimal shadow (barely visible)
-- Border radius: 12-16px
+- Very subtle border using warm gray (`#E8E6E0`)
+- Soft rounded corners (16-20px)
 - Content padding: 16px
+- Minimal shadow for depth
 
 ### Buttons
-- **Primary**: Lavender background (`#d0cfe1`), dark text (`#231212`)
-- **Secondary**: White background, dark border, dark text
-- **Success/Action**: Sage green background (`#e3e6d0`), dark text
-- Height: 48px
-- Border radius: 12px
-- Font: DM Sans Medium
+- **Primary**: Mint green background (`#82EDA6`), teal text (`#03594D`)
+- **Secondary**: Soft pink background (`#FCCDDC`), teal text
+- **Outline**: Transparent with teal border and text
+- Height: 48-52px
+- Border radius: 100px (fully rounded/pill shape)
+- Font: Archivo Medium
 
 ### Section Headers
-- Background: Lavender (`#d0cfe1`) or Sage (`#e3e6d0`)
+- Background: Mint green (`#82EDA6`) or cream (`#F9F8F4`)
 - Padding: 12px 16px
-- Border radius: 8px
-- Font: DM Sans SemiBold
+- Border radius: 16px
+- Font: Archivo SemiBold
 
 ### Tags/Badges
-- Background: Sage green (`#e3e6d0`)
-- Text: Dark brown (`#231212`)
-- Padding: 4px 12px
-- Border radius: 16px (pill shape)
-- Font: DM Sans Regular, 12-14px
+- Background: Sunny yellow (`#FFFF94`) or mint green (`#82EDA6`)
+- Text: Deep teal (`#03594D`)
+- Padding: 6px 14px
+- Border radius: 100px (fully rounded/pill shape)
+- Font: Archivo Medium, 12-14px
 
 ### Input Fields
 - White background
-- Warm gray border (`#eceaea`)
-- Border radius: 12px
+- Warm gray border (`#E8E6E0`)
+- Border radius: 16px
 - Height: 52px
-- Placeholder: Muted brown (`#5C5252`)
+- Placeholder: Muted teal (`#4A6B65`)
 
 ---
 
@@ -107,33 +111,34 @@
 ### Recipe Cards
 - Image: Full width at top, 4:3 aspect ratio
 - Content: Below image with 16px padding
-- Title: DM Sans SemiBold, 18px
+- Title: Archivo SemiBold, 18px, deep teal
 - Meta row: Time, servings icons with values
-- Tags: Pill-shaped, sage green background
+- Tags: Pill-shaped, yellow or mint background
 
 ### Collection Screen
 - 2-column grid with 12px spacing
+- Cream background (`#F9F8F4`)
 - Pull-to-refresh enabled
-- Empty state: Centered illustration with helpful text
+- Empty state: Cheerful illustration with helpful text
 
 ### Add Recipe Screen
 - Platform toggle (Instagram/TikTok) at top
-- URL input with lavender Generate button
-- Tips section with sage green checkmarks
+- URL input with mint green Generate button
+- Tips section with friendly icons
 
 ### Recipe Detail Screen
 - Hero image (full width)
-- Quick stats row with lavender background
-- Ingredients section with sage green backgrounds for grouping
+- Quick stats row with mint green background
+- Ingredients section with subtle cards
 - Instructions with generous spacing
-- Floating "Start Cooking" button
+- Floating "Start Cooking" button (mint green, fully rounded)
 
 ### Cook Mode
 - High-contrast dark theme for kitchen visibility
 - Background: Near-black (`#0A0A0A`)
 - Text: White (`#FFFFFF`)
-- Active step: Lavender (`#d0cfe1`)
-- Completed: Sage (`#e3e6d0`)
+- Active step: Mint green (`#82EDA6`)
+- Completed: Sunny yellow (`#FFFF94`)
 - Extra large typography (26px+ body text)
 
 ---
@@ -154,18 +159,19 @@ Using 4px base unit:
 
 ## Visual Design
 
-- Icons: Feather icons from @expo/vector-icons
-- Minimal shadows: Only for floating elements
+- Icons: Feather icons from @expo/vector-icons in teal
+- Soft shadows: For cards and floating elements
 - All touchables: opacity 0.85 on press
-- Rounded corners: 12px inputs/buttons, 8-12px cards
+- Rounded corners: 16-20px for cards, 100px (full) for buttons/tags
 - Generous spacing: 32px between major sections
+- Organic, blob-like shapes for backgrounds when appropriate
 
 ---
 
 ## Design Principles
 
-1. **Let Food Photos Shine**: White backgrounds ensure vibrant food photography pops
-2. **Warm & Inviting**: Brown text and pastel accents create a cozy, cookbook feel
+1. **Joyful & Playful**: Colors and shapes should spark joy and make cooking fun
+2. **Fresh & Friendly**: Mint green evokes freshness; rounded shapes feel approachable
 3. **Clean & Organized**: Generous spacing, clear hierarchy
-4. **Consistent Pastel Usage**: Headers in lavender, success in sage, subtle in warm gray
-5. **Modern Typography**: DM Sans provides clean, contemporary readability
+4. **Let Food Photos Shine**: Subtle backgrounds ensure food photography pops
+5. **Consistent Color Usage**: Mint for primary actions, yellow for highlights, pink for secondary
