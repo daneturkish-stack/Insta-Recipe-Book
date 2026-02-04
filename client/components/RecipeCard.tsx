@@ -209,7 +209,8 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.md,
-    gap: Spacing.xs,
+    paddingBottom: Spacing.lg,
+    gap: Spacing.sm,
   },
   title: {
     fontWeight: "600",
@@ -235,8 +236,8 @@ const styles = StyleSheet.create({
   },
   tag: {
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
   },
   tagText: {
     fontWeight: "600",
