@@ -224,16 +224,26 @@ export default function RecipeDetailScreen() {
                   }}>
                     {recipe.confidence === 'high' ? 'High Accuracy' : recipe.confidence === 'medium' ? 'Medium Accuracy' : 'Low Accuracy'}
                   </ThemedText>
-                  {recipe.recipeSource?.name ? (
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
-                      from {recipe.recipeSource.name}
-                    </ThemedText>
+                  {recipe.recipeSource?.isVerified ? (
+                    <View style={[styles.verifiedBadge, { backgroundColor: theme.accent + "20" }]}>
+                      <Feather name="check-circle" size={10} color={theme.accent} />
+                      <ThemedText type="caption" style={{ color: theme.accent, fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
+                        Verified
+                      </ThemedText>
+                    </View>
                   ) : null}
                 </View>
-                {recipe.recipeSource?.note ? (
-                  <ThemedText type="caption" style={[styles.sourceNote, { color: theme.textSecondary }]}>
-                    {recipe.recipeSource.note}
-                  </ThemedText>
+                {recipe.recipeSource?.name ? (
+                  <View style={styles.sourceRow}>
+                    <Feather 
+                      name={recipe.recipeSource.isVerified ? "link" : "alert-circle"} 
+                      size={12} 
+                      color={recipe.recipeSource.isVerified ? theme.textSecondary : theme.primary} 
+                    />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }}>
+                      {recipe.recipeSource.note || `from ${recipe.recipeSource.name}`}
+                    </ThemedText>
+                  </View>
                 ) : null}
                 {recipe.authoritativeReference ? (
                   <View style={styles.authorityRow}>
@@ -737,5 +747,18 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: "rgba(0,0,0,0.05)",
+  },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: Spacing.sm,
+  },
+  sourceRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: Spacing.xs,
   },
 });
