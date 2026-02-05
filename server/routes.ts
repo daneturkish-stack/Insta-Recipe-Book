@@ -1738,6 +1738,68 @@ Remember: You're helping real home cooks feel confident in the kitchen!`;
     }
   });
 
+  // Parse voice input for pantry items
+  app.post("/api/pantry/parse-voice", async (req: Request, res: Response) => {
+    try {
+      const { transcript } = req.body;
+
+      if (!transcript) {
+        return res.status(400).json({ error: "Transcript is required" });
+      }
+
+      console.log(`[Pantry Voice] Parsing: "${transcript}"`);
+
+      const systemPrompt = `You are a pantry assistant. Parse the user's spoken input and extract food ingredients they want to add to their pantry.
+
+CATEGORIES (use these exact values):
+- produce: Fresh fruits, vegetables, herbs
+- protein: Meat, poultry, fish, tofu, legumes
+- dairy: Milk, cheese, yogurt, eggs, butter
+- pantry: Rice, pasta, flour, canned goods, oils
+- spices: Herbs, spices, seasonings
+- frozen: Frozen foods
+- beverages: Drinks
+- other: Anything else
+
+Return ONLY a JSON object:
+{
+  "items": [
+    {"name": "Chicken", "category": "protein"},
+    {"name": "Broccoli", "category": "produce"}
+  ]
+}
+
+Rules:
+- Extract individual ingredients from natural speech
+- Normalize names (e.g., "some eggs" -> "Eggs", "bunch of carrots" -> "Carrots")
+- Capitalize ingredient names properly
+- If unclear, make reasonable assumptions about what they meant
+- Return empty items array if no valid ingredients found`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: transcript },
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 512,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.json({ items: [] });
+      }
+
+      const result = JSON.parse(content);
+      console.log(`[Pantry Voice] Parsed ${result.items?.length || 0} items`);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error parsing pantry voice:", error);
+      res.status(500).json({ error: "Failed to parse voice input" });
+    }
+  });
+
   // Categorize shopping list ingredients by aisle
   app.post("/api/shopping-list/categorize", async (req: Request, res: Response) => {
     try {

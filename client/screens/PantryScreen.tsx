@@ -1,18 +1,30 @@
-import React, { useState, useMemo } from "react";
-import { StyleSheet, View, FlatList, Pressable, TextInput, Alert } from "react-native";
+import React, { useState, useMemo, useEffect } from "react";
+import { StyleSheet, View, FlatList, Pressable, TextInput, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeIn, Layout } from "react-native-reanimated";
+import { Audio } from "expo-av";
+import { File } from "expo-file-system";
+import Animated, { 
+  FadeInDown, 
+  FadeIn, 
+  Layout, 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSequence, 
+  withTiming,
+  withSpring 
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { usePantry, useAddPantryItem, useRemovePantryItem, useClearPantry, useRecipes, usePantryMatch } from "@/hooks/useRecipes";
+import { getApiUrl } from "@/lib/query-client";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { PANTRY_CATEGORIES, type PantryItem } from "@/types/recipe";
 
@@ -59,6 +71,33 @@ export default function PantryScreen() {
 
   const [newIngredient, setNewIngredient] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+
+  const micScale = useSharedValue(1);
+  
+  const micAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micScale.value }],
+  }));
+
+  useEffect(() => {
+    if (isRecording) {
+      micScale.value = withSequence(
+        withTiming(1.3, { duration: 300 }),
+        withTiming(1.1, { duration: 300 })
+      );
+      const interval = setInterval(() => {
+        micScale.value = withSequence(
+          withTiming(1.3, { duration: 300 }),
+          withTiming(1.1, { duration: 300 })
+        );
+      }, 600);
+      return () => clearInterval(interval);
+    } else {
+      micScale.value = withSpring(1);
+    }
+  }, [isRecording]);
 
   const pantryNames = pantryItems.map((p) => p.name.toLowerCase());
 
@@ -86,6 +125,103 @@ export default function PantryScreen() {
   const handleRemoveItem = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await removeItem.mutateAsync(id);
+  };
+
+  const startVoiceRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Microphone access needed", "Please enable microphone access to use voice input.");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(newRecording);
+      setIsRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      Alert.alert("Error", "Could not start voice recording. Please try again.");
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (!recording) return;
+
+    setIsRecording(false);
+    setIsProcessingVoice(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (!uri) {
+        throw new Error("No recording URI");
+      }
+
+      const audioFile = new File(uri);
+      const base64Audio = await audioFile.base64();
+
+      const transcribeResponse = await fetch(
+        new URL("/api/remy/transcribe", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: base64Audio }),
+        }
+      );
+
+      const transcribeData = await transcribeResponse.json();
+      
+      if (transcribeData.error || !transcribeData.text) {
+        throw new Error(transcribeData.error || "No transcription received");
+      }
+
+      const parseResponse = await fetch(
+        new URL("/api/pantry/parse-voice", getApiUrl()).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: transcribeData.text }),
+        }
+      );
+
+      const parseData = await parseResponse.json();
+
+      if (parseData.items && parseData.items.length > 0) {
+        let addedCount = 0;
+        for (const item of parseData.items) {
+          if (!pantryNames.includes(item.name.toLowerCase())) {
+            await addItem.mutateAsync({ name: item.name, category: item.category });
+            addedCount++;
+          }
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (addedCount > 0) {
+          Alert.alert("Added!", `Added ${addedCount} ingredient${addedCount > 1 ? "s" : ""} to your pantry.`);
+        } else {
+          Alert.alert("Already have these", "All those ingredients are already in your pantry!");
+        }
+      } else {
+        Alert.alert("Hmm...", "I couldn't identify any ingredients. Try again, and speak clearly about what's in your fridge or cupboard!");
+      }
+    } catch (error) {
+      console.error("Voice processing failed:", error);
+      Alert.alert("Oops!", "Could not process your voice. Please try again or type the ingredients.");
+    } finally {
+      setIsProcessingVoice(false);
+    }
   };
 
   const handleFindRecipes = async () => {
@@ -164,26 +300,56 @@ export default function PantryScreen() {
           <>
             {/* Search Input */}
             <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-              <View style={[styles.inputContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-                <Feather name="plus" size={20} color={theme.textSecondary} />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Add ingredient..."
-                  placeholderTextColor={theme.textSecondary}
-                  value={newIngredient}
-                  onChangeText={(text) => {
-                    setNewIngredient(text);
-                    setShowSuggestions(true);
-                  }}
-                  onSubmitEditing={() => handleAddIngredient(newIngredient)}
-                  returnKeyType="done"
-                />
-                {newIngredient.length > 0 ? (
-                  <Pressable onPress={() => handleAddIngredient(newIngredient)}>
-                    <Feather name="check" size={20} color={theme.primary} />
+              <View style={styles.inputRow}>
+                <View style={[styles.inputContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border, flex: 1 }]}>
+                  <Feather name="plus" size={20} color={theme.textSecondary} />
+                  <TextInput
+                    style={[styles.input, { color: theme.text }]}
+                    placeholder="Add ingredient..."
+                    placeholderTextColor={theme.textSecondary}
+                    value={newIngredient}
+                    onChangeText={(text) => {
+                      setNewIngredient(text);
+                      setShowSuggestions(true);
+                    }}
+                    onSubmitEditing={() => handleAddIngredient(newIngredient)}
+                    returnKeyType="done"
+                  />
+                  {newIngredient.length > 0 ? (
+                    <Pressable onPress={() => handleAddIngredient(newIngredient)}>
+                      <Feather name="check" size={20} color={theme.primary} />
+                    </Pressable>
+                  ) : null}
+                </View>
+                
+                <Animated.View style={micAnimatedStyle}>
+                  <Pressable
+                    onPress={isRecording ? stopVoiceRecording : startVoiceRecording}
+                    style={[
+                      styles.micButton,
+                      { backgroundColor: isRecording ? theme.error : theme.primary }
+                    ]}
+                    disabled={isProcessingVoice}
+                    testID="pantry-voice-button"
+                  >
+                    {isProcessingVoice ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <Feather 
+                        name={isRecording ? "mic-off" : "mic"} 
+                        size={22} 
+                        color="#FFF" 
+                      />
+                    )}
                   </Pressable>
-                ) : null}
+                </Animated.View>
               </View>
+              
+              {isRecording ? (
+                <ThemedText type="caption" style={[styles.recordingHint, { color: theme.error }]}>
+                  Listening... Tell me what's in your fridge!
+                </ThemedText>
+              ) : null}
 
               {showSuggestions && filteredSuggestions.length > 0 ? (
                 <View style={[styles.suggestions, { backgroundColor: theme.backgroundDefault }]}>
@@ -283,6 +449,12 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.lg,
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -290,7 +462,18 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    marginBottom: Spacing.sm,
+  },
+  micButton: {
+    width: 52,
+    height: 52,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordingHint: {
+    textAlign: "center",
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   input: {
     flex: 1,
