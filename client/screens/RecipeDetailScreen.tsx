@@ -544,14 +544,12 @@ export default function RecipeDetailScreen() {
               <Feather name="external-link" size={16} color={theme.textSecondary} />
             </Pressable>
 
+            {/* Subtle delete icon at bottom */}
             <Pressable
               onPress={handleDelete}
-              style={[styles.deleteButton, { borderColor: theme.error }]}
+              style={styles.deleteIconButton}
             >
-              <Feather name="trash-2" size={18} color={theme.error} />
-              <ThemedText type="small" style={[styles.deleteText, { color: theme.error }]}>
-                Delete Recipe
-              </ThemedText>
+              <Feather name="trash-2" size={18} color={theme.textSecondary} />
             </Pressable>
           </Animated.View>
         </View>
@@ -875,13 +873,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  deleteButton: {
-    flexDirection: "row",
+  deleteIconButton: {
     alignItems: "center",
     justifyContent: "center",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.card,
-    borderWidth: 1,
+    paddingVertical: Spacing["2xl"],
+    marginTop: Spacing.lg,
   },
   deleteText: {
     marginLeft: Spacing.sm,
