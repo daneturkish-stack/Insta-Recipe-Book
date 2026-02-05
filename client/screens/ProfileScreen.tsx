@@ -101,7 +101,7 @@ export default function ProfileScreen() {
         <ThemedText
           type="small"
           style={{
-            color: isSelected ? "#FFFFFF" : theme.textPrimary,
+            color: isSelected ? "#FFFFFF" : theme.text,
             fontWeight: isSelected ? "600" : "400",
           }}
         >
@@ -146,7 +146,7 @@ export default function ProfileScreen() {
         <ThemedText
           type="small"
           style={{
-            color: isSelected ? "#FFFFFF" : theme.textPrimary,
+            color: isSelected ? "#FFFFFF" : theme.text,
             fontWeight: isSelected ? "600" : "400",
           }}
         >

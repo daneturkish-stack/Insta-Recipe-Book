@@ -14,7 +14,8 @@ Key capabilities:
 - Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
 - Cook Mode for step-by-step guided cooking with hands-free voice reading
 - Remi AI assistant for food and cooking conversations, recipe help, and recommendations
-- Text-to-speech for Remi responses with auto-speak toggle
+- Text-to-speech for Remi responses with auto-speak toggle and male/female voice selection
+- Dietary preferences (Vegetarian, Vegan, Gluten-Free, etc.) that Remi respects in suggestions
 - Native gesture controls for intuitive cooking experience
 - Cross-platform support (iOS, Android, Web)
 
