@@ -11,6 +11,12 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipes } from "@/hooks/useRecipes";
+import {
+  usePreferences,
+  ALL_DIETARY_OPTIONS,
+  DietaryPreference,
+  RemiVoice,
+} from "@/hooks/usePreferences";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 const avatarImage = require("../../assets/images/avatar-preset.png");
@@ -21,6 +27,13 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { data: recipes } = useRecipes();
+  const {
+    dietaryPreferences,
+    toggleDietaryPreference,
+    remiVoice,
+    setRemiVoice,
+    loaded,
+  } = usePreferences();
 
   const recipeCount = recipes?.length || 0;
 
@@ -67,6 +80,82 @@ export default function ProfileScreen() {
     </Pressable>
   );
 
+  const DietaryChip = ({ label }: { label: DietaryPreference }) => {
+    const isSelected = dietaryPreferences.includes(label);
+    return (
+      <Pressable
+        testID={`chip-dietary-${label}`}
+        onPress={() => {
+          Haptics.selectionAsync();
+          toggleDietaryPreference(label);
+        }}
+        style={({ pressed }) => [
+          styles.chip,
+          {
+            backgroundColor: isSelected ? theme.primary : theme.backgroundDefault,
+            borderColor: isSelected ? theme.primary : theme.border,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <ThemedText
+          type="small"
+          style={{
+            color: isSelected ? "#FFFFFF" : theme.textPrimary,
+            fontWeight: isSelected ? "600" : "400",
+          }}
+        >
+          {label}
+        </ThemedText>
+      </Pressable>
+    );
+  };
+
+  const VoiceOption = ({
+    voiceValue,
+    label,
+    icon,
+  }: {
+    voiceValue: RemiVoice;
+    label: string;
+    icon: keyof typeof Feather.glyphMap;
+  }) => {
+    const isSelected = remiVoice === voiceValue;
+    return (
+      <Pressable
+        testID={`button-voice-${voiceValue}`}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setRemiVoice(voiceValue);
+        }}
+        style={({ pressed }) => [
+          styles.voiceOption,
+          {
+            backgroundColor: isSelected ? theme.primary : theme.backgroundDefault,
+            borderColor: isSelected ? theme.primary : theme.border,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <Feather
+          name={icon}
+          size={20}
+          color={isSelected ? "#FFFFFF" : theme.textSecondary}
+          style={{ marginBottom: Spacing.xs }}
+        />
+        <ThemedText
+          type="small"
+          style={{
+            color: isSelected ? "#FFFFFF" : theme.textPrimary,
+            fontWeight: isSelected ? "600" : "400",
+          }}
+        >
+          {label}
+        </ThemedText>
+      </Pressable>
+    );
+  };
+
   return (
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -99,6 +188,39 @@ export default function ProfileScreen() {
               Recipes
             </ThemedText>
           </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          Dietary Preferences
+        </ThemedText>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary, marginBottom: Spacing.md, paddingLeft: Spacing.xs }}
+        >
+          Remi will tailor suggestions to match your diet
+        </ThemedText>
+        <View style={styles.chipGrid}>
+          {ALL_DIETARY_OPTIONS.map((option) => (
+            <DietaryChip key={option} label={option} />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          Remi's Voice
+        </ThemedText>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary, marginBottom: Spacing.md, paddingLeft: Spacing.xs }}
+        >
+          Choose how Remi sounds when speaking
+        </ThemedText>
+        <View style={styles.voiceRow}>
+          <VoiceOption voiceValue="female" label="Female" icon="user" />
+          <VoiceOption voiceValue="male" label="Male" icon="user" />
         </View>
       </View>
 
@@ -188,6 +310,28 @@ const styles = StyleSheet.create({
   settingsRight: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  voiceRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  voiceOption: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
   },
   footer: {
     marginTop: Spacing["2xl"],
