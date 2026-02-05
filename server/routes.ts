@@ -1719,17 +1719,26 @@ Remember: You're helping real home cooks feel confident in the kitchen!`;
         return res.status(400).json({ error: "Audio data is required" });
       }
 
+      console.log("[Transcribe] Received audio data, length:", audioData.length);
+
       // Convert base64 audio to buffer
       const audioBuffer = Buffer.from(audioData, "base64");
+      console.log("[Transcribe] Audio buffer size:", audioBuffer.length, "bytes");
       
       // Detect format and convert if needed
-      const { ensureCompatibleFormat, speechToText } = await import("./replit_integrations/audio/client");
+      const { ensureCompatibleFormat, speechToText, detectAudioFormat } = await import("./replit_integrations/audio/client");
+      const detectedFormat = detectAudioFormat(audioBuffer);
+      console.log("[Transcribe] Detected format:", detectedFormat);
+      
       const { buffer: compatibleBuffer, format } = await ensureCompatibleFormat(audioBuffer);
+      console.log("[Transcribe] Converted to format:", format, "size:", compatibleBuffer.length);
       
       // Use the proper transcription function
       const text = await speechToText(compatibleBuffer, format);
+      console.log("[Transcribe] Result:", text ? `"${text}"` : "(empty)");
 
-      res.json({ text });
+      // Return empty text as valid - the client will handle it
+      res.json({ text: text || "" });
     } catch (error: any) {
       console.error("Error transcribing voice:", error);
       res.status(500).json({
