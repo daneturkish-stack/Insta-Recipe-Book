@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import PantryScreen from "@/screens/PantryScreen";
 import PantryResultsScreen from "@/screens/PantryResultsScreen";
 import RecipeDetailScreen from "@/screens/RecipeDetailScreen";
-import { HeaderTitle } from "@/components/HeaderTitle";
+import { HeaderTitle, ScreenHeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type PantryStackParamList = {
@@ -31,14 +31,14 @@ export default function PantryStackNavigator() {
         name="PantryResults"
         component={PantryResultsScreen}
         options={{
-          headerTitle: "Recipes You Can Make",
+          headerTitle: () => <ScreenHeaderTitle title="Recipes You Can Make" />,
         }}
       />
       <Stack.Screen
         name="RecipeDetail"
         component={RecipeDetailScreen}
         options={{
-          headerTitle: "Recipe",
+          headerTitle: () => <ScreenHeaderTitle title="Recipe" />,
           headerTransparent: false,
         }}
       />

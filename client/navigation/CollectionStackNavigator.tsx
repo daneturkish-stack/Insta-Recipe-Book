@@ -9,7 +9,7 @@ import CollectionScreen from "../screens/CollectionScreen";
 import RecipeDetailScreen from "../screens/RecipeDetailScreen";
 import CreateShoppingListScreen from "../screens/CreateShoppingListScreen";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
-import { HeaderTitle } from "@/components/HeaderTitle";
+import { HeaderTitle, ScreenHeaderTitle } from "@/components/HeaderTitle";
 import { ThemedText } from "@/components/ThemedText";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useShoppingList } from "@/hooks/useRecipes";
@@ -79,7 +79,7 @@ export default function CollectionStackNavigator() {
         name="RecipeDetail"
         component={RecipeDetailScreen}
         options={{
-          headerTitle: "Recipe",
+          headerTitle: () => <ScreenHeaderTitle title="Recipe" />,
           headerTransparent: false,
         }}
       />
@@ -87,7 +87,7 @@ export default function CollectionStackNavigator() {
         name="CreateShoppingList"
         component={CreateShoppingListScreen}
         options={{
-          headerTitle: "Create Shopping List",
+          headerTitle: () => <ScreenHeaderTitle title="Create Shopping List" />,
           headerTransparent: false,
           presentation: "modal",
         }}
@@ -96,7 +96,7 @@ export default function CollectionStackNavigator() {
         name="ShoppingList"
         component={ShoppingListScreen}
         options={{
-          headerTitle: "Shopping List",
+          headerTitle: () => <ScreenHeaderTitle title="Shopping List" />,
           headerTransparent: false,
         }}
       />
