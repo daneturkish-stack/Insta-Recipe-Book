@@ -24,7 +24,7 @@ interface AisleSection {
 
 export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
   
   const { data: shoppingList, isLoading, refetch, isRefetching } = useShoppingList();
@@ -187,7 +187,7 @@ export default function ShoppingListScreen() {
               </ThemedText>
             </Pressable>
           </View>
-          <View style={styles.progressBar}>
+          <View style={[styles.progressBar, { backgroundColor: isDark ? theme.backgroundSecondary : "#E5E5E5" }]}>
             <Animated.View
               style={[
                 styles.progressFill,
@@ -259,7 +259,6 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 6,
-    backgroundColor: "#E5E5E5",
     borderRadius: 3,
     overflow: "hidden",
   },

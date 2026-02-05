@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useCallback } from "react";
-import { StyleSheet, Platform, Alert } from "react-native";
-import { NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
+import React, { useEffect, useRef, useCallback, useMemo } from "react";
+import { StyleSheet, Platform, Alert, useColorScheme } from "react-native";
+import { NavigationContainer, NavigationContainerRef, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -26,6 +26,7 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator, { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { KitchColors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -75,7 +76,35 @@ function extractUrlFromText(text: string): string | null {
 
 export default function App() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
-  
+  const colorScheme = useColorScheme();
+
+  const navigationTheme = useMemo(() => {
+    if (colorScheme === "dark") {
+      return {
+        ...DarkTheme,
+        colors: {
+          ...DarkTheme.colors,
+          primary: KitchColors.primary,
+          background: KitchColors.darkBackground,
+          card: KitchColors.darkSurface,
+          text: KitchColors.darkTextPrimary,
+          border: KitchColors.darkBorder,
+        },
+      };
+    }
+    return {
+      ...DefaultTheme,
+      colors: {
+        ...DefaultTheme.colors,
+        primary: KitchColors.primary,
+        background: KitchColors.background,
+        card: KitchColors.surface,
+        text: KitchColors.textPrimary,
+        border: KitchColors.border,
+      },
+    };
+  }, [colorScheme]);
+
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -141,7 +170,7 @@ export default function App() {
         <SafeAreaProvider>
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
-              <NavigationContainer ref={navigationRef} linking={linking}>
+              <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
                 <RootStackNavigator />
               </NavigationContainer>
               <StatusBar style="auto" />
