@@ -480,11 +480,11 @@ export default function RecipeDetailScreen() {
               {/* View Original Button */}
               <Pressable
                 onPress={handleOpenSource}
-                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                style={styles.iconButton}
                 testID="button-view-original"
               >
-                <View style={[styles.iconCircle, { backgroundColor: theme.text }]}>
-                  <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={18} color={theme.backgroundDefault} />
+                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
+                  <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={20} color={theme.text} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                   Original
@@ -495,11 +495,11 @@ export default function RecipeDetailScreen() {
               {recipe.creatorRecipeUrl ? (
                 <Pressable
                   onPress={handleOpenCreatorRecipe}
-                  style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                  style={styles.iconButton}
                   testID="button-creator-recipe"
                 >
-                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
-                    <Feather name="book-open" size={18} color={theme.text} />
+                  <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
+                    <Feather name="book-open" size={20} color={theme.text} />
                   </View>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                     Recipe
@@ -508,11 +508,11 @@ export default function RecipeDetailScreen() {
               ) : (
                 <Pressable
                   onPress={handleSearchFullRecipe}
-                  style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                  style={styles.iconButton}
                   testID="button-search-recipe"
                 >
-                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
-                    <Feather name="search" size={18} color={theme.text} />
+                  <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
+                    <Feather name="search" size={20} color={theme.text} />
                   </View>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                     Find
@@ -523,11 +523,11 @@ export default function RecipeDetailScreen() {
               {/* Report Wrong Link Button */}
               <Pressable
                 onPress={handleWrongLink}
-                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                style={styles.iconButton}
                 testID="button-wrong-link"
               >
-                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
-                  <Feather name="alert-circle" size={18} color={theme.text} />
+                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
+                  <Feather name="alert-circle" size={20} color={theme.text} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                   Report
@@ -537,11 +537,11 @@ export default function RecipeDetailScreen() {
               {/* Delete Button */}
               <Pressable
                 onPress={handleDelete}
-                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                style={styles.iconButton}
                 testID="button-delete-recipe"
               >
-                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textSecondary, backgroundColor: 'transparent' }]}>
-                  <Feather name="trash-2" size={18} color={theme.textSecondary} />
+                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
+                  <Feather name="trash-2" size={20} color={theme.textSecondary} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                   Delete
@@ -930,6 +930,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  iconCircleShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modalOverlay: {
     flex: 1,
