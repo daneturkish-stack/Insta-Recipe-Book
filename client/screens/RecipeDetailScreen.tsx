@@ -483,7 +483,7 @@ export default function RecipeDetailScreen() {
                 style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                 testID="button-view-original"
               >
-                <View style={[styles.iconCircle, { backgroundColor: theme.textPrimary }]}>
+                <View style={[styles.iconCircle, { backgroundColor: theme.text }]}>
                   <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={18} color={theme.backgroundDefault} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
@@ -498,8 +498,8 @@ export default function RecipeDetailScreen() {
                   style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                   testID="button-creator-recipe"
                 >
-                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
-                    <Feather name="book-open" size={18} color={theme.textPrimary} />
+                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
+                    <Feather name="book-open" size={18} color={theme.text} />
                   </View>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                     Recipe
@@ -511,8 +511,8 @@ export default function RecipeDetailScreen() {
                   style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                   testID="button-search-recipe"
                 >
-                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
-                    <Feather name="search" size={18} color={theme.textPrimary} />
+                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
+                    <Feather name="search" size={18} color={theme.text} />
                   </View>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                     Find
@@ -526,8 +526,8 @@ export default function RecipeDetailScreen() {
                 style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                 testID="button-wrong-link"
               >
-                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
-                  <Feather name="alert-circle" size={18} color={theme.textPrimary} />
+                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.text, backgroundColor: 'transparent' }]}>
+                  <Feather name="alert-circle" size={18} color={theme.text} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                   Report
