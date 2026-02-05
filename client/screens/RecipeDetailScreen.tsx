@@ -58,7 +58,10 @@ export default function RecipeDetailScreen() {
   const handleSearchFullRecipe = async () => {
     if (recipe) {
       Haptics.selectionAsync();
-      const searchQuery = encodeURIComponent(`${recipe.title} ${recipe.creatorHandle || ''} recipe`);
+      // Use the pre-built manual search query if available, otherwise construct one
+      const searchQuery = recipe.manualSearchQuery 
+        ? encodeURIComponent(recipe.manualSearchQuery)
+        : encodeURIComponent(`${recipe.creatorHandle || ''} ${recipe.title} recipe`);
       await WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${searchQuery}`);
     }
   };
@@ -408,18 +411,24 @@ export default function RecipeDetailScreen() {
                 <Feather name="external-link" size={16} color={theme.primary} />
               </Pressable>
             ) : (
-              <Pressable
-                onPress={handleSearchFullRecipe}
-                style={[styles.searchRecipeButton, { backgroundColor: theme.accent + "20", borderColor: theme.accent + "40" }]}
-              >
-                <View style={styles.sourceContent}>
-                  <Feather name="search" size={18} color={theme.accent} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.accent, fontWeight: "600" }}>
-                    Recipe incomplete? Search the web
+              <View style={[styles.noRecipeLinkContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+                <View style={styles.noRecipeLinkHeader}>
+                  <Feather name="info" size={16} color={theme.textSecondary} />
+                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.textSecondary, flex: 1 }}>
+                    I couldn't find this exact recipe online yet. It may not be published.
                   </ThemedText>
                 </View>
-                <Feather name="external-link" size={16} color={theme.accent} />
-              </Pressable>
+                <Pressable
+                  onPress={handleSearchFullRecipe}
+                  style={[styles.manualSearchButton, { backgroundColor: theme.primary }]}
+                  testID="button-search-recipe"
+                >
+                  <Feather name="search" size={16} color="#FFF" />
+                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: "#FFF", fontWeight: "600" }}>
+                    Search for Recipe
+                  </ThemedText>
+                </Pressable>
+              </View>
             )}
           </Animated.View>
 
@@ -706,6 +715,25 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     marginBottom: Spacing.lg,
+  },
+  noRecipeLinkContainer: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  noRecipeLinkHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: Spacing.md,
+  },
+  manualSearchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
   },
   creatorRecipeButton: {
     flexDirection: "row",

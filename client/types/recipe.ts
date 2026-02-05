@@ -42,6 +42,7 @@ export interface Recipe {
   creatorName?: string;
   creatorAvatar?: string; // Profile picture URL
   creatorRecipeUrl?: string; // Link to full recipe on creator's website/blog
+  manualSearchQuery?: string; // Search query if no recipe URL found - user can search manually
   // Transparency & verification
   originalTranscript?: string; // Raw extracted text from post for user verification
   isEstimated?: boolean; // True if AI had to infer details not explicitly stated

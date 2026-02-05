@@ -548,6 +548,34 @@ async function performDuckDuckGoSearch(query: string): Promise<Array<{url: strin
   return results;
 }
 
+function validateRecipeMatch(candidateTitle: string, candidateSnippet: string, targetRecipeName: string): boolean {
+  const normalizedTarget = targetRecipeName.toLowerCase().trim();
+  const normalizedTitle = candidateTitle.toLowerCase();
+  const normalizedSnippet = candidateSnippet.toLowerCase();
+  
+  // Extract key words from target recipe name (ignore common words)
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'with', 'in', 'on', 'for', 'to', 'of', 'recipe', 'easy', 'best', 'homemade', 'simple', 'quick'];
+  const targetWords = normalizedTarget.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+  
+  if (targetWords.length === 0) return true; // No meaningful words to match
+  
+  // Check how many key words appear in title or snippet
+  const combinedText = `${normalizedTitle} ${normalizedSnippet}`;
+  const matchedWords = targetWords.filter(word => combinedText.includes(word));
+  const matchRatio = matchedWords.length / targetWords.length;
+  
+  // Require at least 70% of key words to match
+  const isMatch = matchRatio >= 0.7;
+  
+  if (!isMatch) {
+    console.log(`Recipe match validation failed: target="${targetRecipeName}", matched ${matchedWords.length}/${targetWords.length} words (${(matchRatio * 100).toFixed(0)}%)`);
+    console.log(`  Target words: ${targetWords.join(', ')}`);
+    console.log(`  Matched: ${matchedWords.join(', ')}`);
+  }
+  
+  return isMatch;
+}
+
 async function searchForCreatorRecipe(recipeName: string, creatorHandle: string | null): Promise<WebSearchResult | null> {
   try {
     const creatorName = creatorHandle ? creatorHandle.replace('@', '').replace(/[_.-]/g, ' ') : '';
@@ -759,8 +787,18 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       }
     }
     
-    // Try to verify top candidates
+    // Try to verify top candidates - now also validate recipe name match
     for (const candidate of allCandidates.slice(0, 5)) {
+      // First validate that the found result actually matches our target recipe
+      const recipeMatches = hasValidRecipeName 
+        ? validateRecipeMatch(candidate.title, candidate.snippet, recipeName)
+        : true; // If no valid recipe name, skip this validation
+      
+      if (!recipeMatches) {
+        console.log(`Skipping candidate ${candidate.url} - recipe name mismatch`);
+        continue;
+      }
+      
       const verification = creatorHandle 
         ? await verifyCreatorWebsite(candidate.url, creatorHandle)
         : { isVerified: false, method: 'unverified' as const };
@@ -779,22 +817,28 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       }
     }
     
-    // Return best unverified candidate if available
-    if (allCandidates.length > 0) {
-      const bestCandidate = allCandidates[0];
-      const domain = extractDomain(bestCandidate.url);
-      console.log(`No verified match found, returning best unverified: ${bestCandidate.url}`);
-      return {
-        url: bestCandidate.url,
-        title: bestCandidate.title,
-        snippet: bestCandidate.snippet,
-        isVerified: false,
-        verificationMethod: 'unverified',
-        domainName: domain,
-      };
+    // Return best unverified candidate if available AND it matches the recipe name
+    for (const candidate of allCandidates) {
+      const recipeMatches = hasValidRecipeName 
+        ? validateRecipeMatch(candidate.title, candidate.snippet, recipeName)
+        : true;
+      
+      if (recipeMatches) {
+        const domain = extractDomain(candidate.url);
+        console.log(`No verified match found, returning best unverified that matches recipe: ${candidate.url}`);
+        return {
+          url: candidate.url,
+          title: candidate.title,
+          snippet: candidate.snippet,
+          isVerified: false,
+          verificationMethod: 'unverified',
+          domainName: domain,
+        };
+      }
     }
     
-    console.log('No suitable recipe page found in any search');
+    // No matching recipe found - all candidates were for different recipes
+    console.log('No suitable recipe page found - candidates existed but none matched the specific recipe name');
     return null;
   } catch (error) {
     console.error("Error searching for recipe:", error);
@@ -1287,6 +1331,10 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         creatorName: recipeData.creatorName || null,
         creatorAvatar: pageData.profileImageUrl || null,
         creatorRecipeUrl,
+        // If no recipe URL found, provide a manual search query for the user
+        manualSearchQuery: !creatorRecipeUrl 
+          ? `"${recipeData.creatorHandle || creatorHandle || ''}" "${recipeData.title}" recipe`.trim()
+          : null,
         ingredients: recipeData.ingredients || [],
         instructions: recipeData.instructions || [],
         originalTranscript: videoTranscript || null,
