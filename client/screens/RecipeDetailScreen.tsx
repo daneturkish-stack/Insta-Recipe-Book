@@ -475,82 +475,79 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Creator's Full Recipe Link */}
-            {recipe.creatorRecipeUrl ? (
-              <View>
+            {/* Action Buttons Row */}
+            <View style={styles.actionButtonsRow}>
+              {/* View Original Button */}
+              <Pressable
+                onPress={handleOpenSource}
+                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                testID="button-view-original"
+              >
+                <View style={[styles.iconCircle, { backgroundColor: theme.textPrimary }]}>
+                  <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={18} color={theme.backgroundDefault} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                  Original
+                </ThemedText>
+              </Pressable>
+
+              {/* View Full Recipe Button */}
+              {recipe.creatorRecipeUrl ? (
                 <Pressable
                   onPress={handleOpenCreatorRecipe}
-                  style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "10", borderColor: theme.primary + "30" }]}
+                  style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                   testID="button-creator-recipe"
                 >
-                  <View style={styles.sourceContent}>
-                    <Feather name="book-open" size={18} color={theme.primary} />
-                    <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                      <ThemedText type="bodyMedium" style={{ color: theme.primary }}>
-                        View Full Recipe
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
-                        {recipe.creatorRecipeUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                      </ThemedText>
-                    </View>
+                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
+                    <Feather name="book-open" size={18} color={theme.textPrimary} />
                   </View>
-                  <Feather name="external-link" size={16} color={theme.primary} />
-                </Pressable>
-                <Pressable
-                  onPress={handleWrongLink}
-                  style={styles.wrongLinkButton}
-                  testID="button-wrong-link"
-                >
-                  <Feather name="alert-circle" size={14} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ marginLeft: Spacing.xs, color: theme.textSecondary }}>
-                    Wrong link?
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                    Recipe
                   </ThemedText>
                 </Pressable>
-              </View>
-            ) : (
-              <View style={[styles.noRecipeLinkContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-                <View style={styles.noRecipeLinkHeader}>
-                  <Feather name="info" size={16} color={theme.textSecondary} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.textSecondary, flex: 1 }}>
-                    I couldn't find this exact recipe online yet.
-                  </ThemedText>
-                </View>
+              ) : (
                 <Pressable
                   onPress={handleSearchFullRecipe}
-                  style={[styles.manualSearchButton, { backgroundColor: theme.primary }]}
+                  style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
                   testID="button-search-recipe"
                 >
-                  <Feather name="search" size={16} color="#FFF" />
-                  <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: "#FFF" }}>
-                    Search for Recipe
+                  <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
+                    <Feather name="search" size={18} color={theme.textPrimary} />
+                  </View>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                    Find
                   </ThemedText>
                 </Pressable>
-              </View>
-            )}
-          </Animated.View>
+              )}
 
-          {/* Source & Delete */}
-          <Animated.View entering={FadeInDown.delay(500).duration(400)}>
-            <Pressable
-              onPress={handleOpenSource}
-              style={[styles.sourceButton, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}
-            >
-              <View style={styles.sourceContent}>
-                <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={20} color={theme.primary} />
-                <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
-                  View original on {recipe.platform === "tiktok" ? "TikTok" : "Instagram"}
+              {/* Report Wrong Link Button */}
+              <Pressable
+                onPress={handleWrongLink}
+                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                testID="button-wrong-link"
+              >
+                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textPrimary, backgroundColor: 'transparent' }]}>
+                  <Feather name="alert-circle" size={18} color={theme.textPrimary} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                  Report
                 </ThemedText>
-              </View>
-              <Feather name="external-link" size={16} color={theme.textSecondary} />
-            </Pressable>
+              </Pressable>
 
-            {/* Subtle delete icon at bottom */}
-            <Pressable
-              onPress={handleDelete}
-              style={styles.deleteIconButton}
-            >
-              <Feather name="trash-2" size={18} color={theme.textSecondary} />
-            </Pressable>
+              {/* Delete Button */}
+              <Pressable
+                onPress={handleDelete}
+                style={[styles.iconButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                testID="button-delete-recipe"
+              >
+                <View style={[styles.iconCircle, { borderWidth: 1.5, borderColor: theme.textSecondary, backgroundColor: 'transparent' }]}>
+                  <Feather name="trash-2" size={18} color={theme.textSecondary} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                  Delete
+                </ThemedText>
+              </Pressable>
+            </View>
           </Animated.View>
         </View>
       </ScrollView>
@@ -861,28 +858,6 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 28,
   },
-  sourceButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.card,
-    marginBottom: Spacing.lg,
-  },
-  sourceContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  deleteIconButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing["2xl"],
-    marginTop: Spacing.lg,
-  },
-  deleteText: {
-    marginLeft: Spacing.sm,
-    fontWeight: "500",
-  },
   floatingButtonContainer: {
     position: "absolute",
     left: Spacing.lg,
@@ -935,21 +910,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.full,
   },
-  creatorRecipeButton: {
+  actionButtonsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.card,
-    borderWidth: 1,
-    marginBottom: Spacing.sm,
+    justifyContent: "space-around",
+    alignItems: "flex-start",
+    paddingVertical: Spacing.lg,
+    marginBottom: Spacing.md,
   },
-  wrongLinkButton: {
-    flexDirection: "row",
+  iconButton: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.sm,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    minWidth: 70,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalOverlay: {
     flex: 1,
