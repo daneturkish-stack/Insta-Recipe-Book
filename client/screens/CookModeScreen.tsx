@@ -1,17 +1,31 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { StyleSheet, View, Pressable, Dimensions, StatusBar } from "react-native";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import { StyleSheet, View, Pressable, Dimensions, StatusBar, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-import Animated, { FadeIn, SlideInRight, SlideOutLeft } from "react-native-reanimated";
+import Animated, { FadeIn, SlideInRight } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useRecipe } from "@/hooks/useRecipes";
 import { CookModeColors, CookModeTypography, Spacing, BorderRadius } from "@/constants/theme";
+import { Ingredient } from "@/types/recipe";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+function getStepIngredients(instruction: string, ingredients: Ingredient[]): Ingredient[] {
+  if (!instruction || !ingredients) return [];
+  const lowerInstruction = instruction.toLowerCase();
+  return ingredients.filter((ingredient) => {
+    const name = ingredient.name.toLowerCase();
+    const words = name.split(/\s+/);
+    if (words.length > 1) {
+      return words.some((word) => word.length > 2 && lowerInstruction.includes(word));
+    }
+    return lowerInstruction.includes(name);
+  });
+}
 
 export default function CookModeScreen() {
   const insets = useSafeAreaInsets();
@@ -21,11 +35,15 @@ export default function CookModeScreen() {
 
   const recipe = useRecipe(recipeId);
   const [currentStep, setCurrentStep] = useState(0);
-  const [showIngredients, setShowIngredients] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoRead, setAutoRead] = useState(false);
 
   const totalSteps = recipe?.instructions?.length || 0;
+
+  const stepIngredients = useMemo(() => {
+    if (!recipe?.instructions?.[currentStep] || !recipe?.ingredients) return [];
+    return getStepIngredients(recipe.instructions[currentStep], recipe.ingredients);
+  }, [recipe, currentStep]);
 
   const speakInstruction = useCallback((text: string) => {
     Speech.stop();
@@ -48,10 +66,10 @@ export default function CookModeScreen() {
   }, [isSpeaking, recipe, currentStep, speakInstruction]);
 
   useEffect(() => {
-    if (autoRead && recipe?.instructions?.[currentStep] && !showIngredients) {
+    if (autoRead && recipe?.instructions?.[currentStep]) {
       speakInstruction(recipe.instructions[currentStep]);
     }
-  }, [currentStep, autoRead, recipe, showIngredients, speakInstruction]);
+  }, [currentStep, autoRead, recipe, speakInstruction]);
 
   useEffect(() => {
     return () => {
@@ -108,12 +126,6 @@ export default function CookModeScreen() {
           >
             <Feather name={autoRead ? "volume-2" : "volume-x"} size={22} color={autoRead ? CookModeColors.primary : CookModeColors.text} />
           </Pressable>
-          <Pressable 
-            onPress={() => setShowIngredients(!showIngredients)} 
-            style={[styles.headerButton, showIngredients && styles.headerButtonActive]}
-          >
-            <Feather name="list" size={22} color={showIngredients ? CookModeColors.primary : CookModeColors.text} />
-          </Pressable>
         </View>
       </View>
 
@@ -138,51 +150,56 @@ export default function CookModeScreen() {
       </View>
 
       {/* Main Content */}
-      <View style={styles.content}>
-        {showIngredients ? (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.ingredientsPanel}>
-            <ThemedText style={[styles.sectionTitle, { color: CookModeColors.primary }]}>
-              Ingredients
+      <ScrollView style={styles.contentScroll} contentContainerStyle={styles.content}>
+        <Animated.View 
+          key={currentStep}
+          entering={SlideInRight.duration(300)}
+          style={styles.stepContainer}
+        >
+          <View style={styles.stepHeader}>
+            <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
+              Step {currentStep + 1}
             </ThemedText>
-            {recipe.ingredients.map((ingredient, index) => (
-              <View key={index} style={styles.ingredientRow}>
-                <ThemedText style={[CookModeTypography.ingredient, { color: CookModeColors.text }]}>
-                  {ingredient.amount} {ingredient.unit}
-                </ThemedText>
-                <ThemedText style={[CookModeTypography.ingredient, { color: CookModeColors.textSecondary, marginLeft: Spacing.md }]}>
-                  {ingredient.name}
+            <Pressable 
+              onPress={toggleSpeak} 
+              style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
+              testID="cook-mode-speak"
+            >
+              <Feather 
+                name={isSpeaking ? "volume-2" : "volume-1"} 
+                size={24} 
+                color={isSpeaking ? CookModeColors.primary : CookModeColors.textSecondary} 
+              />
+            </Pressable>
+          </View>
+          <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text }]}>
+            {recipe.instructions[currentStep]}
+          </ThemedText>
+
+          {stepIngredients.length > 0 ? (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.ingredientsSection}>
+              <View style={styles.ingredientsSectionHeader}>
+                <Feather name="shopping-bag" size={16} color={CookModeColors.primary} />
+                <ThemedText style={styles.ingredientsSectionTitle}>
+                  Ingredients in this step
                 </ThemedText>
               </View>
-            ))}
-          </Animated.View>
-        ) : (
-          <Animated.View 
-            key={currentStep}
-            entering={SlideInRight.duration(300)}
-            style={styles.stepContainer}
-          >
-            <View style={styles.stepHeader}>
-              <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
-                Step {currentStep + 1}
-              </ThemedText>
-              <Pressable 
-                onPress={toggleSpeak} 
-                style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
-                testID="cook-mode-speak"
-              >
-                <Feather 
-                  name={isSpeaking ? "volume-2" : "volume-1"} 
-                  size={24} 
-                  color={isSpeaking ? CookModeColors.primary : CookModeColors.textSecondary} 
-                />
-              </Pressable>
-            </View>
-            <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text }]}>
-              {recipe.instructions[currentStep]}
-            </ThemedText>
-          </Animated.View>
-        )}
-      </View>
+              <View style={styles.ingredientChips}>
+                {stepIngredients.map((ingredient, index) => (
+                  <View key={index} style={styles.ingredientChip}>
+                    <ThemedText style={styles.ingredientChipAmount}>
+                      {ingredient.amount} {ingredient.unit}
+                    </ThemedText>
+                    <ThemedText style={styles.ingredientChipName}>
+                      {ingredient.name}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
+          ) : null}
+        </Animated.View>
+      </ScrollView>
 
       {/* Navigation Controls */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + Spacing.xl }]}>
@@ -280,10 +297,14 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     maxWidth: 40,
   },
-  content: {
+  contentScroll: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: Spacing["3xl"],
+    paddingVertical: Spacing.xl,
   },
   stepContainer: {
     alignItems: "center",
@@ -302,20 +323,50 @@ const styles = StyleSheet.create({
   speakButtonActive: {
     backgroundColor: CookModeColors.surface,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: Spacing.xl,
-    textAlign: "center",
+  ingredientsSection: {
+    marginTop: Spacing["2xl"],
+    width: "100%",
+    paddingTop: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: CookModeColors.border,
   },
-  ingredientsPanel: {
-    paddingVertical: Spacing.xl,
-  },
-  ingredientRow: {
+  ingredientsSectionHeader: {
     flexDirection: "row",
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: CookModeColors.border,
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  ingredientsSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: CookModeColors.primary,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  ingredientChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  ingredientChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: CookModeColors.surface,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: CookModeColors.border,
+    gap: Spacing.xs,
+  },
+  ingredientChipAmount: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: CookModeColors.primary,
+  },
+  ingredientChipName: {
+    fontSize: 15,
+    color: CookModeColors.text,
   },
   controls: {
     flexDirection: "row",
