@@ -11,8 +11,10 @@ Key capabilities:
 - Recipe transparency: confidence levels (high/medium/low), source attribution, authoritative references
 - Local recipe storage with search and smart AI-powered filtering
 - Pantry management with ingredient matching to find makeable recipes
-- Cook Mode for step-by-step guided cooking
+- Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
+- Cook Mode for step-by-step guided cooking with hands-free voice reading
 - Remy AI assistant for cooking questions, substitutions, and recipe recommendations
+- Text-to-speech for Remy responses with auto-speak toggle
 - Cross-platform support (iOS, Android, Web)
 
 ### Recipe Transparency System
@@ -74,6 +76,7 @@ Preferred communication style: Simple, everyday language.
   - Web search fallback to find creator's full recipe on their website/blog when social media post is incomplete
   - Smart search across recipe collection (`/api/recipes/search`)
   - Pantry ingredient matching (`/api/recipes/pantry-match`)
+  - Pantry voice input parsing (`/api/pantry/parse-voice`) - converts spoken ingredients to categorized items
   - Remy AI chat assistant (`/api/remy/chat`) with recipe context awareness
   - Voice transcription for Remy (`/api/remy/transcribe`)
 
