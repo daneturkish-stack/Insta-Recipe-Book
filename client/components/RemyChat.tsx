@@ -161,7 +161,7 @@ export function RemyChat({
         setIsLoading(false);
       }
     },
-    [messages, currentRecipe, allRecipes]
+    [messages, currentRecipe, allRecipes, autoSpeak]
   );
 
   const startRecording = async () => {
@@ -293,6 +293,13 @@ export function RemyChat({
     setAutoSpeak(!autoSpeak);
   };
 
+  const speakLatestMessage = () => {
+    const latestAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
+    if (latestAssistantMessage) {
+      speakMessage(latestAssistantMessage.id, latestAssistantMessage.content);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (soundRef.current) {
@@ -357,6 +364,18 @@ export function RemyChat({
             </View>
           </View>
           <View style={styles.headerActions}>
+            <Pressable
+              onPress={speakLatestMessage}
+              style={[styles.playButton, isSpeaking && styles.playButtonActive]}
+              hitSlop={8}
+              testID="remy-play-button"
+            >
+              <Feather 
+                name={isSpeaking ? "pause" : "play"} 
+                size={18} 
+                color={isSpeaking ? KitchColors.primary : KitchColors.textSecondary} 
+              />
+            </Pressable>
             <Pressable
               onPress={toggleAutoSpeak}
               style={[styles.autoSpeakButton, autoSpeak && styles.autoSpeakActive]}
@@ -553,6 +572,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
+  },
+  playButton: {
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    backgroundColor: KitchColors.neutral,
+    marginRight: Spacing.xs,
+  },
+  playButtonActive: {
+    backgroundColor: KitchColors.primary + "20",
   },
   autoSpeakButton: {
     padding: Spacing.xs,
