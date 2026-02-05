@@ -1,21 +1,27 @@
 import { Platform } from "react-native";
 
-// Kitch Design System - Premium Light aesthetic
-// Emerald Green primary with warm Amber accents for a modern culinary experience
+// Kitch Design System - Fresh, Playful Cooking App
+// Mint/Teal primary with Navy accents for a modern culinary experience
 
 export const KitchColors = {
-  primary: "#10B981", // Vibrant Emerald Green - primary actions
-  background: "#F8F9FA", // Soft off-white - lets food photography pop
+  primary: "#14B8A6", // Mint/Teal - primary actions
+  primaryLight: "#5EEAD4", // Light teal for backgrounds
+  background: "#E8F6F3", // Light mint background
   surface: "#FFFFFF", // Pure white - cards, inputs
   textPrimary: "#1F2937", // Dark slate - high readability
   textSecondary: "#6B7280", // Cool gray - secondary text
   border: "#E5E7EB", // Light gray border
   accent: "#FBBF24", // Warm Amber - secondary accents
-  highlight: "#10B981", // Emerald green - emphasis
+  navy: "#1E3A5F", // Dark navy - premium cards, dark sections
+  highlight: "#14B8A6", // Teal - emphasis
   secondary: "#FBBF24", // Amber for secondary actions
   neutral: "#F3F4F6", // Light gray - subtle backgrounds
   error: "#EF4444", // Red
-  success: "#10B981", // Emerald
+  success: "#14B8A6", // Teal
+  coral: "#FB7185", // Coral accent for cards
+  skyBlue: "#38BDF8", // Sky blue accent for cards
+  lavender: "#A78BFA", // Lavender accent for cards
+  peach: "#FDBA74", // Peach accent
   // Dark mode variants
   darkBackground: "#111827",
   darkSurface: "#1F2937",
@@ -24,24 +30,37 @@ export const KitchColors = {
   darkBorder: "#374151",
 };
 
+// Colorful card border accents
+export const CardAccentColors = [
+  KitchColors.coral,
+  KitchColors.accent,
+  KitchColors.skyBlue,
+  KitchColors.lavender,
+  KitchColors.peach,
+  KitchColors.primary,
+];
+
 export const Colors = {
   light: {
     text: KitchColors.textPrimary,
     textSecondary: KitchColors.textSecondary,
-    buttonText: "#FFFFFF", // White text on emerald buttons
+    buttonText: "#FFFFFF", // White text on teal buttons
     tabIconDefault: KitchColors.textSecondary,
-    tabIconSelected: KitchColors.primary, // Emerald for selected tab
+    tabIconSelected: KitchColors.primary, // Teal for selected tab
     link: KitchColors.primary,
     backgroundRoot: KitchColors.background,
     backgroundDefault: KitchColors.surface,
     backgroundSecondary: KitchColors.neutral,
-    backgroundTertiary: KitchColors.accent + "20",
+    backgroundTertiary: KitchColors.primaryLight + "30",
     border: KitchColors.border,
     accent: KitchColors.accent,
     highlight: KitchColors.highlight,
     error: KitchColors.error,
     primary: KitchColors.primary,
     secondary: KitchColors.secondary,
+    navy: KitchColors.navy,
+    coral: KitchColors.coral,
+    skyBlue: KitchColors.skyBlue,
   },
   dark: {
     text: KitchColors.darkTextPrimary,
@@ -60,6 +79,9 @@ export const Colors = {
     error: KitchColors.error,
     primary: KitchColors.primary,
     secondary: KitchColors.secondary,
+    navy: KitchColors.navy,
+    coral: KitchColors.coral,
+    skyBlue: KitchColors.skyBlue,
   },
 };
 
@@ -87,6 +109,7 @@ export const Spacing = {
   "3xl": 32,
   "4xl": 40,
   "5xl": 48,
+  "6xl": 56,
   inputHeight: 52,
   buttonHeight: 52,
 };
@@ -104,6 +127,13 @@ export const BorderRadius = {
 };
 
 export const Typography = {
+  // Large hero headline for splash/onboarding screens
+  hero: {
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: "700" as const,
+    fontFamily: "Inter_700Bold",
+  },
   // Headings use Inter Bold for modern, friendly feel
   h1: {
     fontSize: 32,
@@ -154,6 +184,14 @@ export const Typography = {
     fontWeight: "400" as const,
     fontFamily: "Inter_400Regular",
   },
+  // Small uppercase label for categories
+  label: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600" as const,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1,
+  },
   link: {
     fontSize: 16,
     lineHeight: 24,
@@ -201,19 +239,19 @@ export const Shadows = {
   card: {
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   cardLight: {
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
   button: {
-    shadowColor: "#10B981",
+    shadowColor: "#14B8A6",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
