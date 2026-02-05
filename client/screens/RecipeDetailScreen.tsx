@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, ScrollView, Pressable, Alert, Dimensions, Modal, TextInput, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -7,7 +7,17 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { 
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -71,6 +81,67 @@ export default function RecipeDetailScreen() {
   const [manualLinkInput, setManualLinkInput] = useState("");
   const [isSearchingAgain, setIsSearchingAgain] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [servingMultiplier, setServingMultiplier] = useState(1);
+
+  const pinchScale = useSharedValue(1);
+  const baseMultiplier = useSharedValue(1);
+  const showScaleIndicator = useSharedValue(0);
+
+  const updateServingMultiplier = useCallback((newMultiplier: number) => {
+    const clampedMultiplier = Math.max(0.25, Math.min(4, newMultiplier));
+    const roundedMultiplier = Math.round(clampedMultiplier * 4) / 4;
+    if (roundedMultiplier !== servingMultiplier) {
+      Haptics.selectionAsync();
+      setServingMultiplier(roundedMultiplier);
+    }
+  }, [servingMultiplier]);
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      baseMultiplier.value = servingMultiplier;
+      showScaleIndicator.value = withTiming(1, { duration: 150 });
+    })
+    .onUpdate((event) => {
+      pinchScale.value = event.scale;
+      const newMultiplier = baseMultiplier.value * event.scale;
+      runOnJS(updateServingMultiplier)(newMultiplier);
+    })
+    .onEnd(() => {
+      pinchScale.value = withSpring(1, { damping: 15 });
+      showScaleIndicator.value = withTiming(0, { duration: 300 });
+    });
+
+  const scaleIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: showScaleIndicator.value,
+    transform: [
+      { scale: interpolate(showScaleIndicator.value, [0, 1], [0.8, 1], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const ingredientListStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(pinchScale.value, [0.5, 1, 2], [0.98, 1, 1.02], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const scaleIngredientAmount = useCallback((amount: string | number | undefined): string => {
+    if (!amount) return "";
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(numAmount)) return String(amount);
+    
+    const scaled = numAmount * servingMultiplier;
+    if (scaled === Math.floor(scaled)) {
+      return String(scaled);
+    }
+    return scaled.toFixed(scaled < 10 ? 2 : 1).replace(/\.?0+$/, "");
+  }, [servingMultiplier]);
+
+  const scaledServings = useMemo(() => {
+    if (!recipe?.servings) return null;
+    const numServings = parseInt(String(recipe.servings));
+    if (isNaN(numServings)) return recipe.servings;
+    return Math.round(numServings * servingMultiplier);
+  }, [recipe?.servings, servingMultiplier]);
 
   const toggleIngredient = (index: number) => {
     Haptics.selectionAsync();
@@ -338,93 +409,135 @@ export default function RecipeDetailScreen() {
             ) : null}
           </Animated.View>
 
-          {/* Visual Ingredient Cards */}
+          {/* Visual Ingredient Cards with Pinch-to-Scale */}
           <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-            <View style={styles.section}>
-              <ThemedText type="h4" style={styles.sectionTitle}>
-                Ingredients
-              </ThemedText>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.ingredientCardsContainer}
-              >
-                {recipe.ingredients.slice(0, 8).map((ingredient, index) => (
-                  <Pressable
-                    key={index}
-                    onPress={() => toggleIngredient(index)}
-                    style={[
-                      styles.ingredientCard,
-                      { backgroundColor: theme.backgroundDefault },
-                      checkedIngredients.has(index) && { backgroundColor: theme.primary + "10" },
-                      Shadows.cardLight,
-                    ]}
-                  >
-                    <View style={[
-                      styles.ingredientIconWrapper,
-                      { backgroundColor: checkedIngredients.has(index) ? theme.primary + "20" : theme.backgroundSecondary }
-                    ]}>
-                      <Feather 
-                        name={getIngredientIcon(ingredient.name)} 
-                        size={24} 
-                        color={checkedIngredients.has(index) ? theme.primary : theme.textSecondary} 
-                      />
-                    </View>
-                    <ThemedText 
-                      type="caption" 
-                      style={[
-                        styles.ingredientCardName,
-                        checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 }
-                      ]}
-                      numberOfLines={2}
+            <GestureDetector gesture={pinchGesture}>
+              <Animated.View style={[styles.section, ingredientListStyle]}>
+                <View style={styles.ingredientHeader}>
+                  <ThemedText type="h4" style={styles.sectionTitle}>
+                    Ingredients
+                  </ThemedText>
+                  <View style={styles.servingScaleRow}>
+                    <Pressable 
+                      onPress={() => updateServingMultiplier(servingMultiplier - 0.5)}
+                      style={[styles.scaleButton, { backgroundColor: theme.backgroundSecondary }]}
                     >
-                      {ingredient.name}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, fontWeight: "500" }}>
-                      {ingredient.amount} {ingredient.unit}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              
-              {/* Full ingredients list */}
-              <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
-                {recipe.ingredients.map((ingredient, index) => (
-                  <Pressable
-                    key={index}
-                    onPress={() => toggleIngredient(index)}
-                    style={[
-                      styles.ingredientItem,
-                      index < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                    ]}
-                  >
-                    <View style={[
-                      styles.checkbox,
-                      {
-                        borderColor: checkedIngredients.has(index) ? theme.primary : theme.border,
-                        backgroundColor: checkedIngredients.has(index) ? theme.primary : "transparent",
-                      },
-                    ]}>
-                      {checkedIngredients.has(index) ? (
-                        <Feather name="check" size={12} color="#FFF" />
+                      <Feather name="minus" size={16} color={theme.text} />
+                    </Pressable>
+                    <View style={[styles.servingBadge, { backgroundColor: servingMultiplier !== 1 ? KitchColors.primary : theme.backgroundSecondary }]}>
+                      <ThemedText type="bodyMedium" style={{ color: servingMultiplier !== 1 ? "#FFF" : theme.text }}>
+                        {servingMultiplier === 1 ? (scaledServings || "—") : `${servingMultiplier}x`}
+                      </ThemedText>
+                      {scaledServings && servingMultiplier !== 1 ? (
+                        <ThemedText type="caption" style={{ color: "#FFF", opacity: 0.8 }}>
+                          {" "}({scaledServings} servings)
+                        </ThemedText>
                       ) : null}
                     </View>
-                    <ThemedText
-                      type="body"
+                    <Pressable 
+                      onPress={() => updateServingMultiplier(servingMultiplier + 0.5)}
+                      style={[styles.scaleButton, { backgroundColor: theme.backgroundSecondary }]}
+                    >
+                      <Feather name="plus" size={16} color={theme.text} />
+                    </Pressable>
+                  </View>
+                </View>
+                
+                <ThemedText type="caption" style={[styles.pinchHint, { color: theme.textSecondary }]}>
+                  Pinch to scale servings
+                </ThemedText>
+
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.ingredientCardsContainer}
+                >
+                  {recipe.ingredients.slice(0, 8).map((ingredient, index) => (
+                    <Pressable
+                      key={index}
+                      onPress={() => toggleIngredient(index)}
                       style={[
-                        styles.ingredientText,
-                        checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 },
+                        styles.ingredientCard,
+                        { backgroundColor: theme.backgroundDefault },
+                        checkedIngredients.has(index) && { backgroundColor: theme.primary + "10" },
+                        Shadows.cardLight,
                       ]}
                     >
-                      <ThemedText style={{ fontWeight: "600" }}>
-                        {ingredient.amount} {ingredient.unit}
+                      <View style={[
+                        styles.ingredientIconWrapper,
+                        { backgroundColor: checkedIngredients.has(index) ? theme.primary + "20" : theme.backgroundSecondary }
+                      ]}>
+                        <Feather 
+                          name={getIngredientIcon(ingredient.name)} 
+                          size={24} 
+                          color={checkedIngredients.has(index) ? theme.primary : theme.textSecondary} 
+                        />
+                      </View>
+                      <ThemedText 
+                        type="caption" 
+                        style={[
+                          styles.ingredientCardName,
+                          checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 }
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {ingredient.name}
                       </ThemedText>
-                      {"  "}{ingredient.name}
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, fontWeight: "500" }}>
+                        {scaleIngredientAmount(ingredient.amount)} {ingredient.unit}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              
+                {/* Full ingredients list */}
+                <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
+                  {recipe.ingredients.map((ingredient, index) => (
+                    <Pressable
+                      key={index}
+                      onPress={() => toggleIngredient(index)}
+                      style={[
+                        styles.ingredientItem,
+                        index < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
+                      ]}
+                    >
+                      <View style={[
+                        styles.checkbox,
+                        {
+                          borderColor: checkedIngredients.has(index) ? theme.primary : theme.border,
+                          backgroundColor: checkedIngredients.has(index) ? theme.primary : "transparent",
+                        },
+                      ]}>
+                        {checkedIngredients.has(index) ? (
+                          <Feather name="check" size={12} color="#FFF" />
+                        ) : null}
+                      </View>
+                      <ThemedText
+                        type="body"
+                        style={[
+                          styles.ingredientText,
+                          checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 },
+                        ]}
+                      >
+                        <ThemedText style={{ fontWeight: "600" }}>
+                          {scaleIngredientAmount(ingredient.amount)} {ingredient.unit}
+                        </ThemedText>
+                        {"  "}{ingredient.name}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Scale Indicator Overlay */}
+                <Animated.View style={[styles.scaleIndicatorOverlay, scaleIndicatorStyle]} pointerEvents="none">
+                  <View style={[styles.scaleIndicatorBubble, { backgroundColor: KitchColors.primary }]}>
+                    <ThemedText type="h3" style={styles.scaleIndicatorText}>
+                      {servingMultiplier}x
                     </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+                  </View>
+                </Animated.View>
+              </Animated.View>
+            </GestureDetector>
           </Animated.View>
 
           {/* Instructions */}
@@ -992,5 +1105,63 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.full,
+  },
+  ingredientHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  servingScaleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  scaleButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  servingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    minWidth: 50,
+    justifyContent: "center",
+  },
+  pinchHint: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
+    fontStyle: "italic",
+  },
+  scaleIndicatorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    pointerEvents: "none",
+  },
+  scaleIndicatorBubble: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  scaleIndicatorText: {
+    color: "#FFF",
+    fontWeight: "700",
   },
 });
