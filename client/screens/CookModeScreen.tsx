@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { StyleSheet, View, Pressable, Dimensions, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 import Animated, { FadeIn, SlideInRight, SlideOutLeft } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -21,8 +22,42 @@ export default function CookModeScreen() {
   const recipe = useRecipe(recipeId);
   const [currentStep, setCurrentStep] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
 
   const totalSteps = recipe?.instructions?.length || 0;
+
+  const speakInstruction = useCallback((text: string) => {
+    Speech.stop();
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      rate: 0.9,
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, []);
+
+  const toggleSpeak = useCallback(() => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+    } else if (recipe?.instructions?.[currentStep]) {
+      speakInstruction(recipe.instructions[currentStep]);
+    }
+  }, [isSpeaking, recipe, currentStep, speakInstruction]);
+
+  useEffect(() => {
+    if (autoRead && recipe?.instructions?.[currentStep] && !showIngredients) {
+      speakInstruction(recipe.instructions[currentStep]);
+    }
+  }, [currentStep, autoRead, recipe, showIngredients, speakInstruction]);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
 
   const handleNext = useCallback(() => {
     if (currentStep < totalSteps - 1) {
@@ -65,12 +100,21 @@ export default function CookModeScreen() {
             {recipe.title}
           </ThemedText>
         </View>
-        <Pressable 
-          onPress={() => setShowIngredients(!showIngredients)} 
-          style={[styles.ingredientsButton, showIngredients && styles.ingredientsButtonActive]}
-        >
-          <Feather name="list" size={24} color={showIngredients ? CookModeColors.primary : CookModeColors.text} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable 
+            onPress={() => setAutoRead(!autoRead)} 
+            style={[styles.headerButton, autoRead && styles.headerButtonActive]}
+            testID="cook-mode-auto-read"
+          >
+            <Feather name={autoRead ? "volume-2" : "volume-x"} size={22} color={autoRead ? CookModeColors.primary : CookModeColors.text} />
+          </Pressable>
+          <Pressable 
+            onPress={() => setShowIngredients(!showIngredients)} 
+            style={[styles.headerButton, showIngredients && styles.headerButtonActive]}
+          >
+            <Feather name="list" size={22} color={showIngredients ? CookModeColors.primary : CookModeColors.text} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Progress Bar */}
@@ -117,9 +161,22 @@ export default function CookModeScreen() {
             entering={SlideInRight.duration(300)}
             style={styles.stepContainer}
           >
-            <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
-              Step {currentStep + 1}
-            </ThemedText>
+            <View style={styles.stepHeader}>
+              <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
+                Step {currentStep + 1}
+              </ThemedText>
+              <Pressable 
+                onPress={toggleSpeak} 
+                style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
+                testID="cook-mode-speak"
+              >
+                <Feather 
+                  name={isSpeaking ? "volume-2" : "volume-1"} 
+                  size={24} 
+                  color={isSpeaking ? CookModeColors.primary : CookModeColors.textSecondary} 
+                />
+              </Pressable>
+            </View>
             <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text }]}>
               {recipe.instructions[currentStep]}
             </ThemedText>
@@ -199,11 +256,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
-  ingredientsButton: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  headerButton: {
     padding: Spacing.sm,
     borderRadius: BorderRadius.sm,
   },
-  ingredientsButtonActive: {
+  headerButtonActive: {
     backgroundColor: CookModeColors.surface,
   },
   progressContainer: {
@@ -225,6 +287,20 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     alignItems: "center",
+  },
+  stepHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  speakButton: {
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  speakButtonActive: {
+    backgroundColor: CookModeColors.surface,
   },
   sectionTitle: {
     fontSize: 24,
