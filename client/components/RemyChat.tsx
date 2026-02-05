@@ -232,7 +232,7 @@ export function RemyChat({
     }
   };
 
-  const speakMessage = async (messageId: string, text: string) => {
+  const speakMessage = (messageId: string, text: string) => {
     Haptics.selectionAsync();
     
     if (isSpeaking && speakingMessageId === messageId) {
@@ -249,34 +249,20 @@ export function RemyChat({
     setIsSpeaking(true);
     setSpeakingMessageId(messageId);
 
-    try {
-      const voices = await Speech.getAvailableVoicesAsync();
-      const englishVoice = voices.find(
-        (v) => v.language.startsWith("en") && v.quality === Speech.VoiceQuality.Enhanced
-      ) || voices.find((v) => v.language.startsWith("en"));
-
-      Speech.speak(text, {
-        language: "en-US",
-        pitch: 1.0,
-        rate: 0.9,
-        voice: englishVoice?.identifier,
-        onDone: () => {
-          setIsSpeaking(false);
-          setSpeakingMessageId(null);
-        },
-        onStopped: () => {
-          setIsSpeaking(false);
-          setSpeakingMessageId(null);
-        },
-        onError: () => {
-          setIsSpeaking(false);
-          setSpeakingMessageId(null);
-        },
-      });
-    } catch (error) {
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-    }
+    Speech.speak(text, {
+      onDone: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onStopped: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+    });
   };
 
   const toggleAutoSpeak = () => {
