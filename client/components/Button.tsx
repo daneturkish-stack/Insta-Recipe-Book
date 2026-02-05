@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing, Shadows } from "@/constants/theme";
+import { BorderRadius, Spacing, Shadows, KitchColors } from "@/constants/theme";
 
 interface ButtonProps {
   onPress?: () => void;
@@ -18,7 +18,8 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   loading?: boolean;
-  variant?: "primary" | "secondary" | "outline" | "amber";
+  variant?: "primary" | "secondary" | "outline" | "amber" | "navy";
+  size?: "default" | "small";
 }
 
 const springConfig: WithSpringConfig = {
@@ -38,6 +39,7 @@ export function Button({
   disabled = false,
   loading = false,
   variant = "primary",
+  size = "default",
 }: ButtonProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -68,15 +70,17 @@ export function Button({
   const getBackgroundColor = () => {
     if (variant === "outline") return "transparent";
     if (variant === "secondary") return theme.backgroundSecondary;
-    if (variant === "amber") return theme.accent; // Warm Amber
-    return theme.primary; // Emerald Green
+    if (variant === "amber") return theme.accent;
+    if (variant === "navy") return KitchColors.navy;
+    return theme.primary; // Mint/Teal
   };
 
   const getTextColor = () => {
     if (variant === "outline") return theme.primary;
     if (variant === "secondary") return theme.text;
-    if (variant === "amber") return "#1F2937"; // Dark text on amber
-    return theme.buttonText; // White on emerald
+    if (variant === "amber") return "#1F2937";
+    if (variant === "navy") return "#FFFFFF";
+    return theme.buttonText;
   };
 
   const getBorderStyle = () => {
@@ -92,8 +96,14 @@ export function Button({
       ...Shadows.button,
       shadowColor: "#FBBF24",
     };
+    if (variant === "navy") return {
+      ...Shadows.button,
+      shadowColor: KitchColors.navy,
+    };
     return {};
   };
+
+  const isSmall = size === "small";
 
   return (
     <AnimatedPressable
@@ -103,6 +113,7 @@ export function Button({
       disabled={disabled || loading}
       style={[
         styles.button,
+        isSmall && styles.buttonSmall,
         {
           backgroundColor: getBackgroundColor(),
           opacity: disabled ? 0.5 : 1,
@@ -117,7 +128,7 @@ export function Button({
         <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
         <ThemedText
-          type="bodyMedium"
+          type={isSmall ? "small" : "bodyMedium"}
           style={[styles.buttonText, { color: getTextColor() }]}
         >
           {children}
@@ -134,6 +145,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: Spacing["3xl"],
+  },
+  buttonSmall: {
+    height: 40,
+    paddingHorizontal: Spacing.xl,
   },
   buttonText: {
     fontWeight: "600",

@@ -1,19 +1,30 @@
 import React, { useState } from "react";
-import { StyleSheet, TextInput, View, TextInputProps } from "react-native";
+import { StyleSheet, TextInput, View, TextInputProps, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { Spacing, BorderRadius, Typography, KitchColors } from "@/constants/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   variant?: "default" | "search";
   icon?: keyof typeof Feather.glyphMap;
+  rightIcon?: keyof typeof Feather.glyphMap;
+  onRightIconPress?: () => void;
 }
 
-export function Input({ label, error, style, variant = "default", icon, ...props }: InputProps) {
+export function Input({ 
+  label, 
+  error, 
+  style, 
+  variant = "default", 
+  icon, 
+  rightIcon,
+  onRightIconPress,
+  ...props 
+}: InputProps) {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
@@ -35,7 +46,7 @@ export function Input({ label, error, style, variant = "default", icon, ...props
             ? theme.error
             : isFocused && !isSearch
               ? theme.primary
-              : "transparent",
+              : isSearch ? "transparent" : theme.border,
           borderWidth: isSearch ? 0 : (isFocused || error ? 2 : 1),
         },
       ]}>
@@ -52,6 +63,7 @@ export function Input({ label, error, style, variant = "default", icon, ...props
             styles.input,
             isSearch && styles.searchInput,
             icon && styles.inputWithIcon,
+            rightIcon && styles.inputWithRightIcon,
             {
               color: theme.text,
             },
@@ -62,6 +74,17 @@ export function Input({ label, error, style, variant = "default", icon, ...props
           onBlur={() => setIsFocused(false)}
           {...props}
         />
+        {rightIcon ? (
+          <Pressable onPress={onRightIconPress} style={styles.rightIcon}>
+            <View style={[styles.rightIconContainer, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather
+                name={rightIcon}
+                size={18}
+                color={theme.textSecondary}
+              />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
       {error ? (
         <ThemedText type="caption" style={[styles.error, { color: theme.error }]}>
@@ -83,14 +106,24 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     overflow: "hidden",
   },
   searchWrapper: {
-    borderRadius: BorderRadius.full, // Pill-shaped for search
+    borderRadius: BorderRadius.full,
   },
   icon: {
     marginLeft: Spacing.lg,
+  },
+  rightIcon: {
+    paddingRight: Spacing.sm,
+  },
+  rightIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   input: {
     flex: 1,
@@ -103,6 +136,9 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: {
     paddingLeft: Spacing.sm,
+  },
+  inputWithRightIcon: {
+    paddingRight: Spacing.xs,
   },
   error: {
     marginTop: Spacing.xs,

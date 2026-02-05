@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Pressable, ViewStyle } from "react-native";
+import { StyleSheet, Pressable, ViewStyle, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, CardAccentColors } from "@/constants/theme";
 
 interface CardProps {
   elevation?: number;
@@ -19,6 +19,8 @@ interface CardProps {
   children?: React.ReactNode;
   onPress?: () => void;
   style?: ViewStyle;
+  accentColor?: string;
+  accentPosition?: "left" | "top" | "none";
 }
 
 const springConfig: WithSpringConfig = {
@@ -54,6 +56,8 @@ export function Card({
   children,
   onPress,
   style,
+  accentColor,
+  accentPosition = "none",
 }: CardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -83,6 +87,26 @@ export function Card({
     }
   };
 
+  const getAccentStyle = (): ViewStyle => {
+    if (!accentColor || accentPosition === "none") return {};
+    
+    if (accentPosition === "left") {
+      return {
+        borderLeftWidth: 4,
+        borderLeftColor: accentColor,
+      };
+    }
+    
+    if (accentPosition === "top") {
+      return {
+        borderTopWidth: 4,
+        borderTopColor: accentColor,
+      };
+    }
+    
+    return {};
+  };
+
   return (
     <AnimatedPressable
       onPress={handlePress}
@@ -95,6 +119,7 @@ export function Card({
           backgroundColor: cardBackgroundColor,
         },
         Shadows.card,
+        getAccentStyle(),
         animatedStyle,
         style,
       ]}
@@ -114,10 +139,15 @@ export function Card({
   );
 }
 
+// Helper to get random accent color for recipe cards
+export function getCardAccentColor(index: number): string {
+  return CardAccentColors[index % CardAccentColors.length];
+}
+
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.card, // 24px large rounded corners
+    borderRadius: BorderRadius.card,
     overflow: "hidden",
   },
   cardTitle: {
