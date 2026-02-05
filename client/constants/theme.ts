@@ -1,40 +1,41 @@
 import { Platform } from "react-native";
 
-// Kitch Design System - Playful, vibrant palette inspired by Maggie
-// Fresh mint green with sunny yellow accents for a joyful cooking experience
+// Kitch Design System - Premium Light aesthetic
+// Emerald Green primary with warm Amber accents for a modern culinary experience
 
 export const KitchColors = {
-  primary: "#82EDA6", // Fresh mint green - buttons and interactive elements
-  background: "#F9F8F4", // Warm cream - cozy canvas
+  primary: "#10B981", // Vibrant Emerald Green - primary actions
+  background: "#F8F9FA", // Soft off-white - lets food photography pop
   surface: "#FFFFFF", // Pure white - cards, inputs
-  textPrimary: "#03594D", // Deep teal - warm readability
-  textSecondary: "#4A6B65", // Muted teal
-  border: "#E8E6E0", // Soft warm gray
-  accent: "#FFFF94", // Sunny yellow - highlights and playful accents
-  highlight: "#82EDA6", // Mint green - gentle emphasis
-  secondary: "#FCCDDC", // Soft pink - secondary actions
-  neutral: "#F0EFEB", // Light warm gray - subtle backgrounds
-  error: "#E85858", // Warm red
+  textPrimary: "#1F2937", // Dark slate - high readability
+  textSecondary: "#6B7280", // Cool gray - secondary text
+  border: "#E5E7EB", // Light gray border
+  accent: "#FBBF24", // Warm Amber - secondary accents
+  highlight: "#10B981", // Emerald green - emphasis
+  secondary: "#FBBF24", // Amber for secondary actions
+  neutral: "#F3F4F6", // Light gray - subtle backgrounds
+  error: "#EF4444", // Red
+  success: "#10B981", // Emerald
   // Dark mode variants
-  darkBackground: "#121212",
-  darkSurface: "#1E1E1E",
-  darkTextPrimary: "#FAFAFA",
-  darkTextSecondary: "#A0A0A0",
-  darkBorder: "#2E2E2E",
+  darkBackground: "#111827",
+  darkSurface: "#1F2937",
+  darkTextPrimary: "#F9FAFB",
+  darkTextSecondary: "#9CA3AF",
+  darkBorder: "#374151",
 };
 
 export const Colors = {
   light: {
     text: KitchColors.textPrimary,
     textSecondary: KitchColors.textSecondary,
-    buttonText: KitchColors.textPrimary, // Deep teal text on mint buttons
+    buttonText: "#FFFFFF", // White text on emerald buttons
     tabIconDefault: KitchColors.textSecondary,
-    tabIconSelected: KitchColors.textPrimary, // Deep teal for selected tab
+    tabIconSelected: KitchColors.primary, // Emerald for selected tab
     link: KitchColors.primary,
     backgroundRoot: KitchColors.background,
     backgroundDefault: KitchColors.surface,
     backgroundSecondary: KitchColors.neutral,
-    backgroundTertiary: KitchColors.accent,
+    backgroundTertiary: KitchColors.accent + "20",
     border: KitchColors.border,
     accent: KitchColors.accent,
     highlight: KitchColors.highlight,
@@ -47,18 +48,18 @@ export const Colors = {
     textSecondary: KitchColors.darkTextSecondary,
     buttonText: "#FFFFFF",
     tabIconDefault: KitchColors.darkTextSecondary,
-    tabIconSelected: "#82EDA6",
-    link: "#82EDA6",
+    tabIconSelected: KitchColors.primary,
+    link: KitchColors.primary,
     backgroundRoot: KitchColors.darkBackground,
     backgroundDefault: KitchColors.darkSurface,
-    backgroundSecondary: "#252525",
-    backgroundTertiary: "#2E2E2E",
+    backgroundSecondary: "#374151",
+    backgroundTertiary: "#4B5563",
     border: KitchColors.darkBorder,
     accent: KitchColors.accent,
     highlight: KitchColors.highlight,
     error: KitchColors.error,
-    primary: "#82EDA6",
-    secondary: "#FCCDDC",
+    primary: KitchColors.primary,
+    secondary: KitchColors.secondary,
   },
 };
 
@@ -68,11 +69,11 @@ export const CookModeColors = {
   surface: "#1A1A1A",
   text: "#FFFFFF",
   textSecondary: "#B0B0B0",
-  primary: "#82EDA6",
-  accent: "#FFFF94",
+  primary: KitchColors.primary,
+  accent: KitchColors.accent,
   border: "#333333",
-  stepActive: "#82EDA6",
-  stepCompleted: "#FFFF94",
+  stepActive: KitchColors.primary,
+  stepCompleted: KitchColors.accent,
   stepPending: "#444444",
 };
 
@@ -87,7 +88,7 @@ export const Spacing = {
   "4xl": 40,
   "5xl": 48,
   inputHeight: 52,
-  buttonHeight: 48,
+  buttonHeight: 52,
 };
 
 export const BorderRadius = {
@@ -98,65 +99,66 @@ export const BorderRadius = {
   xl: 20,
   "2xl": 24,
   "3xl": 32,
+  card: 24, // Large rounded cards per spec
   full: 9999,
 };
 
 export const Typography = {
-  // Headings use Archivo Bold for modern, friendly feel
+  // Headings use Inter Bold for modern, friendly feel
   h1: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "Archivo_700Bold",
+    fontFamily: "Inter_700Bold",
   },
   h2: {
     fontSize: 28,
     lineHeight: 36,
     fontWeight: "700" as const,
-    fontFamily: "Archivo_700Bold",
+    fontFamily: "Inter_700Bold",
   },
   h3: {
     fontSize: 24,
     lineHeight: 32,
     fontWeight: "600" as const,
-    fontFamily: "Archivo_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
   },
   h4: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600" as const,
-    fontFamily: "Archivo_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
   },
-  // Body text uses Archivo for consistent modern look
+  // Body text uses Inter for consistent modern look
   body: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "400" as const,
-    fontFamily: "Archivo_400Regular",
+    fontFamily: "Inter_400Regular",
   },
   bodyMedium: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "500" as const,
-    fontFamily: "Archivo_500Medium",
+    fontFamily: "Inter_500Medium",
   },
   small: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400" as const,
-    fontFamily: "Archivo_400Regular",
+    fontFamily: "Inter_400Regular",
   },
   caption: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "400" as const,
-    fontFamily: "Archivo_400Regular",
+    fontFamily: "Inter_400Regular",
   },
   link: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "500" as const,
-    fontFamily: "Archivo_500Medium",
+    fontFamily: "Inter_500Medium",
   },
 };
 
@@ -166,73 +168,80 @@ export const CookModeTypography = {
     fontSize: 48,
     lineHeight: 56,
     fontWeight: "700" as const,
-    fontFamily: "Archivo_700Bold",
+    fontFamily: "Inter_700Bold",
   },
   stepText: {
     fontSize: 26,
     lineHeight: 38,
     fontWeight: "400" as const,
-    fontFamily: "Archivo_400Regular",
+    fontFamily: "Inter_400Regular",
   },
   ingredient: {
     fontSize: 22,
     lineHeight: 32,
     fontWeight: "500" as const,
-    fontFamily: "Archivo_500Medium",
+    fontFamily: "Inter_500Medium",
   },
   title: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "Archivo_700Bold",
+    fontFamily: "Inter_700Bold",
   },
   timer: {
     fontSize: 64,
     lineHeight: 72,
     fontWeight: "700" as const,
-    fontFamily: "Archivo_700Bold",
+    fontFamily: "Inter_700Bold",
   },
 };
 
-// Soft shadows - playful but subtle
+// Soft shadows - subtle and elegant for Premium Light aesthetic
 export const Shadows = {
   card: {
-    shadowColor: "#03594D",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  cardLight: {
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   button: {
-    shadowColor: "#03594D",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   floating: {
-    shadowColor: "#03594D",
-    shadowOffset: { width: 0, height: 6 },
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowRadius: 24,
+    elevation: 8,
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    sans: "Archivo_400Regular",
-    sansBold: "Archivo_700Bold",
+    sans: "Inter_400Regular",
+    sansBold: "Inter_700Bold",
     mono: "ui-monospace",
   },
   default: {
-    sans: "Archivo_400Regular",
-    sansBold: "Archivo_700Bold",
+    sans: "Inter_400Regular",
+    sansBold: "Inter_700Bold",
     mono: "monospace",
   },
   web: {
-    sans: "'Archivo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    sansBold: "'Archivo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    sans: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    sansBold: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });

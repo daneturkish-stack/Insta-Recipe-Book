@@ -18,7 +18,7 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   loading?: boolean;
-  variant?: "primary" | "secondary" | "outline";
+  variant?: "primary" | "secondary" | "outline" | "amber";
 }
 
 const springConfig: WithSpringConfig = {
@@ -67,20 +67,31 @@ export function Button({
 
   const getBackgroundColor = () => {
     if (variant === "outline") return "transparent";
-    if (variant === "secondary") return theme.secondary || theme.backgroundSecondary;
-    return theme.primary;
+    if (variant === "secondary") return theme.backgroundSecondary;
+    if (variant === "amber") return theme.accent; // Warm Amber
+    return theme.primary; // Emerald Green
   };
 
   const getTextColor = () => {
     if (variant === "outline") return theme.primary;
     if (variant === "secondary") return theme.text;
-    return theme.buttonText;
+    if (variant === "amber") return "#1F2937"; // Dark text on amber
+    return theme.buttonText; // White on emerald
   };
 
   const getBorderStyle = () => {
     if (variant === "outline") {
       return { borderWidth: 2, borderColor: theme.primary };
     }
+    return {};
+  };
+
+  const getShadow = () => {
+    if (variant === "primary") return Shadows.button;
+    if (variant === "amber") return {
+      ...Shadows.button,
+      shadowColor: "#FBBF24",
+    };
     return {};
   };
 
@@ -97,7 +108,7 @@ export function Button({
           opacity: disabled ? 0.5 : 1,
         },
         getBorderStyle(),
-        variant === "primary" ? Shadows.button : {},
+        getShadow(),
         style,
         animatedStyle,
       ]}

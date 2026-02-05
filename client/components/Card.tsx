@@ -117,7 +117,7 @@ export function Card({
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card, // 24px large rounded corners
     overflow: "hidden",
   },
   cardTitle: {
