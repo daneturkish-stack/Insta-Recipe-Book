@@ -15,6 +15,11 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import {
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+} from "@expo-google-fonts/nunito";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -76,6 +81,9 @@ export default function App() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
   });
 
   const handleDeepLink = useCallback((event: { url: string }) => {

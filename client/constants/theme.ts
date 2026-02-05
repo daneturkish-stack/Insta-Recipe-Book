@@ -127,39 +127,39 @@ export const BorderRadius = {
 };
 
 export const Typography = {
-  // Large hero headline for splash/onboarding screens
+  // Large hero headline for splash/onboarding screens - Nunito ExtraBold for impact
   hero: {
     fontSize: 40,
     lineHeight: 48,
-    fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "800" as const,
+    fontFamily: "Nunito_800ExtraBold",
   },
-  // Headings use Inter Bold for modern, friendly feel
+  // Headings use Nunito Bold for friendly, rounded personality
   h1: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
   },
   h2: {
     fontSize: 28,
     lineHeight: 36,
     fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
   },
   h3: {
     fontSize: 24,
     lineHeight: 32,
     fontWeight: "600" as const,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Nunito_600SemiBold",
   },
   h4: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600" as const,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Nunito_600SemiBold",
   },
-  // Body text uses Inter for consistent modern look
+  // Body text uses Inter for clean, modern readability
   body: {
     fontSize: 16,
     lineHeight: 24,
@@ -205,8 +205,8 @@ export const CookModeTypography = {
   stepNumber: {
     fontSize: 48,
     lineHeight: 56,
-    fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "800" as const,
+    fontFamily: "Nunito_800ExtraBold",
   },
   stepText: {
     fontSize: 26,
@@ -224,13 +224,13 @@ export const CookModeTypography = {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Nunito_700Bold",
   },
   timer: {
     fontSize: 64,
     lineHeight: 72,
-    fontWeight: "700" as const,
-    fontFamily: "Inter_700Bold",
+    fontWeight: "800" as const,
+    fontFamily: "Nunito_800ExtraBold",
   },
 };
 
@@ -270,16 +270,22 @@ export const Fonts = Platform.select({
   ios: {
     sans: "Inter_400Regular",
     sansBold: "Inter_700Bold",
+    display: "Nunito_700Bold",
+    displayBold: "Nunito_800ExtraBold",
     mono: "ui-monospace",
   },
   default: {
     sans: "Inter_400Regular",
     sansBold: "Inter_700Bold",
+    display: "Nunito_700Bold",
+    displayBold: "Nunito_800ExtraBold",
     mono: "monospace",
   },
   web: {
     sans: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     sansBold: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    display: "'Nunito', 'Inter', system-ui, sans-serif",
+    displayBold: "'Nunito', 'Inter', system-ui, sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
