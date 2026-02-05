@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { Platform } from "react-native";
 import { Accelerometer } from "expo-sensors";
 import * as Haptics from "expo-haptics";
 
@@ -26,48 +27,59 @@ export function useShakeDetector({ onShake, enabled = true }: UseShakeDetectorOp
 
   useEffect(() => {
     if (!enabled) return;
+    
+    // Accelerometer is not fully supported on web platform
+    if (Platform.OS === "web") return;
 
     let subscription: ReturnType<typeof Accelerometer.addListener> | null = null;
 
     const setupAccelerometer = async () => {
-      const { status } = await Accelerometer.requestPermissionsAsync();
-      if (status !== "granted") return;
+      try {
+        const isAvailable = await Accelerometer.isAvailableAsync();
+        if (!isAvailable) return;
 
-      Accelerometer.setUpdateInterval(100);
+        const { status } = await Accelerometer.requestPermissionsAsync();
+        if (status !== "granted") return;
 
-      subscription = Accelerometer.addListener((data) => {
-        const { x, y, z } = data;
-        const currentTime = Date.now();
+        Accelerometer.setUpdateInterval(100);
 
-        if (currentTime - lastUpdate.current > 100) {
-          const diffTime = currentTime - lastUpdate.current;
-          lastUpdate.current = currentTime;
+        subscription = Accelerometer.addListener((data) => {
+          const { x, y, z } = data;
+          const currentTime = Date.now();
 
-          const deltaX = Math.abs(x - lastX.current);
-          const deltaY = Math.abs(y - lastY.current);
-          const deltaZ = Math.abs(z - lastZ.current);
+          if (currentTime - lastUpdate.current > 100) {
+            const diffTime = currentTime - lastUpdate.current;
+            lastUpdate.current = currentTime;
 
-          const acceleration = (deltaX + deltaY + deltaZ) / diffTime * 10000;
+            const deltaX = Math.abs(x - lastX.current);
+            const deltaY = Math.abs(y - lastY.current);
+            const deltaZ = Math.abs(z - lastZ.current);
 
-          if (acceleration > SHAKE_THRESHOLD) {
-            if (currentTime - lastShakeTime.current > SHAKE_TIMEOUT) {
-              shakeCount.current = 0;
+            const acceleration = (deltaX + deltaY + deltaZ) / diffTime * 10000;
+
+            if (acceleration > SHAKE_THRESHOLD) {
+              if (currentTime - lastShakeTime.current > SHAKE_TIMEOUT) {
+                shakeCount.current = 0;
+              }
+              
+              shakeCount.current += 1;
+              lastShakeTime.current = currentTime;
+
+              if (shakeCount.current >= MIN_SHAKES_REQUIRED) {
+                shakeCount.current = 0;
+                handleShake();
+              }
             }
-            
-            shakeCount.current += 1;
-            lastShakeTime.current = currentTime;
 
-            if (shakeCount.current >= MIN_SHAKES_REQUIRED) {
-              shakeCount.current = 0;
-              handleShake();
-            }
+            lastX.current = x;
+            lastY.current = y;
+            lastZ.current = z;
           }
-
-          lastX.current = x;
-          lastY.current = y;
-          lastZ.current = z;
-        }
-      });
+        });
+      } catch (error) {
+        // Silently fail if accelerometer is not available (e.g., web platform)
+        console.log("Shake detection not available on this platform");
+      }
     };
 
     setupAccelerometer();
