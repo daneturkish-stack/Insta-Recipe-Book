@@ -15,7 +15,29 @@ Key capabilities:
 - Cook Mode for step-by-step guided cooking with hands-free voice reading
 - Remi AI assistant for food and cooking conversations, recipe help, and recommendations
 - Text-to-speech for Remi responses with auto-speak toggle
+- Native gesture controls for intuitive cooking experience
 - Cross-platform support (iOS, Android, Web)
+
+### Gesture Controls (Native Mobile Features)
+The app includes intuitive gesture controls designed for hands-free cooking:
+
+**Pan-to-Cook Swipe:**
+- Swipe right on any recipe card in the collection to instantly enter Cook Mode
+- Visual "Cook!" indicator appears during swipe with haptic feedback
+- Threshold: swipe 100px to trigger, auto-enables voice reading
+
+**Recipe Roulette (Shake-to-Pick):**
+- Shake your phone on the Collection screen to randomly select a recipe
+- Prioritizes pantry-matched recipes (50%+ ingredient match) when available
+- Animated overlay with slot machine effect and haptic feedback
+- Native mobile only (uses Accelerometer - disabled on web)
+
+**Pinch-to-Scale Ingredients:**
+- Pinch in/out on the ingredients section in Recipe Detail to adjust servings
+- Scale range: 0.25x to 4x (rounds to nearest 0.25 increment)
+- Real-time ingredient amount recalculation
+- Visual scale indicator bubble during pinch
+- Alternative +/- buttons for manual adjustment
 
 ### Recipe Transparency System
 Kitch provides full transparency about where recipe information comes from and how accurate it is:
