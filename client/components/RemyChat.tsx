@@ -23,6 +23,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { Audio } from "expo-av";
 import { File } from "expo-file-system";
+import * as Speech from "expo-speech";
+import * as Haptics from "expo-haptics";
 import { KitchColors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { Recipe } from "@/types/recipe";
 import { getApiUrl } from "@/lib/query-client";
@@ -62,6 +64,9 @@ export function RemyChat({
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const micScale = useSharedValue(1);
@@ -130,13 +135,20 @@ export function RemyChat({
           throw new Error(data.error);
         }
 
+        const assistantMessageId = (Date.now() + 1).toString();
         const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: assistantMessageId,
           role: "assistant",
           content: data.reply,
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
+        
+        if (autoSpeak && data.reply) {
+          setTimeout(() => {
+            speakMessage(assistantMessageId, data.reply);
+          }, 300);
+        }
       } catch (error: any) {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -220,8 +232,56 @@ export function RemyChat({
     }
   };
 
+  const speakMessage = async (messageId: string, text: string) => {
+    Haptics.selectionAsync();
+    
+    if (isSpeaking && speakingMessageId === messageId) {
+      Speech.stop();
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    if (isSpeaking) {
+      Speech.stop();
+    }
+
+    setIsSpeaking(true);
+    setSpeakingMessageId(messageId);
+
+    Speech.speak(text, {
+      language: "en",
+      pitch: 1.0,
+      rate: 0.9,
+      onDone: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onStopped: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      },
+    });
+  };
+
+  const toggleAutoSpeak = () => {
+    Haptics.selectionAsync();
+    setAutoSpeak(!autoSpeak);
+  };
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
+    const isCurrentlySpeaking = isSpeaking && speakingMessageId === item.id;
 
     return (
       <Animated.View
@@ -250,6 +310,20 @@ export function RemyChat({
           >
             {item.content}
           </Text>
+          {!isUser && (
+            <Pressable
+              onPress={() => speakMessage(item.id, item.content)}
+              style={styles.speakButton}
+              hitSlop={8}
+              testID={`speak-message-${item.id}`}
+            >
+              <Feather 
+                name={isCurrentlySpeaking ? "volume-x" : "volume-2"} 
+                size={16} 
+                color={isCurrentlySpeaking ? KitchColors.primary : KitchColors.textSecondary} 
+              />
+            </Pressable>
+          )}
         </View>
       </Animated.View>
     );
@@ -273,14 +347,28 @@ export function RemyChat({
               <Text style={styles.headerSubtitle}>Your cooking assistant</Text>
             </View>
           </View>
-          <Pressable
-            onPress={onClose}
-            style={styles.closeButton}
-            hitSlop={12}
-            testID="remy-close-button"
-          >
-            <Feather name="x" size={24} color={KitchColors.textPrimary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={toggleAutoSpeak}
+              style={[styles.autoSpeakButton, autoSpeak && styles.autoSpeakActive]}
+              hitSlop={8}
+              testID="remy-auto-speak-toggle"
+            >
+              <Feather 
+                name={autoSpeak ? "volume-2" : "volume-x"} 
+                size={20} 
+                color={autoSpeak ? KitchColors.primary : KitchColors.textSecondary} 
+              />
+            </Pressable>
+            <Pressable
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={12}
+              testID="remy-close-button"
+            >
+              <Feather name="x" size={24} color={KitchColors.textPrimary} />
+            </Pressable>
+          </View>
         </View>
 
         <KeyboardAvoidingView
@@ -452,6 +540,19 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: Spacing.xs,
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  autoSpeakButton: {
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    backgroundColor: KitchColors.neutral,
+  },
+  autoSpeakActive: {
+    backgroundColor: KitchColors.primary + "20",
+  },
   chatContainer: {
     flex: 1,
   },
@@ -506,6 +607,11 @@ const styles = StyleSheet.create({
   },
   assistantText: {
     color: KitchColors.textPrimary,
+  },
+  speakButton: {
+    marginTop: Spacing.xs,
+    alignSelf: "flex-end",
+    padding: Spacing.xs,
   },
   emptyState: {
     flex: 1,
