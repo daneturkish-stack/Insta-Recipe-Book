@@ -333,20 +333,6 @@ export function RemyChat({
           >
             {item.content}
           </Text>
-          {!isUser && (
-            <Pressable
-              onPress={() => speakMessage(item.id, item.content)}
-              style={styles.speakButton}
-              hitSlop={8}
-              testID={`speak-message-${item.id}`}
-            >
-              <Feather 
-                name={isCurrentlySpeaking ? "volume-x" : "volume-2"} 
-                size={16} 
-                color={isCurrentlySpeaking ? KitchColors.primary : KitchColors.textSecondary} 
-              />
-            </Pressable>
-          )}
         </View>
       </Animated.View>
     );
