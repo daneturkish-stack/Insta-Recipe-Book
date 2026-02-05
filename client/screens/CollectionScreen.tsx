@@ -33,6 +33,7 @@ import { getApiUrl } from "@/lib/query-client";
 const emptyImage = require("../../assets/images/empty-collection.png");
 
 type QuickAction = "pantry" | "quick" | "healthy" | null;
+type ViewMode = "grid-2" | "grid-1" | "list";
 
 interface RemyResponse {
   message: string;
@@ -60,6 +61,7 @@ export default function CollectionScreen() {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
   const [isRouletteActive, setIsRouletteActive] = useState(false);
   const [rouletteRecipe, setRouletteRecipe] = useState<Recipe | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid-2");
 
   const rouletteScale = useSharedValue(0);
   const rouletteOpacity = useSharedValue(0);
@@ -268,29 +270,60 @@ export default function CollectionScreen() {
     setSelectedRecipeIds(new Set());
   }, []);
 
+  const cycleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      if (prev === "grid-2") return "grid-1";
+      if (prev === "grid-1") return "list";
+      return "grid-2";
+    });
+    Haptics.selectionAsync();
+  }, []);
+
+  const getViewModeIcon = (): "grid" | "square" | "list" => {
+    if (viewMode === "grid-2") return "grid";
+    if (viewMode === "grid-1") return "square";
+    return "list";
+  };
+
+  const getCardVariant = (): "grid" | "large" | "list" => {
+    if (viewMode === "grid-2") return "grid";
+    if (viewMode === "grid-1") return "large";
+    return "list";
+  };
+
   const handleCreateShoppingList = useCallback(() => {
     const selectedRecipes = recipes?.filter((r) => selectedRecipeIds.has(r.id)) || [];
     navigation.navigate("CreateShoppingList", { recipes: selectedRecipes });
     handleCancelSelect();
   }, [recipes, selectedRecipeIds, navigation]);
 
-  const renderItem = useCallback(({ item, index }: { item: Recipe; index: number }) => (
-    <Animated.View
-      entering={FadeInDown.delay(index * 50).duration(300)}
-      style={styles.cardWrapper}
-    >
-      <RecipeCard 
-        recipe={item} 
-        onPress={() => handleRecipePress(item)}
-        onLongPress={() => handleLongPress(item.id)}
-        isSelectable={isSelectMode}
-        isSelected={selectedRecipeIds.has(item.id)}
-        onSelect={() => handleToggleSelect(item.id)}
-        onSwipeToCook={() => handleSwipeToCook(item)}
-        index={index}
-      />
-    </Animated.View>
-  ), [handleRecipePress, handleLongPress, isSelectMode, selectedRecipeIds, handleToggleSelect, handleSwipeToCook]);
+  const renderItem = useCallback(({ item, index }: { item: Recipe; index: number }) => {
+    const cardVariant = getCardVariant();
+    const wrapperStyle = viewMode === "list" 
+      ? styles.listCardWrapper 
+      : viewMode === "grid-1" 
+        ? styles.largeCardWrapper 
+        : styles.cardWrapper;
+    
+    return (
+      <Animated.View
+        entering={FadeInDown.delay(Math.min(index * 50, 300)).duration(300)}
+        style={wrapperStyle}
+      >
+        <RecipeCard 
+          recipe={item} 
+          onPress={() => handleRecipePress(item)}
+          onLongPress={() => handleLongPress(item.id)}
+          isSelectable={isSelectMode}
+          isSelected={selectedRecipeIds.has(item.id)}
+          onSelect={() => handleToggleSelect(item.id)}
+          onSwipeToCook={() => handleSwipeToCook(item)}
+          index={index}
+          variant={cardVariant}
+        />
+      </Animated.View>
+    );
+  }, [handleRecipePress, handleLongPress, isSelectMode, selectedRecipeIds, handleToggleSelect, handleSwipeToCook, viewMode]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -396,7 +429,7 @@ export default function CollectionScreen() {
         </Animated.View>
       ) : null}
 
-      {/* Results Count */}
+      {/* Results Count & View Toggle */}
       {!isLoading && recipes && recipes.length > 0 ? (
         <View style={styles.resultsHeader}>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -405,6 +438,13 @@ export default function CollectionScreen() {
               : `${recipes.length} saved recipe${recipes.length !== 1 ? 's' : ''}`
             }
           </ThemedText>
+          <Pressable 
+            onPress={cycleViewMode} 
+            style={[styles.viewToggleButton, { backgroundColor: theme.backgroundSecondary }]}
+            testID="view-toggle-button"
+          >
+            <Feather name={getViewModeIcon()} size={18} color={theme.text} />
+          </Pressable>
         </View>
       ) : null}
     </View>
@@ -413,7 +453,7 @@ export default function CollectionScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <FlatList
-        key="recipe-grid"
+        key={`recipe-${viewMode}`}
         style={styles.list}
         contentContainerStyle={[
           styles.listContent,
@@ -427,8 +467,8 @@ export default function CollectionScreen() {
         data={isLoading ? [] : displayedRecipes}
         keyExtractor={(item) => item.id}
         renderItem={isLoading ? () => null : renderItem}
-        numColumns={2}
-        columnWrapperStyle={isLoading || (displayedRecipes?.length ?? 0) === 0 ? undefined : styles.row}
+        numColumns={viewMode === "grid-2" ? 2 : 1}
+        columnWrapperStyle={viewMode === "grid-2" && !isLoading && (displayedRecipes?.length ?? 0) > 0 ? styles.row : undefined}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={isLoading ? renderLoading : renderEmptyState}
         refreshControl={
@@ -440,6 +480,7 @@ export default function CollectionScreen() {
         }
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        ItemSeparatorComponent={viewMode !== "grid-2" ? () => <View style={{ height: Spacing.md }} /> : undefined}
       />
       
       {isSelectMode ? (
@@ -603,6 +644,16 @@ const styles = StyleSheet.create({
   },
   resultsHeader: {
     marginTop: Spacing.sm,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  viewToggleButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   row: {
     justifyContent: "space-between",
@@ -610,6 +661,12 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: "48%",
+  },
+  largeCardWrapper: {
+    width: "100%",
+  },
+  listCardWrapper: {
+    width: "100%",
   },
   grid: {
     flexDirection: "row",
