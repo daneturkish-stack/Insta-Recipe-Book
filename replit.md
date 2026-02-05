@@ -86,15 +86,16 @@ Preferred communication style: Simple, everyday language.
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
 - **Animations**: React Native Reanimated for smooth micro-interactions
-- **Styling**: Custom design system in `client/constants/theme.ts` with Fresh Playful palette (Mint/Teal #14B8A6 primary, Amber #FBBF24 accent, Navy #1E3A5F dark sections, light mint #E8F6F3 background)
+- **Styling**: Custom design system in `client/constants/theme.ts` with Warm Modern Kitchen palette (Teal #0D9488 primary, Amber #E8A838 accent, Slate #1E293B dark sections, warm off-white #FAF7F5 background)
 - **Typography**: Google Fonts (Inter for all text - modern, clean sans-serif) with hero typography (40px) for splash screens
-- **Design Philosophy**: Fresh, playful cooking app aesthetic with Mint/Teal (#14B8A6) primary, Amber (#FBBF24) accents, and light mint (#E8F6F3) backgrounds. Features:
-  - Colorful card border accents (coral, yellow, blue, lavender, peach)
+- **Design Philosophy**: "Warm Modern Kitchen" aesthetic with deep warm teal (#0D9488) primary, golden amber (#E8A838) accents, warm off-white (#FAF7F5) backgrounds. Features:
+  - 4 streamlined card accent colors (teal, golden, pink, lavender)
   - Pill-shaped buttons with full border radius
-  - Large rounded corners (24px), soft shadows, generous spacing
-  - Navy (#1E3A5F) dark cards for premium sections
-  - Stats badges with light gray pill backgrounds
-  - Category chips with pastel circular backgrounds
+  - Large rounded corners (24px), warm shadows with visible depth, generous spacing
+  - Dark slate (#1E293B) cards for premium sections
+  - Semantic color systems: MatchColors (pantry), PastelColors (category chips), VibeTagColors (recipe tags)
+  - WCAG-compliant contrast ratios throughout
+  - Warm dark mode with deep black (#141218) background and warm undertones
 
 ### Backend Architecture
 - **Runtime**: Express.js on Node.js with TypeScript
