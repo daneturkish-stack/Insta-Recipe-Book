@@ -1,59 +1,60 @@
 import { Platform } from "react-native";
 
-// Kitch Design System - Fresh, Playful Cooking App
-// Mint/Teal primary with Navy accents for a modern culinary experience
+// Kitch Design System - Warm Modern Kitchen
+// Refined teal primary with warm undertones for a premium culinary experience
 
 export const KitchColors = {
-  primary: "#14B8A6", // Mint/Teal - primary actions
-  primaryLight: "#5EEAD4", // Light teal for backgrounds
-  background: "#E8F6F3", // Light mint background
+  primary: "#0D9488", // Deep warm teal - better contrast, richer
+  primaryLight: "#5EEAD4", // Light teal for subtle backgrounds
+  primaryMuted: "#CCFBF1", // Very light teal wash
+  background: "#FAF7F5", // Warm off-white - inviting, editorial
   surface: "#FFFFFF", // Pure white - cards, inputs
-  textPrimary: "#1F2937", // Dark slate - high readability
-  textSecondary: "#6B7280", // Cool gray - secondary text
-  border: "#E5E7EB", // Light gray border
-  accent: "#FBBF24", // Warm Amber - secondary accents
-  navy: "#1E3A5F", // Dark navy - premium cards, dark sections
-  highlight: "#14B8A6", // Teal - emphasis
-  secondary: "#FBBF24", // Amber for secondary actions
-  neutral: "#F3F4F6", // Light gray - subtle backgrounds
-  error: "#EF4444", // Red
-  success: "#14B8A6", // Teal
-  coral: "#FB7185", // Coral accent for cards
-  skyBlue: "#38BDF8", // Sky blue accent for cards
-  lavender: "#A78BFA", // Lavender accent for cards
-  peach: "#FDBA74", // Peach accent
-  // Dark mode variants
-  darkBackground: "#111827",
-  darkSurface: "#1F2937",
-  darkTextPrimary: "#F9FAFB",
-  darkTextSecondary: "#9CA3AF",
-  darkBorder: "#374151",
+  textPrimary: "#1A1A2E", // Deep charcoal - excellent readability
+  textSecondary: "#64748B", // Slate gray - softer secondary
+  border: "#E2E0DD", // Warm gray border
+  accent: "#E8A838", // Refined golden amber - premium feel
+  accentLight: "#FEF3C7", // Light golden wash
+  navy: "#1E293B", // Modern dark slate - premium cards
+  highlight: "#0D9488", // Teal - emphasis
+  secondary: "#E8A838", // Golden for secondary actions
+  neutral: "#F1EFEC", // Warm light gray - subtle backgrounds
+  error: "#DC2626", // Refined red
+  success: "#059669", // Emerald green - distinct from primary
+  coral: "#F472B6", // Soft pink accent
+  skyBlue: "#38BDF8", // Sky blue accent
+  lavender: "#A78BFA", // Lavender accent
+  peach: "#FB923C", // Warm orange accent
+  // Dark mode - warm undertones
+  darkBackground: "#141218", // Deep warm black
+  darkSurface: "#1E1B24", // Warm dark surface
+  darkTextPrimary: "#F5F3F0", // Warm white
+  darkTextSecondary: "#94A3B8", // Soft slate
+  darkBorder: "#2D2B33", // Warm dark border
 };
 
-// Colorful card border accents
+// Streamlined card accents - 4 harmonious tones
 export const CardAccentColors = [
-  KitchColors.coral,
-  KitchColors.accent,
-  KitchColors.skyBlue,
-  KitchColors.lavender,
-  KitchColors.peach,
-  KitchColors.primary,
+  KitchColors.primary, // Teal
+  KitchColors.accent, // Golden
+  KitchColors.coral, // Pink
+  KitchColors.lavender, // Lavender
 ];
 
 export const Colors = {
   light: {
     text: KitchColors.textPrimary,
     textSecondary: KitchColors.textSecondary,
-    buttonText: "#FFFFFF", // White text on teal buttons
+    buttonText: "#FFFFFF",
     tabIconDefault: KitchColors.textSecondary,
-    tabIconSelected: KitchColors.primary, // Teal for selected tab
+    tabIconSelected: KitchColors.primary,
     link: KitchColors.primary,
     backgroundRoot: KitchColors.background,
     backgroundDefault: KitchColors.surface,
     backgroundSecondary: KitchColors.neutral,
-    backgroundTertiary: KitchColors.primaryLight + "30",
+    backgroundTertiary: KitchColors.primaryMuted,
     border: KitchColors.border,
     accent: KitchColors.accent,
+    accentLight: KitchColors.accentLight,
     highlight: KitchColors.highlight,
     error: KitchColors.error,
     primary: KitchColors.primary,
@@ -61,6 +62,10 @@ export const Colors = {
     navy: KitchColors.navy,
     coral: KitchColors.coral,
     skyBlue: KitchColors.skyBlue,
+    progressTrack: "#E2E0DD",
+    statDivider: "#E2E0DD",
+    difficultyBg: "#F3EEFF",
+    difficultyText: "#7C3AED",
   },
   dark: {
     text: KitchColors.darkTextPrimary,
@@ -71,10 +76,11 @@ export const Colors = {
     link: KitchColors.primary,
     backgroundRoot: KitchColors.darkBackground,
     backgroundDefault: KitchColors.darkSurface,
-    backgroundSecondary: "#374151",
-    backgroundTertiary: "#4B5563",
+    backgroundSecondary: "#2D2B33",
+    backgroundTertiary: "#3A3842",
     border: KitchColors.darkBorder,
     accent: KitchColors.accent,
+    accentLight: "#3D3420",
     highlight: KitchColors.highlight,
     error: KitchColors.error,
     primary: KitchColors.primary,
@@ -82,6 +88,10 @@ export const Colors = {
     navy: KitchColors.navy,
     coral: KitchColors.coral,
     skyBlue: KitchColors.skyBlue,
+    progressTrack: "#2D2B33",
+    statDivider: "#2D2B33",
+    difficultyBg: "#2D2040",
+    difficultyText: "#A78BFA",
   },
 };
 
@@ -122,19 +132,17 @@ export const BorderRadius = {
   xl: 20,
   "2xl": 24,
   "3xl": 32,
-  card: 24, // Large rounded cards per spec
+  card: 24,
   full: 9999,
 };
 
 export const Typography = {
-  // Large hero headline for splash/onboarding screens - Nunito ExtraBold for impact
   hero: {
     fontSize: 40,
     lineHeight: 48,
     fontWeight: "800" as const,
     fontFamily: "Nunito_800ExtraBold",
   },
-  // Headings use Nunito Bold for friendly, rounded personality
   h1: {
     fontSize: 32,
     lineHeight: 40,
@@ -159,7 +167,6 @@ export const Typography = {
     fontWeight: "600" as const,
     fontFamily: "Nunito_600SemiBold",
   },
-  // Body text uses Inter for clean, modern readability
   body: {
     fontSize: 16,
     lineHeight: 24,
@@ -184,7 +191,6 @@ export const Typography = {
     fontWeight: "400" as const,
     fontFamily: "Inter_400Regular",
   },
-  // Small uppercase label for categories
   label: {
     fontSize: 12,
     lineHeight: 16,
@@ -234,36 +240,59 @@ export const CookModeTypography = {
   },
 };
 
-// Soft shadows - subtle and elegant for Premium Light aesthetic
+// Refined shadows - warmer, more visible depth
 export const Shadows = {
   card: {
-    shadowColor: "#000000",
+    shadowColor: "#1A1A2E",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     elevation: 3,
   },
   cardLight: {
-    shadowColor: "#000000",
+    shadowColor: "#1A1A2E",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
   button: {
-    shadowColor: "#14B8A6",
+    shadowColor: "#0D9488",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
     elevation: 4,
   },
   floating: {
-    shadowColor: "#000000",
+    shadowColor: "#1A1A2E",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 8,
   },
+};
+
+// Semantic match colors for pantry results
+export const MatchColors = {
+  high: "#059669",
+  medium: "#0D9488",
+  low: "#E8A838",
+};
+
+// Pastel backgrounds for category chips
+export const PastelColors = [
+  "#FECDD3", // Warm rose
+  KitchColors.accentLight, // Golden
+  KitchColors.primaryMuted, // Mint
+  "#DBEAFE", // Soft blue
+  "#EDE9FE", // Lavender
+  "#FFF1F2", // Blush
+];
+
+// Vibe tag colors
+export const VibeTagColors = {
+  light: { bg: KitchColors.accentLight, text: "#92400E" },
+  dark: { bg: "#3D3420", text: "#FCD34D" },
 };
 
 export const Fonts = Platform.select({
