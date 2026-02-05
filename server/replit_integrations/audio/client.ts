@@ -91,18 +91,26 @@ export async function convertToWav(audioBuffer: Buffer): Promise<Buffer> {
 
 /**
  * Auto-detect and convert audio to OpenAI-compatible format.
- * - WAV/MP3: Pass through (already compatible)
- * - WebM/MP4/OGG: Convert to WAV via ffmpeg
+ * - WAV/MP3/MP4(m4a)/OGG: Pass through (OpenAI supports these directly)
+ * - WebM/unknown: Convert to WAV via ffmpeg
  */
 export async function ensureCompatibleFormat(
   audioBuffer: Buffer
-): Promise<{ buffer: Buffer; format: "wav" | "mp3" }> {
+): Promise<{ buffer: Buffer; format: "wav" | "mp3" | "m4a" | "ogg" }> {
   const detected = detectAudioFormat(audioBuffer);
   if (detected === "wav") return { buffer: audioBuffer, format: "wav" };
   if (detected === "mp3") return { buffer: audioBuffer, format: "mp3" };
-  // Convert WebM, MP4, OGG, or unknown to WAV
-  const wavBuffer = await convertToWav(audioBuffer);
-  return { buffer: wavBuffer, format: "wav" };
+  if (detected === "mp4") return { buffer: audioBuffer, format: "m4a" }; // iOS records m4a
+  if (detected === "ogg") return { buffer: audioBuffer, format: "ogg" };
+  // Convert WebM or unknown to WAV
+  try {
+    const wavBuffer = await convertToWav(audioBuffer);
+    return { buffer: wavBuffer, format: "wav" };
+  } catch (error) {
+    // If conversion fails, try sending as-is with wav extension (OpenAI may still parse it)
+    console.error("FFmpeg conversion failed, trying raw audio:", error);
+    return { buffer: audioBuffer, format: "wav" };
+  }
 }
 
 /**
@@ -236,12 +244,15 @@ export async function textToSpeechStream(
 /**
  * Speech-to-Text: Transcribes audio using dedicated transcription model.
  * Uses gpt-4o-mini-transcribe for accurate transcription.
+ * Supports: wav, mp3, webm, m4a, mp4, ogg, flac
  */
 export async function speechToText(
   audioBuffer: Buffer,
-  format: "wav" | "mp3" | "webm" = "wav"
+  format: "wav" | "mp3" | "webm" | "m4a" | "mp4" | "ogg" | "flac" = "wav"
 ): Promise<string> {
-  const file = await toFile(audioBuffer, `audio.${format}`);
+  // Map mp4 to m4a since they're the same container for audio
+  const fileFormat = format === "mp4" ? "m4a" : format;
+  const file = await toFile(audioBuffer, `audio.${fileFormat}`);
   const response = await openai.audio.transcriptions.create({
     file,
     model: "gpt-4o-mini-transcribe",

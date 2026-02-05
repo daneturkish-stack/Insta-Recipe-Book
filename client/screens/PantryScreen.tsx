@@ -170,19 +170,30 @@ export default function PantryScreen() {
         throw new Error("No recording URI");
       }
 
+      console.log("[Voice] Recording URI:", uri);
+      
       const audioFile = new File(uri);
       const base64Audio = await audioFile.base64();
+      
+      console.log("[Voice] Base64 length:", base64Audio?.length || 0);
 
-      const transcribeResponse = await fetch(
-        new URL("/api/remy/transcribe", getApiUrl()).toString(),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio: base64Audio }),
-        }
-      );
+      if (!base64Audio || base64Audio.length === 0) {
+        throw new Error("Failed to read audio file");
+      }
 
+      const transcribeUrl = new URL("/api/remy/transcribe", getApiUrl()).toString();
+      console.log("[Voice] Sending to:", transcribeUrl);
+      
+      const transcribeResponse = await fetch(transcribeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64Audio }),
+      });
+
+      console.log("[Voice] Response status:", transcribeResponse.status);
+      
       const transcribeData = await transcribeResponse.json();
+      console.log("[Voice] Response data:", JSON.stringify(transcribeData));
       
       if (transcribeData.error || !transcribeData.text) {
         throw new Error(transcribeData.error || "No transcription received");
