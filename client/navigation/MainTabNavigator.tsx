@@ -2,13 +2,14 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { KitchColors } from "@/constants/theme";
 
 export type MainTabParamList = {
   CollectionTab: undefined;
@@ -26,8 +27,8 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       initialRouteName="CollectionTab"
       screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
-        tabBarInactiveTintColor: theme.tabIconDefault,
+        tabBarActiveTintColor: KitchColors.primary, // Emerald Green for active
+        tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
           position: "absolute",
           backgroundColor: Platform.select({
@@ -36,6 +37,8 @@ export default function MainTabNavigator() {
           }),
           borderTopWidth: 0,
           elevation: 0,
+          height: Platform.OS === "ios" ? 88 : 64,
+          paddingBottom: Platform.OS === "ios" ? 28 : 8,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
@@ -45,6 +48,11 @@ export default function MainTabNavigator() {
               style={StyleSheet.absoluteFill}
             />
           ) : null,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "500",
+          fontFamily: "Inter_500Medium",
+        },
         headerShown: false,
       }}
     >
@@ -53,8 +61,13 @@ export default function MainTabNavigator() {
         component={CollectionStackNavigator}
         options={{
           title: "Recipes",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="book-open" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Feather 
+              name="book-open" 
+              size={22} 
+              color={color}
+              style={{ strokeWidth: focused ? 2 : 1.5 }}
+            />
           ),
         }}
       />
@@ -63,8 +76,13 @@ export default function MainTabNavigator() {
         component={AddRecipeStackNavigator}
         options={{
           title: "Add",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="plus-circle" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Feather 
+              name="plus-circle" 
+              size={22} 
+              color={color}
+              style={{ strokeWidth: focused ? 2 : 1.5 }}
+            />
           ),
         }}
       />
@@ -73,8 +91,15 @@ export default function MainTabNavigator() {
         component={PantryStackNavigator}
         options={{
           title: "Pantry",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="package" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={focused ? styles.activeIconWrapper : undefined}>
+              <Feather 
+                name="package" 
+                size={22} 
+                color={color}
+                style={{ strokeWidth: focused ? 2 : 1.5 }}
+              />
+            </View>
           ),
         }}
       />
@@ -83,8 +108,13 @@ export default function MainTabNavigator() {
         component={ProfileStackNavigator}
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Feather 
+              name="user" 
+              size={22} 
+              color={color}
+              style={{ strokeWidth: focused ? 2 : 1.5 }}
+            />
           ),
         }}
       />
@@ -92,4 +122,8 @@ export default function MainTabNavigator() {
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  activeIconWrapper: {
+    // Optional: add subtle background for active state
+  },
+});

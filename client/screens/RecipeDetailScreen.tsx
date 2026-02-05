@@ -15,11 +15,41 @@ import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useDeleteRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
 import { apiRequest } from "@/lib/query-client";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, KitchColors } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
+const INGREDIENT_ICONS: Record<string, string> = {
+  tomato: "sun",
+  chicken: "feather",
+  beef: "square",
+  fish: "anchor",
+  salt: "droplet",
+  pepper: "wind",
+  oil: "droplet",
+  onion: "circle",
+  garlic: "circle",
+  egg: "circle",
+  butter: "square",
+  milk: "coffee",
+  cheese: "square",
+  pasta: "minus",
+  rice: "more-horizontal",
+  potato: "circle",
+  carrot: "minus",
+  default: "circle",
+};
+
+function getIngredientIcon(name: string): keyof typeof Feather.glyphMap {
+  const lowerName = name.toLowerCase();
+  for (const [key, icon] of Object.entries(INGREDIENT_ICONS)) {
+    if (lowerName.includes(key)) {
+      return icon as keyof typeof Feather.glyphMap;
+    }
+  }
+  return "circle";
+}
 
 export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -64,7 +94,6 @@ export default function RecipeDetailScreen() {
   const handleSearchFullRecipe = async () => {
     if (recipe) {
       Haptics.selectionAsync();
-      // Use the pre-built manual search query if available, otherwise construct one
       const searchQuery = recipe.manualSearchQuery 
         ? encodeURIComponent(recipe.manualSearchQuery)
         : encodeURIComponent(`${recipe.creatorHandle || ''} ${recipe.title} recipe`);
@@ -112,7 +141,6 @@ export default function RecipeDetailScreen() {
   const handleSaveManualLink = async () => {
     if (!recipe || !manualLinkInput.trim()) return;
     
-    // Basic URL validation
     const urlPattern = /^https?:\/\/.+/i;
     if (!urlPattern.test(manualLinkInput.trim())) {
       Alert.alert("Invalid URL", "Please enter a valid URL starting with http:// or https://");
@@ -187,6 +215,8 @@ export default function RecipeDetailScreen() {
   }
 
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
+  const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  const stepsCount = recipe.instructions?.length || 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -195,7 +225,7 @@ export default function RecipeDetailScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Image with Video Indicator */}
+        {/* Hero Image Section - Large rounded corners */}
         <View style={styles.heroContainer}>
           <Image
             source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage}
@@ -214,7 +244,12 @@ export default function RecipeDetailScreen() {
 
         <View style={styles.content}>
           <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-            {/* Creator & Tags */}
+            {/* Recipe Title */}
+            <ThemedText type="h2" style={styles.title}>
+              {recipe.title}
+            </ThemedText>
+
+            {/* Creator Row */}
             {recipe.creatorHandle ? (
               <Pressable onPress={handleOpenSource} style={styles.creatorRow}>
                 {recipe.creatorAvatar ? (
@@ -228,7 +263,7 @@ export default function RecipeDetailScreen() {
                     <Feather name="user" size={14} color="#FFF" />
                   </View>
                 )}
-                <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
+                <ThemedText type="bodyMedium" style={{ color: theme.textSecondary }}>
                   {recipe.creatorHandle}
                 </ThemedText>
                 {recipe.platform ? (
@@ -243,90 +278,56 @@ export default function RecipeDetailScreen() {
               </Pressable>
             ) : null}
 
-            <ThemedText type="h2" style={styles.title}>
-              {recipe.title}
-            </ThemedText>
+            {/* Horizontal Stats Bar - Premium Light Design */}
+            <View style={[styles.statsBar, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: theme.primary + "15" }]}>
+                  <Feather name="clock" size={18} color={theme.primary} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Time</ThemedText>
+                <ThemedText type="bodyMedium">{totalTime > 0 ? `${totalTime} min` : "N/A"}</ThemedText>
+              </View>
+              
+              <View style={styles.statDivider} />
+              
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: theme.accent + "20" }]}>
+                  <Feather name="list" size={18} color={KitchColors.accent} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Steps</ThemedText>
+                <ThemedText type="bodyMedium">{stepsCount}</ThemedText>
+              </View>
+              
+              <View style={styles.statDivider} />
+              
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: "#F3E8FF" }]}>
+                  <Feather name="award" size={18} color="#9333EA" />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Difficulty</ThemedText>
+                <ThemedText type="bodyMedium">
+                  {stepsCount <= 5 ? "Easy" : stepsCount <= 10 ? "Medium" : "Hard"}
+                </ThemedText>
+              </View>
+            </View>
 
             {/* Tags */}
             {(recipe.dishType || (recipe.vibeTags && recipe.vibeTags.length > 0)) ? (
               <View style={styles.tagsRow}>
                 {recipe.dishType ? (
-                  <View style={[styles.tag, { backgroundColor: theme.primary + "25" }]}>
-                    <ThemedText type="caption" style={{ color: theme.text, fontWeight: "600" }}>
+                  <View style={[styles.tag, { backgroundColor: theme.primary + "15" }]}>
+                    <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600" }}>
                       {recipe.dishType}
                     </ThemedText>
                   </View>
                 ) : null}
                 {recipe.vibeTags?.map((tag) => (
-                  <View key={tag} style={[styles.tag, { backgroundColor: theme.backgroundSecondary }]}>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  <View key={tag} style={[styles.tag, { backgroundColor: theme.accent + "20" }]}>
+                    <ThemedText type="caption" style={{ color: "#92400E", fontWeight: "500" }}>
                       {tag}
                     </ThemedText>
                   </View>
                 ))}
-              </View>
-            ) : null}
-
-            {/* Confidence & Source Attribution Badge - Collapsible */}
-            {recipe.confidence ? (
-              <View style={[
-                styles.confidenceBadge, 
-                { 
-                  backgroundColor: recipe.confidence === 'high' ? '#E8F5E9' : recipe.confidence === 'medium' ? theme.primary + "15" : theme.error + "15",
-                  borderColor: recipe.confidence === 'high' ? '#4CAF50' + "40" : recipe.confidence === 'medium' ? theme.primary + "40" : theme.error + "40",
-                }
-              ]}>
-                <Pressable 
-                  style={styles.confidenceHeader} 
-                  onPress={() => setConfidenceExpanded(!confidenceExpanded)}
-                >
-                  <View style={[
-                    styles.confidenceIndicator, 
-                    { backgroundColor: recipe.confidence === 'high' ? '#4CAF50' : recipe.confidence === 'medium' ? theme.primary : theme.error }
-                  ]} />
-                  <ThemedText type="caption" style={{ 
-                    fontWeight: "600", 
-                    color: recipe.confidence === 'high' ? '#2E7D32' : recipe.confidence === 'medium' ? theme.text : theme.error, 
-                    flex: 1 
-                  }}>
-                    {recipe.confidence === 'high' ? 'High Accuracy' : recipe.confidence === 'medium' ? 'Medium Accuracy' : 'Low Accuracy'}
-                  </ThemedText>
-                  {recipe.recipeSource?.isVerified ? (
-                    <View style={[styles.verifiedBadge, { backgroundColor: '#E8F5E9' }]}>
-                      <Feather name="check-circle" size={10} color="#2E7D32" />
-                      <ThemedText type="caption" style={{ color: '#2E7D32', fontSize: 10, marginLeft: 2, fontWeight: "600" }}>
-                        Verified
-                      </ThemedText>
-                    </View>
-                  ) : null}
-                  <Feather 
-                    name={confidenceExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color={theme.textSecondary} 
-                    style={{ marginLeft: Spacing.sm }}
-                  />
-                </Pressable>
-                
-                {confidenceExpanded && recipe.recipeSource?.name ? (
-                  <Pressable 
-                    style={styles.sourceRow}
-                    onPress={recipe.creatorRecipeUrl ? handleOpenCreatorRecipe : undefined}
-                  >
-                    <Feather 
-                      name={recipe.recipeSource.isVerified ? "external-link" : "alert-circle"} 
-                      size={12} 
-                      color={recipe.creatorRecipeUrl ? theme.primary : theme.textSecondary} 
-                    />
-                    <ThemedText type="caption" style={{ 
-                      color: recipe.creatorRecipeUrl ? theme.primary : theme.textSecondary, 
-                      marginLeft: 4, 
-                      flex: 1,
-                      textDecorationLine: recipe.creatorRecipeUrl ? 'underline' : 'none'
-                    }}>
-                      {recipe.recipeSource.note || `View full recipe on ${recipe.recipeSource.name}`}
-                    </ThemedText>
-                  </Pressable>
-                ) : null}
               </View>
             ) : null}
 
@@ -335,50 +336,59 @@ export default function RecipeDetailScreen() {
                 {recipe.description}
               </ThemedText>
             ) : null}
-
-            {/* Meta Cards */}
-            <View style={styles.metaRow}>
-              {recipe.prepTime ? (
-                <View style={[styles.metaCard, { backgroundColor: theme.backgroundDefault }]}>
-                  <Feather name="clock" size={18} color={theme.primary} />
-                  <ThemedText type="caption" style={[styles.metaLabel, { color: theme.textSecondary }]}>Prep</ThemedText>
-                  <ThemedText type="bodyMedium">{recipe.prepTime} min</ThemedText>
-                </View>
-              ) : null}
-              {recipe.cookTime ? (
-                <View style={[styles.metaCard, { backgroundColor: theme.backgroundDefault }]}>
-                  <Feather name="thermometer" size={18} color={theme.primary} />
-                  <ThemedText type="caption" style={[styles.metaLabel, { color: theme.textSecondary }]}>Cook</ThemedText>
-                  <ThemedText type="bodyMedium">{recipe.cookTime} min</ThemedText>
-                </View>
-              ) : null}
-              {recipe.servings ? (
-                <View style={[styles.metaCard, { backgroundColor: theme.backgroundDefault }]}>
-                  <Feather name="users" size={18} color={theme.primary} />
-                  <ThemedText type="caption" style={[styles.metaLabel, { color: theme.textSecondary }]}>Servings</ThemedText>
-                  <ThemedText type="bodyMedium">{recipe.servings}</ThemedText>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Transparency Banner */}
-            {recipe.isEstimated ? (
-              <View style={[styles.transparencyBanner, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' + "40" }]}>
-                <Feather name="info" size={16} color="#E65100" />
-                <ThemedText type="caption" style={[styles.transparencyText, { color: theme.textSecondary }]}>
-                  Some details were estimated by AI based on the post. Tap below to verify.
-                </ThemedText>
-              </View>
-            ) : null}
           </Animated.View>
 
-          {/* Ingredients */}
+          {/* Visual Ingredient Cards */}
           <Animated.View entering={FadeInDown.delay(200).duration(400)}>
             <View style={styles.section}>
               <ThemedText type="h4" style={styles.sectionTitle}>
                 Ingredients
               </ThemedText>
-              <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }]}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ingredientCardsContainer}
+              >
+                {recipe.ingredients.slice(0, 8).map((ingredient, index) => (
+                  <Pressable
+                    key={index}
+                    onPress={() => toggleIngredient(index)}
+                    style={[
+                      styles.ingredientCard,
+                      { backgroundColor: theme.backgroundDefault },
+                      checkedIngredients.has(index) && { backgroundColor: theme.primary + "10" },
+                      Shadows.cardLight,
+                    ]}
+                  >
+                    <View style={[
+                      styles.ingredientIconWrapper,
+                      { backgroundColor: checkedIngredients.has(index) ? theme.primary + "20" : theme.backgroundSecondary }
+                    ]}>
+                      <Feather 
+                        name={getIngredientIcon(ingredient.name)} 
+                        size={24} 
+                        color={checkedIngredients.has(index) ? theme.primary : theme.textSecondary} 
+                      />
+                    </View>
+                    <ThemedText 
+                      type="caption" 
+                      style={[
+                        styles.ingredientCardName,
+                        checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 }
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {ingredient.name}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, fontWeight: "500" }}>
+                      {ingredient.amount} {ingredient.unit}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              
+              {/* Full ingredients list */}
+              <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
                 {recipe.ingredients.map((ingredient, index) => (
                   <Pressable
                     key={index}
@@ -391,8 +401,8 @@ export default function RecipeDetailScreen() {
                     <View style={[
                       styles.checkbox,
                       {
-                        borderColor: checkedIngredients.has(index) ? theme.accent : theme.border,
-                        backgroundColor: checkedIngredients.has(index) ? theme.accent : "transparent",
+                        borderColor: checkedIngredients.has(index) ? theme.primary : theme.border,
+                        backgroundColor: checkedIngredients.has(index) ? theme.primary : "transparent",
                       },
                     ]}>
                       {checkedIngredients.has(index) ? (
@@ -438,9 +448,8 @@ export default function RecipeDetailScreen() {
             </View>
           </Animated.View>
 
-          {/* Verification Section */}
+          {/* Original Post Transcript */}
           <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-            {/* Original Post Transcript */}
             {recipe.originalTranscript ? (
               <View style={styles.section}>
                 <Pressable onPress={toggleTranscript} style={styles.transcriptHeader}>
@@ -466,18 +475,18 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Creator's Full Recipe Link or Search */}
+            {/* Creator's Full Recipe Link */}
             {recipe.creatorRecipeUrl ? (
               <View>
                 <Pressable
                   onPress={handleOpenCreatorRecipe}
-                  style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+                  style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "10", borderColor: theme.primary + "30" }]}
                   testID="button-creator-recipe"
                 >
                   <View style={styles.sourceContent}>
                     <Feather name="book-open" size={18} color={theme.primary} />
                     <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                      <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
+                      <ThemedText type="bodyMedium" style={{ color: theme.primary }}>
                         View Full Recipe
                       </ThemedText>
                       <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
@@ -503,7 +512,7 @@ export default function RecipeDetailScreen() {
                 <View style={styles.noRecipeLinkHeader}>
                   <Feather name="info" size={16} color={theme.textSecondary} />
                   <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.textSecondary, flex: 1 }}>
-                    I couldn't find this exact recipe online yet. It may not be published.
+                    I couldn't find this exact recipe online yet.
                   </ThemedText>
                 </View>
                 <Pressable
@@ -512,7 +521,7 @@ export default function RecipeDetailScreen() {
                   testID="button-search-recipe"
                 >
                   <Feather name="search" size={16} color="#FFF" />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: "#FFF", fontWeight: "600" }}>
+                  <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: "#FFF" }}>
                     Search for Recipe
                   </ThemedText>
                 </Pressable>
@@ -524,11 +533,11 @@ export default function RecipeDetailScreen() {
           <Animated.View entering={FadeInDown.delay(500).duration(400)}>
             <Pressable
               onPress={handleOpenSource}
-              style={[styles.sourceButton, { backgroundColor: theme.backgroundDefault }]}
+              style={[styles.sourceButton, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}
             >
               <View style={styles.sourceContent}>
                 <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={20} color={theme.primary} />
-                <ThemedText type="small" style={{ marginLeft: Spacing.sm }}>
+                <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
                   View original on {recipe.platform === "tiktok" ? "TikTok" : "Instagram"}
                 </ThemedText>
               </View>
@@ -548,18 +557,16 @@ export default function RecipeDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Floating Cook Mode Button */}
+      {/* Floating Cook Mode Button - Emerald Green */}
       <View 
         style={[
           styles.floatingButtonContainer, 
-          { 
-            bottom: tabBarHeight,
-          }
+          { bottom: tabBarHeight }
         ]}
       >
         <Pressable
           onPress={handleStartCookMode}
-          style={[styles.cookModeButton, { backgroundColor: theme.primary }, Shadows.floating]}
+          style={[styles.cookModeButton, { backgroundColor: theme.primary }, Shadows.button]}
           testID="button-start-cooking"
         >
           <Feather name="play-circle" size={22} color="#FFF" />
@@ -592,7 +599,7 @@ export default function RecipeDetailScreen() {
           onPress={closeLinkCorrectionModal}
         >
           <Pressable 
-            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}
+            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }, Shadows.floating]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.modalHeader}>
@@ -623,7 +630,7 @@ export default function RecipeDetailScreen() {
 
                 <Pressable
                   onPress={() => setShowManualInput(true)}
-                  style={[styles.modalOptionButton, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}
+                  style={[styles.modalOptionButton, { backgroundColor: theme.backgroundSecondary }]}
                 >
                   <Feather name="edit-3" size={18} color={theme.text} />
                   <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
@@ -642,8 +649,7 @@ export default function RecipeDetailScreen() {
                   placeholder="https://example.com/recipe"
                   placeholderTextColor={theme.textSecondary}
                   style={[styles.linkInput, { 
-                    backgroundColor: theme.backgroundDefault, 
-                    borderColor: theme.border,
+                    backgroundColor: theme.backgroundSecondary, 
                     color: theme.text 
                   }]}
                   autoCapitalize="none"
@@ -653,16 +659,16 @@ export default function RecipeDetailScreen() {
                 <View style={styles.manualInputButtons}>
                   <Pressable
                     onPress={() => setShowManualInput(false)}
-                    style={[styles.cancelButton, { borderColor: theme.border }]}
+                    style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
                   >
-                    <ThemedText type="small">Back</ThemedText>
+                    <ThemedText type="bodyMedium">Back</ThemedText>
                   </Pressable>
                   <Pressable
                     onPress={handleSaveManualLink}
                     style={[styles.saveButton, { backgroundColor: theme.primary }]}
                     disabled={!manualLinkInput.trim()}
                   >
-                    <ThemedText type="small" style={{ color: "#FFF", fontWeight: "600" }}>
+                    <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>
                       Save Link
                     </ThemedText>
                   </Pressable>
@@ -685,12 +691,15 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     width: "100%",
-    height: 300,
+    height: 320,
     position: "relative",
+    marginBottom: -Spacing["3xl"],
   },
   heroImage: {
     width: "100%",
     height: "100%",
+    borderBottomLeftRadius: BorderRadius.card,
+    borderBottomRightRadius: BorderRadius.card,
   },
   playButton: {
     position: "absolute",
@@ -709,35 +718,61 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.xl,
-    paddingTop: Spacing["2xl"],
+    paddingTop: Spacing["4xl"],
+  },
+  title: {
+    marginBottom: Spacing.md,
   },
   creatorRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   creatorAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.sm,
   },
   creatorAvatarImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginRight: Spacing.sm,
   },
   platformBadge: {
     marginLeft: Spacing.sm,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
   },
-  title: {
-    marginBottom: Spacing.lg,
+  statsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.card,
+    marginBottom: Spacing.xl,
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xs,
+  },
+  statDivider: {
+    width: 1,
+    height: 48,
+    backgroundColor: "#E5E7EB",
   },
   tagsRow: {
     flexDirection: "row",
@@ -748,36 +783,46 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.full,
   },
   description: {
     marginBottom: Spacing.xl,
     lineHeight: 24,
   },
-  metaRow: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    marginBottom: Spacing["2xl"],
-  },
-  metaCard: {
-    flex: 1,
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    gap: Spacing.xs,
-  },
-  metaLabel: {
-    fontSize: 11,
-  },
   section: {
     marginBottom: Spacing["3xl"],
   },
   sectionTitle: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  ingredientCardsContainer: {
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  ingredientCard: {
+    width: 100,
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    marginRight: Spacing.sm,
+  },
+  ingredientIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.sm,
+  },
+  ingredientCardName: {
+    textAlign: "center",
+    fontWeight: "500",
+    marginBottom: Spacing.xs,
   },
   ingredientsList: {
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card,
     overflow: "hidden",
+    marginTop: Spacing.lg,
   },
   ingredientItem: {
     flexDirection: "row",
@@ -785,9 +830,9 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
@@ -801,9 +846,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   stepNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
@@ -823,7 +868,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card,
     marginBottom: Spacing.lg,
   },
   sourceContent: {
@@ -835,7 +880,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
   },
   deleteText: {
@@ -853,25 +898,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: 56,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
   },
   cookModeButtonText: {
     color: "#FFF",
     fontWeight: "600",
     marginLeft: Spacing.sm,
-  },
-  transparencyBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    marginTop: Spacing.lg,
-    gap: Spacing.md,
-  },
-  transparencyText: {
-    flex: 1,
-    lineHeight: 18,
   },
   transcriptHeader: {
     flexDirection: "row",
@@ -885,21 +917,12 @@ const styles = StyleSheet.create({
   },
   transcriptContent: {
     padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.lg,
     marginTop: Spacing.sm,
-  },
-  searchRecipeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-    marginBottom: Spacing.lg,
   },
   noRecipeLinkContainer: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
     marginBottom: Spacing.lg,
   },
@@ -921,50 +944,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
-    marginBottom: Spacing.lg,
-  },
-  confidenceBadge: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    marginBottom: Spacing.lg,
-  },
-  confidenceHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  confidenceIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: Spacing.sm,
-  },
-  sourceNote: {
-    marginTop: Spacing.xs,
-    lineHeight: 18,
-  },
-  authorityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: Spacing.sm,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-  },
-  verifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: Spacing.sm,
-  },
-  sourceRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   wrongLinkButton: {
     flexDirection: "row",
@@ -983,7 +965,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "100%",
     maxWidth: 400,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.card,
     padding: Spacing.xl,
   },
   modalHeader: {
@@ -1005,9 +987,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   linkInput: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
     fontSize: 14,
     marginBottom: Spacing.lg,
   },
@@ -1021,7 +1002,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
   },
   saveButton: {
     flex: 1,

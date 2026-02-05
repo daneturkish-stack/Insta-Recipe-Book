@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -80,6 +80,7 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
+        Shadows.card,
         isSelected && { borderWidth: 2, borderColor: theme.primary },
         animatedStyle,
       ]}
@@ -135,7 +136,7 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
         <View style={styles.metaRow}>
           {totalTime > 0 ? (
             <View style={styles.metaItem}>
-              <Feather name="clock" size={12} color={theme.textSecondary} />
+              <Feather name="clock" size={12} color={theme.primary} />
               <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
                 {totalTime} min
               </ThemedText>
@@ -144,7 +145,7 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
 
           {recipe.servings ? (
             <View style={styles.metaItem}>
-              <Feather name="users" size={12} color={theme.textSecondary} />
+              <Feather name="users" size={12} color={theme.primary} />
               <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
                 {recipe.servings}
               </ThemedText>
@@ -153,7 +154,7 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
 
           {recipe.ingredients && recipe.ingredients.length > 0 ? (
             <View style={styles.metaItem}>
-              <Feather name="list" size={12} color={theme.textSecondary} />
+              <Feather name="list" size={12} color={theme.primary} />
               <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
                 {recipe.ingredients.length}
               </ThemedText>
@@ -164,15 +165,15 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
         {recipe.dishType || (recipe.vibeTags && recipe.vibeTags.length > 0) ? (
           <View style={styles.tagsRow}>
             {recipe.dishType ? (
-              <View style={[styles.tag, { backgroundColor: theme.primary + "15" }]}>
+              <View style={[styles.tag, { backgroundColor: theme.primary + "20" }]}>
                 <ThemedText type="caption" style={[styles.tagText, { color: theme.primary }]}>
                   {recipe.dishType}
                 </ThemedText>
               </View>
             ) : null}
             {recipe.vibeTags?.slice(0, 1).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: theme.accent + "15" }]}>
-                <ThemedText type="caption" style={[styles.tagText, { color: theme.accent }]}>
+              <View key={index} style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
+                <ThemedText type="caption" style={[styles.tagText, { color: "#92400E" }]}>
                   {tag}
                 </ThemedText>
               </View>
@@ -196,12 +197,15 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card, // 24px large rounded corners
     overflow: "hidden",
   },
   imageContainer: {
     aspectRatio: 4 / 3,
     position: "relative",
+    borderTopLeftRadius: BorderRadius.card,
+    borderTopRightRadius: BorderRadius.card,
+    overflow: "hidden",
   },
   image: {
     width: "100%",
@@ -281,7 +285,7 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.full,
   },
   tagText: {
     fontWeight: "600",
