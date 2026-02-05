@@ -27,6 +27,7 @@ import * as Haptics from "expo-haptics";
 import { KitchColors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { Recipe } from "@/types/recipe";
 import { getApiUrl } from "@/lib/query-client";
+import { usePreferences } from "@/hooks/usePreferences";
 
 interface Message {
   id: string;
@@ -67,6 +68,7 @@ export function RemyChat({
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const { ttsVoice, dietaryPreferences } = usePreferences();
 
   const micScale = useSharedValue(1);
 
@@ -124,6 +126,7 @@ export function RemyChat({
               conversationHistory,
               currentRecipe,
               allRecipes,
+              dietaryPreferences,
             }),
           }
         );
@@ -254,7 +257,7 @@ export function RemyChat({
       const response = await fetch(new URL("/api/remy/speak", apiUrl).toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "nova" }),
+        body: JSON.stringify({ text, voice: ttsVoice }),
       });
 
       if (!response.ok) {

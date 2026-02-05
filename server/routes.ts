@@ -1617,7 +1617,7 @@ IMPORTANT:
   // Remy AI assistant chat
   app.post("/api/remy/chat", async (req: Request, res: Response) => {
     try {
-      const { message, conversationHistory, currentRecipe, allRecipes } = req.body;
+      const { message, conversationHistory, currentRecipe, allRecipes, dietaryPreferences } = req.body;
 
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
@@ -1656,6 +1656,14 @@ ${recipeSummaries}
 `;
       }
 
+      let dietaryContext = "";
+      if (dietaryPreferences && Array.isArray(dietaryPreferences) && dietaryPreferences.length > 0) {
+        dietaryContext = `
+IMPORTANT - USER'S DIETARY PREFERENCES: ${dietaryPreferences.join(", ")}
+Always keep these dietary restrictions in mind when suggesting recipes, ingredients, or meal ideas. Proactively suggest alternatives that fit their diet. If a recipe or suggestion conflicts with their preferences, mention it and offer a suitable substitution.
+`;
+      }
+
       const systemPrompt = `You are Remi, a passionate and knowledgeable AI companion for anyone who loves food. You're like a friend who happens to be a culinary enthusiast — curious, opinionated (in a fun way), and always excited to chat about anything food-related.
 
 You love discussing:
@@ -1667,6 +1675,7 @@ You love discussing:
 - Meal planning, dietary adaptations, and nutrition
 - The user's saved recipes when relevant
 
+${dietaryContext}
 ${recipeContext}
 
 Your personality:
