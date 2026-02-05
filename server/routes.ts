@@ -1721,15 +1721,15 @@ Remember: You're helping real home cooks feel confident in the kitchen!`;
 
       // Convert base64 audio to buffer
       const audioBuffer = Buffer.from(audioData, "base64");
-      const audioFile = new File([audioBuffer], "voice.mp3", { type: "audio/mpeg" });
+      
+      // Detect format and convert if needed
+      const { ensureCompatibleFormat, speechToText } = await import("./replit_integrations/audio/client");
+      const { buffer: compatibleBuffer, format } = await ensureCompatibleFormat(audioBuffer);
+      
+      // Use the proper transcription function
+      const text = await speechToText(compatibleBuffer, format);
 
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: "whisper-1",
-        language: "en",
-      });
-
-      res.json({ text: transcription.text });
+      res.json({ text });
     } catch (error: any) {
       console.error("Error transcribing voice:", error);
       res.status(500).json({
