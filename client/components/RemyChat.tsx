@@ -65,7 +65,6 @@ export function RemyChat({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [autoSpeak, setAutoSpeak] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -144,11 +143,6 @@ export function RemyChat({
 
         setMessages((prev) => [...prev, assistantMessage]);
         
-        if (autoSpeak && data.reply) {
-          setTimeout(() => {
-            speakMessage(assistantMessageId, data.reply);
-          }, 300);
-        }
       } catch (error: any) {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -161,7 +155,7 @@ export function RemyChat({
         setIsLoading(false);
       }
     },
-    [messages, currentRecipe, allRecipes, autoSpeak]
+    [messages, currentRecipe, allRecipes]
   );
 
   const startRecording = async () => {
@@ -288,11 +282,6 @@ export function RemyChat({
     }
   };
 
-  const toggleAutoSpeak = () => {
-    Haptics.selectionAsync();
-    setAutoSpeak(!autoSpeak);
-  };
-
   const speakLatestMessage = () => {
     const latestAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
     if (latestAssistantMessage) {
@@ -371,21 +360,9 @@ export function RemyChat({
               testID="remy-play-button"
             >
               <Feather 
-                name={isSpeaking ? "pause" : "play"} 
-                size={18} 
-                color={isSpeaking ? KitchColors.primary : KitchColors.textSecondary} 
-              />
-            </Pressable>
-            <Pressable
-              onPress={toggleAutoSpeak}
-              style={[styles.autoSpeakButton, autoSpeak && styles.autoSpeakActive]}
-              hitSlop={8}
-              testID="remy-auto-speak-toggle"
-            >
-              <Feather 
-                name={autoSpeak ? "volume-2" : "volume-x"} 
+                name={isSpeaking ? "volume-x" : "volume-2"} 
                 size={20} 
-                color={autoSpeak ? KitchColors.primary : KitchColors.textSecondary} 
+                color={isSpeaking ? KitchColors.primary : KitchColors.textSecondary} 
               />
             </Pressable>
             <Pressable
@@ -580,14 +557,6 @@ const styles = StyleSheet.create({
     marginRight: Spacing.xs,
   },
   playButtonActive: {
-    backgroundColor: KitchColors.primary + "20",
-  },
-  autoSpeakButton: {
-    padding: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    backgroundColor: KitchColors.neutral,
-  },
-  autoSpeakActive: {
     backgroundColor: KitchColors.primary + "20",
   },
   chatContainer: {
