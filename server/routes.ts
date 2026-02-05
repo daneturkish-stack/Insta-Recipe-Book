@@ -1477,6 +1477,44 @@ Only include recipes with at least 50% ingredient match.`;
     }
   });
 
+  // Search for recipe URL (re-search when user reports wrong link)
+  app.post("/api/recipes/search-recipe-url", async (req: Request, res: Response) => {
+    try {
+      const { recipeTitle, creatorHandle } = req.body;
+
+      if (!recipeTitle) {
+        return res.status(400).json({ error: "Recipe title is required" });
+      }
+
+      console.log(`[Re-search] Searching for recipe URL: "${recipeTitle}" by ${creatorHandle || 'unknown creator'}`);
+
+      const searchResult = await searchForCreatorRecipe(recipeTitle, creatorHandle || null);
+      
+      if (searchResult?.url) {
+        console.log(`[Re-search] Found: ${searchResult.url}`);
+        res.json({
+          creatorRecipeUrl: searchResult.url,
+          recipeSource: {
+            type: "creator_website",
+            name: new URL(searchResult.url).hostname.replace('www.', ''),
+            url: searchResult.url,
+            isVerified: searchResult.isVerified,
+            verificationMethod: searchResult.verificationMethod,
+          },
+        });
+      } else {
+        console.log(`[Re-search] No recipe URL found`);
+        res.json({
+          creatorRecipeUrl: null,
+          message: "Could not find a recipe URL",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error searching for recipe URL:", error);
+      res.status(500).json({ error: "Failed to search for recipe URL" });
+    }
+  });
+
   // Remy AI search - returns matching recipe IDs with a friendly message
   app.post("/api/remy/search", async (req: Request, res: Response) => {
     try {

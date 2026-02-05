@@ -12,7 +12,7 @@ export type RecipeSourceType =
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
-export type VerificationMethod = 'domain_match' | 'instagram_link' | 'unverified';
+export type VerificationMethod = 'domain_match' | 'instagram_link' | 'unverified' | 'user_manual';
 
 export interface RecipeSource {
   type: RecipeSourceType;

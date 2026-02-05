@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View, ScrollView, Pressable, Alert, Dimensions } from "react-native";
+import { StyleSheet, View, ScrollView, Pressable, Alert, Dimensions, Modal, TextInput, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -13,7 +13,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
-import { useRecipe, useDeleteRecipe } from "@/hooks/useRecipes";
+import { useRecipe, useDeleteRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
+import { apiRequest } from "@/lib/query-client";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -30,11 +31,16 @@ export default function RecipeDetailScreen() {
 
   const recipe = useRecipe(recipeId);
   const deleteRecipe = useDeleteRecipe();
+  const updateRecipe = useUpdateRecipe();
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [showTranscript, setShowTranscript] = useState(false);
   const [showRemyChat, setShowRemyChat] = useState(false);
   const [confidenceExpanded, setConfidenceExpanded] = useState(false);
+  const [showLinkCorrectionModal, setShowLinkCorrectionModal] = useState(false);
+  const [manualLinkInput, setManualLinkInput] = useState("");
+  const [isSearchingAgain, setIsSearchingAgain] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(false);
 
   const toggleIngredient = (index: number) => {
     Haptics.selectionAsync();
@@ -64,6 +70,76 @@ export default function RecipeDetailScreen() {
         : encodeURIComponent(`${recipe.creatorHandle || ''} ${recipe.title} recipe`);
       await WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${searchQuery}`);
     }
+  };
+
+  const handleWrongLink = () => {
+    Haptics.selectionAsync();
+    setShowLinkCorrectionModal(true);
+    setShowManualInput(false);
+    setManualLinkInput("");
+  };
+
+  const handleSearchAgain = async () => {
+    if (!recipe) return;
+    setIsSearchingAgain(true);
+    try {
+      const response = await apiRequest("POST", "/api/recipes/search-recipe-url", {
+        recipeTitle: recipe.title,
+        creatorHandle: recipe.creatorHandle,
+      });
+      const data = await response.json();
+      
+      if (data.creatorRecipeUrl) {
+        await updateRecipe.mutateAsync({
+          id: recipe.id,
+          creatorRecipeUrl: data.creatorRecipeUrl,
+          recipeSource: data.recipeSource,
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Found it!", "I found a recipe link and updated it.");
+      } else {
+        Alert.alert("No luck", "I couldn't find a different recipe link. Try adding it manually.");
+        setShowManualInput(true);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong while searching. Try adding the link manually.");
+      setShowManualInput(true);
+    } finally {
+      setIsSearchingAgain(false);
+    }
+  };
+
+  const handleSaveManualLink = async () => {
+    if (!recipe || !manualLinkInput.trim()) return;
+    
+    // Basic URL validation
+    const urlPattern = /^https?:\/\/.+/i;
+    if (!urlPattern.test(manualLinkInput.trim())) {
+      Alert.alert("Invalid URL", "Please enter a valid URL starting with http:// or https://");
+      return;
+    }
+    
+    await updateRecipe.mutateAsync({
+      id: recipe.id,
+      creatorRecipeUrl: manualLinkInput.trim(),
+      recipeSource: {
+        type: "creator_website",
+        name: "User-provided link",
+        url: manualLinkInput.trim(),
+        isVerified: false,
+        verificationMethod: "user_manual",
+      },
+    });
+    
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowLinkCorrectionModal(false);
+    setManualLinkInput("");
+  };
+
+  const closeLinkCorrectionModal = () => {
+    setShowLinkCorrectionModal(false);
+    setShowManualInput(false);
+    setManualLinkInput("");
   };
 
   const handleOpenCreatorRecipe = async () => {
@@ -392,24 +468,36 @@ export default function RecipeDetailScreen() {
 
             {/* Creator's Full Recipe Link or Search */}
             {recipe.creatorRecipeUrl ? (
-              <Pressable
-                onPress={handleOpenCreatorRecipe}
-                style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
-                testID="button-creator-recipe"
-              >
-                <View style={styles.sourceContent}>
-                  <Feather name="book-open" size={18} color={theme.primary} />
-                  <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                    <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
-                      View Full Recipe
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
-                      {recipe.creatorRecipeUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                    </ThemedText>
+              <View>
+                <Pressable
+                  onPress={handleOpenCreatorRecipe}
+                  style={[styles.creatorRecipeButton, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+                  testID="button-creator-recipe"
+                >
+                  <View style={styles.sourceContent}>
+                    <Feather name="book-open" size={18} color={theme.primary} />
+                    <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
+                      <ThemedText type="small" style={{ color: theme.primary, fontWeight: "600" }}>
+                        View Full Recipe
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                        {recipe.creatorRecipeUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-                <Feather name="external-link" size={16} color={theme.primary} />
-              </Pressable>
+                  <Feather name="external-link" size={16} color={theme.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={handleWrongLink}
+                  style={styles.wrongLinkButton}
+                  testID="button-wrong-link"
+                >
+                  <Feather name="alert-circle" size={14} color={theme.textSecondary} />
+                  <ThemedText type="caption" style={{ marginLeft: Spacing.xs, color: theme.textSecondary }}>
+                    Wrong link?
+                  </ThemedText>
+                </Pressable>
+              </View>
             ) : (
               <View style={[styles.noRecipeLinkContainer, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
                 <View style={styles.noRecipeLinkHeader}>
@@ -491,6 +579,99 @@ export default function RecipeDetailScreen() {
         onClose={() => setShowRemyChat(false)}
         currentRecipe={recipe}
       />
+
+      {/* Link Correction Modal */}
+      <Modal
+        visible={showLinkCorrectionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={closeLinkCorrectionModal}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={closeLinkCorrectionModal}
+        >
+          <Pressable 
+            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4" style={{ flex: 1 }}>Fix Recipe Link</ThemedText>
+              <Pressable onPress={closeLinkCorrectionModal}>
+                <Feather name="x" size={24} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+
+            {!showManualInput ? (
+              <View style={styles.modalOptions}>
+                <Pressable
+                  onPress={handleSearchAgain}
+                  style={[styles.modalOptionButton, { backgroundColor: theme.primary }]}
+                  disabled={isSearchingAgain}
+                >
+                  {isSearchingAgain ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <>
+                      <Feather name="search" size={18} color="#FFF" />
+                      <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: "#FFF" }}>
+                        Search Again with AI
+                      </ThemedText>
+                    </>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowManualInput(true)}
+                  style={[styles.modalOptionButton, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}
+                >
+                  <Feather name="edit-3" size={18} color={theme.text} />
+                  <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
+                    Add Link Manually
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.manualInputSection}>
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+                  Paste the correct recipe URL:
+                </ThemedText>
+                <TextInput
+                  value={manualLinkInput}
+                  onChangeText={setManualLinkInput}
+                  placeholder="https://example.com/recipe"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.linkInput, { 
+                    backgroundColor: theme.backgroundDefault, 
+                    borderColor: theme.border,
+                    color: theme.text 
+                  }]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                <View style={styles.manualInputButtons}>
+                  <Pressable
+                    onPress={() => setShowManualInput(false)}
+                    style={[styles.cancelButton, { borderColor: theme.border }]}
+                  >
+                    <ThemedText type="small">Back</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSaveManualLink}
+                    style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                    disabled={!manualLinkInput.trim()}
+                  >
+                    <ThemedText type="small" style={{ color: "#FFF", fontWeight: "600" }}>
+                      Save Link
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -784,5 +965,69 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginTop: Spacing.xs,
+  },
+  wrongLinkButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.xl,
+  },
+  modalOptions: {
+    gap: Spacing.md,
+  },
+  modalOptionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.full,
+  },
+  manualInputSection: {
+    marginTop: Spacing.sm,
+  },
+  linkInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    fontSize: 14,
+    marginBottom: Spacing.lg,
+  },
+  manualInputButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  cancelButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  saveButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.full,
   },
 });

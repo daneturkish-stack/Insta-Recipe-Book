@@ -80,6 +80,24 @@ export function useDeleteRecipe() {
   });
 }
 
+export function useUpdateRecipe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updatedRecipe: Partial<Recipe> & { id: string }) => {
+      const recipes = await getStoredRecipes();
+      const newRecipes = recipes.map((r) =>
+        r.id === updatedRecipe.id ? { ...r, ...updatedRecipe } : r
+      );
+      await saveRecipesToStorage(newRecipes);
+      return newRecipes.find((r) => r.id === updatedRecipe.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recipes"] });
+    },
+  });
+}
+
 export function useGenerateRecipe() {
   return useMutation({
     mutationFn: async (sourceUrl: string): Promise<Recipe> => {
