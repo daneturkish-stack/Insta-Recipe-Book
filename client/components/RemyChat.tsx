@@ -233,11 +233,9 @@ export function RemyChat({
   };
 
   const speakMessage = async (messageId: string, text: string) => {
-    console.log("[Speech] speakMessage called", { messageId, textLength: text.length });
     Haptics.selectionAsync();
     
     if (isSpeaking && speakingMessageId === messageId) {
-      console.log("[Speech] Stopping current speech");
       Speech.stop();
       setIsSpeaking(false);
       setSpeakingMessageId(null);
@@ -252,34 +250,30 @@ export function RemyChat({
     setSpeakingMessageId(messageId);
 
     try {
-      const isSpeechAvailable = await Speech.isSpeakingAsync();
-      console.log("[Speech] isSpeakingAsync check:", isSpeechAvailable);
-      
+      const voices = await Speech.getAvailableVoicesAsync();
+      const englishVoice = voices.find(
+        (v) => v.language.startsWith("en") && v.quality === Speech.VoiceQuality.Enhanced
+      ) || voices.find((v) => v.language.startsWith("en"));
+
       Speech.speak(text, {
-        language: "en",
+        language: "en-US",
         pitch: 1.0,
         rate: 0.9,
-        onStart: () => {
-          console.log("[Speech] Started speaking");
-        },
+        voice: englishVoice?.identifier,
         onDone: () => {
-          console.log("[Speech] Done speaking");
           setIsSpeaking(false);
           setSpeakingMessageId(null);
         },
         onStopped: () => {
-          console.log("[Speech] Speech stopped");
           setIsSpeaking(false);
           setSpeakingMessageId(null);
         },
-        onError: (error) => {
-          console.error("[Speech] Error:", error);
+        onError: () => {
           setIsSpeaking(false);
           setSpeakingMessageId(null);
         },
       });
     } catch (error) {
-      console.error("[Speech] Exception:", error);
       setIsSpeaking(false);
       setSpeakingMessageId(null);
     }
