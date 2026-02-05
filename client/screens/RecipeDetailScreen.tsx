@@ -559,7 +559,7 @@ export default function RecipeDetailScreen() {
       <View 
         style={[
           styles.floatingButtonContainer, 
-          { bottom: tabBarHeight }
+          { bottom: tabBarHeight + Spacing.lg }
         ]}
       >
         <Pressable
@@ -886,7 +886,7 @@ const styles = StyleSheet.create({
   floatingButtonContainer: {
     position: "absolute",
     left: Spacing.lg,
-    right: Spacing.lg,
+    right: Spacing["5xl"],
     zIndex: 100,
   },
   cookModeButton: {
