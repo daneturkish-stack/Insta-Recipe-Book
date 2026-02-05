@@ -60,7 +60,7 @@ export function RecipeCard({
   index = 0,
   variant = "grid",
 }: RecipeCardProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const isSwipeActive = useSharedValue(false);
@@ -362,7 +362,7 @@ export function RecipeCard({
             ) : null}
             {recipe.vibeTags?.slice(0, 1).map((tag, idx) => (
               <View key={idx} style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
-                <ThemedText type="caption" style={[styles.tagText, { color: "#92400E" }]}>
+                <ThemedText type="caption" style={[styles.tagText, { color: isDark ? "#FCD34D" : "#92400E" }]}>
                   {tag}
                 </ThemedText>
               </View>

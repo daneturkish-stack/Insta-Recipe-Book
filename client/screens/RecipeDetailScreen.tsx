@@ -64,7 +64,7 @@ function getIngredientIcon(name: string): keyof typeof Feather.glyphMap {
 export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { recipeId } = route.params;
@@ -394,7 +394,7 @@ export default function RecipeDetailScreen() {
                 ) : null}
                 {recipe.vibeTags?.map((tag) => (
                   <View key={tag} style={[styles.tag, { backgroundColor: theme.accent + "20" }]}>
-                    <ThemedText type="caption" style={{ color: "#92400E", fontWeight: "500" }}>
+                    <ThemedText type="caption" style={{ color: isDark ? "#FCD34D" : "#92400E", fontWeight: "500" }}>
                       {tag}
                     </ThemedText>
                   </View>
