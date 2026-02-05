@@ -25,7 +25,7 @@ import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useDeleteRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
 import { apiRequest } from "@/lib/query-client";
-import { Spacing, BorderRadius, Shadows, KitchColors } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
@@ -359,7 +359,7 @@ export default function RecipeDetailScreen() {
                 <ThemedText type="bodyMedium">{totalTime > 0 ? `${totalTime} min` : "N/A"}</ThemedText>
               </View>
               
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
               
               <View style={styles.statItem}>
                 <View style={[styles.statIcon, { backgroundColor: theme.accent + "20" }]}>
@@ -369,11 +369,11 @@ export default function RecipeDetailScreen() {
                 <ThemedText type="bodyMedium">{stepsCount}</ThemedText>
               </View>
               
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
               
               <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: "#F3E8FF" }]}>
-                  <Feather name="award" size={18} color="#9333EA" />
+                <View style={[styles.statIcon, { backgroundColor: theme.difficultyBg }]}>
+                  <Feather name="award" size={18} color={theme.difficultyText} />
                 </View>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>Difficulty</ThemedText>
                 <ThemedText type="bodyMedium">
@@ -394,7 +394,7 @@ export default function RecipeDetailScreen() {
                 ) : null}
                 {recipe.vibeTags?.map((tag) => (
                   <View key={tag} style={[styles.tag, { backgroundColor: theme.accent + "20" }]}>
-                    <ThemedText type="caption" style={{ color: isDark ? "#FCD34D" : "#92400E", fontWeight: "500" }}>
+                    <ThemedText type="caption" style={{ color: isDark ? VibeTagColors.dark.text : VibeTagColors.light.text, fontWeight: "500" }}>
                       {tag}
                     </ThemedText>
                   </View>
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 48,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: undefined,
   },
   tagsRow: {
     flexDirection: "row",

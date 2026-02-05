@@ -94,7 +94,7 @@ export function Button({
     if (variant === "primary") return Shadows.button;
     if (variant === "amber") return {
       ...Shadows.button,
-      shadowColor: "#FBBF24",
+      shadowColor: KitchColors.accent,
     };
     if (variant === "navy") return {
       ...Shadows.button,

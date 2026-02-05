@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipes } from "@/hooks/useRecipes";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, MatchColors } from "@/constants/theme";
 
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
@@ -125,9 +125,9 @@ export default function PantryResultsScreen() {
 }
 
 function getMatchColor(percentage: number): string {
-  if (percentage >= 90) return "#2E7D32";
-  if (percentage >= 70) return "#8FA67C";
-  return "#D97E43";
+  if (percentage >= 90) return MatchColors.high;
+  if (percentage >= 70) return MatchColors.medium;
+  return MatchColors.low;
 }
 
 const styles = StyleSheet.create({

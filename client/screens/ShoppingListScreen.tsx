@@ -187,7 +187,7 @@ export default function ShoppingListScreen() {
               </ThemedText>
             </Pressable>
           </View>
-          <View style={[styles.progressBar, { backgroundColor: isDark ? theme.backgroundSecondary : "#E5E5E5" }]}>
+          <View style={[styles.progressBar, { backgroundColor: theme.progressTrack }]}>
             <Animated.View
               style={[
                 styles.progressFill,

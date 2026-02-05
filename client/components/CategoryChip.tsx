@@ -11,7 +11,7 @@ import { Image, ImageSource } from "expo-image";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, KitchColors } from "@/constants/theme";
+import { Spacing, BorderRadius, KitchColors, PastelColors } from "@/constants/theme";
 
 interface CategoryChipProps {
   label: string;
@@ -33,14 +33,7 @@ const springConfig: WithSpringConfig = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const pastelColors = [
-  "#FEE2E2", // Light coral
-  "#FEF3C7", // Light amber
-  "#D1FAE5", // Light mint
-  "#DBEAFE", // Light blue
-  "#EDE9FE", // Light lavender
-  "#FCE7F3", // Light pink
-];
+const pastelColors = PastelColors;
 
 export function CategoryChip({
   label,

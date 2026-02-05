@@ -16,7 +16,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows, CardAccentColors, KitchColors } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, CardAccentColors, KitchColors, VibeTagColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 type CardVariant = "grid" | "large" | "list";
@@ -361,8 +361,8 @@ export function RecipeCard({
               </View>
             ) : null}
             {recipe.vibeTags?.slice(0, 1).map((tag, idx) => (
-              <View key={idx} style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
-                <ThemedText type="caption" style={[styles.tagText, { color: isDark ? "#FCD34D" : "#92400E" }]}>
+              <View key={idx} style={[styles.tag, { backgroundColor: isDark ? VibeTagColors.dark.bg : VibeTagColors.light.bg }]}>
+                <ThemedText type="caption" style={[styles.tagText, { color: isDark ? VibeTagColors.dark.text : VibeTagColors.light.text }]}>
                   {tag}
                 </ThemedText>
               </View>
