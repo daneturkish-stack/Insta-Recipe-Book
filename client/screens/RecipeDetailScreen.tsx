@@ -426,11 +426,11 @@ export default function RecipeDetailScreen() {
                     </Pressable>
                     <View style={[styles.servingBadge, { backgroundColor: servingMultiplier !== 1 ? KitchColors.primary : theme.backgroundSecondary }]}>
                       <ThemedText type="bodyMedium" style={{ color: servingMultiplier !== 1 ? "#FFF" : theme.text }}>
-                        {servingMultiplier === 1 ? (scaledServings || "—") : `${servingMultiplier}x`}
+                        {scaledServings ? `${scaledServings} servings` : "—"}
                       </ThemedText>
-                      {scaledServings && servingMultiplier !== 1 ? (
+                      {servingMultiplier !== 1 ? (
                         <ThemedText type="caption" style={{ color: "#FFF", opacity: 0.8 }}>
-                          {" "}({scaledServings} servings)
+                          {" "}({servingMultiplier}x)
                         </ThemedText>
                       ) : null}
                     </View>
