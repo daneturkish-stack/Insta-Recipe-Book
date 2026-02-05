@@ -1,18 +1,22 @@
 import React from "react";
-import { StyleSheet, View, Pressable } from "react-native";
+import { StyleSheet, View, Pressable, Dimensions } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   WithSpringConfig,
+  runOnJS,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows, CardAccentColors } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, CardAccentColors, KitchColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -22,6 +26,7 @@ interface RecipeCardProps {
   isSelected?: boolean;
   onLongPress?: () => void;
   onSelect?: () => void;
+  onSwipeToCook?: () => void;
   index?: number;
 }
 
@@ -32,6 +37,10 @@ const springConfig: WithSpringConfig = {
   overshootClamping: true,
   energyThreshold: 0.001,
 };
+
+const SWIPE_THRESHOLD = 80;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.md) / 2;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -44,14 +53,13 @@ export function RecipeCard({
   isSelected, 
   onLongPress, 
   onSelect,
+  onSwipeToCook,
   index = 0,
 }: RecipeCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const translateX = useSharedValue(0);
+  const isSwipeActive = useSharedValue(false);
 
   const handlePressIn = () => {
     scale.value = withSpring(0.98, springConfig);
@@ -75,14 +83,68 @@ export function RecipeCard({
     onLongPress?.();
   };
 
+  const triggerCookMode = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSwipeToCook?.();
+  };
+
+  const panGesture = Gesture.Pan()
+    .enabled(!isSelectable && !!onSwipeToCook)
+    .activeOffsetX(20)
+    .failOffsetY([-20, 20])
+    .onStart(() => {
+      isSwipeActive.value = true;
+    })
+    .onUpdate((event) => {
+      if (event.translationX > 0) {
+        translateX.value = Math.min(event.translationX, CARD_WIDTH * 0.6);
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationX > SWIPE_THRESHOLD) {
+        runOnJS(triggerCookMode)();
+        translateX.value = withSpring(CARD_WIDTH, springConfig, () => {
+          translateX.value = withSpring(0, springConfig);
+        });
+      } else {
+        translateX.value = withSpring(0, springConfig);
+      }
+      isSwipeActive.value = false;
+    });
+
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateX: translateX.value },
+    ],
+  }));
+
+  const cookIndicatorStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD * 0.5, SWIPE_THRESHOLD],
+      [0, 0.5, 1],
+      Extrapolation.CLAMP
+    );
+    const iconScale = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [0.5, 1],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity,
+      transform: [{ scale: iconScale }],
+    };
+  });
+
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
   const thumbnailSource = recipe.imageUrl;
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   
-  // Get accent color for this card
   const accentColor = CardAccentColors[index % CardAccentColors.length];
 
-  return (
+  const cardContent = (
     <AnimatedPressable
       onPress={handlePress}
       onPressIn={handlePressIn}
@@ -98,7 +160,7 @@ export function RecipeCard({
         },
         Shadows.card,
         isSelected && { borderWidth: 2, borderColor: theme.primary },
-        animatedStyle,
+        animatedCardStyle,
       ]}
       testID={`recipe-card-${recipe.id}`}
     >
@@ -220,9 +282,51 @@ export function RecipeCard({
       </View>
     </AnimatedPressable>
   );
+
+  return (
+    <View style={styles.swipeContainer}>
+      <Animated.View style={[styles.cookIndicator, cookIndicatorStyle]}>
+        <View style={[styles.cookIconCircle, { backgroundColor: KitchColors.primary }]}>
+          <Feather name="play" size={20} color="#FFF" />
+        </View>
+        <ThemedText type="caption" style={styles.cookText}>
+          Cook!
+        </ThemedText>
+      </Animated.View>
+      <GestureDetector gesture={panGesture}>
+        {cardContent}
+      </GestureDetector>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  swipeContainer: {
+    position: "relative",
+  },
+  cookIndicator: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: SWIPE_THRESHOLD,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: -1,
+  },
+  cookIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  cookText: {
+    color: KitchColors.primary,
+    fontWeight: "700",
+    fontSize: 11,
+  },
   container: {
     borderRadius: BorderRadius.card,
     overflow: "hidden",

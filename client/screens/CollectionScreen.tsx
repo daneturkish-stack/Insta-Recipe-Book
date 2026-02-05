@@ -3,12 +3,18 @@ import { StyleSheet, View, FlatList, RefreshControl, Pressable, ActivityIndicato
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   FadeIn,
   FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+  withTiming,
+  runOnJS,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -18,8 +24,9 @@ import { RecipeCardSkeleton } from "@/components/RecipeCardSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { RemyChatBar } from "@/components/RemyChatBar";
 import { useTheme } from "@/hooks/useTheme";
-import { useRecipes, useSmartSearch, usePantry } from "@/hooks/useRecipes";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { useRecipes, useSmartSearch, usePantry, usePantryMatch } from "@/hooks/useRecipes";
+import { useShakeDetector } from "@/hooks/useShakeDetector";
+import { Spacing, BorderRadius, KitchColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 import { getApiUrl } from "@/lib/query-client";
 
@@ -39,9 +46,11 @@ export default function CollectionScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const { data: recipes, isLoading, refetch, isRefetching } = useRecipes();
   const { data: pantryItems } = usePantry();
   const smartSearch = useSmartSearch();
+  const pantryMatch = usePantryMatch();
 
   const [isRemyThinking, setIsRemyThinking] = useState(false);
   const [remyResponse, setRemyResponse] = useState<RemyResponse | null>(null);
@@ -49,6 +58,91 @@ export default function CollectionScreen() {
   const [filteredIds, setFilteredIds] = useState<string[] | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
+  const [isRouletteActive, setIsRouletteActive] = useState(false);
+  const [rouletteRecipe, setRouletteRecipe] = useState<Recipe | null>(null);
+
+  const rouletteScale = useSharedValue(0);
+  const rouletteOpacity = useSharedValue(0);
+
+  const rouletteAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rouletteScale.value }],
+    opacity: rouletteOpacity.value,
+  }));
+
+  const handleRecipeRoulette = useCallback(async () => {
+    if (!recipes || recipes.length === 0 || isRouletteActive) return;
+
+    setIsRouletteActive(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    let eligibleRecipes = recipes;
+
+    if (pantryItems && pantryItems.length > 0) {
+      try {
+        const matches = await pantryMatch.mutateAsync({
+          pantryItems: pantryItems.map(p => p.name),
+          recipes,
+        });
+        
+        const matchedIds = matches
+          .filter((m: any) => m.matchPercentage >= 50)
+          .map((m: any) => m.id);
+        
+        if (matchedIds.length > 0) {
+          eligibleRecipes = recipes.filter(r => matchedIds.includes(r.id));
+        }
+      } catch (error) {
+        console.log("Pantry match failed, using all recipes");
+      }
+    }
+
+    const randomIndex = Math.floor(Math.random() * eligibleRecipes.length);
+    const selectedRecipe = eligibleRecipes[randomIndex];
+    setRouletteRecipe(selectedRecipe);
+
+    rouletteScale.value = withSequence(
+      withSpring(1.1, { damping: 10, stiffness: 200 }),
+      withSpring(1, { damping: 15, stiffness: 150 })
+    );
+    rouletteOpacity.value = withTiming(1, { duration: 200 });
+
+    setTimeout(() => {
+      setIsRouletteActive(false);
+    }, 3000);
+  }, [recipes, pantryItems, pantryMatch, isRouletteActive]);
+
+  const handleRouletteNavigate = useCallback(() => {
+    if (rouletteRecipe) {
+      rouletteOpacity.value = withTiming(0, { duration: 200 });
+      rouletteScale.value = withTiming(0, { duration: 200 });
+      navigation.navigate("RecipeDetail", { recipeId: rouletteRecipe.id });
+      setRouletteRecipe(null);
+    }
+  }, [rouletteRecipe, navigation]);
+
+  const handleRouletteCook = useCallback(() => {
+    if (rouletteRecipe) {
+      rouletteOpacity.value = withTiming(0, { duration: 200 });
+      rouletteScale.value = withTiming(0, { duration: 200 });
+      navigation.navigate("CookMode", { recipeId: rouletteRecipe.id });
+      setRouletteRecipe(null);
+    }
+  }, [rouletteRecipe, navigation]);
+
+  const dismissRoulette = useCallback(() => {
+    rouletteOpacity.value = withTiming(0, { duration: 200 });
+    rouletteScale.value = withTiming(0, { duration: 200 });
+    setTimeout(() => setRouletteRecipe(null), 200);
+  }, []);
+
+  useShakeDetector({
+    onShake: handleRecipeRoulette,
+    enabled: isFocused && !isLoading && !isRemyThinking && !isRouletteActive,
+  });
+
+  const handleSwipeToCook = useCallback((recipe: Recipe) => {
+    navigation.navigate("CookMode", { recipeId: recipe.id });
+  }, [navigation]);
 
   const quickActions = [
     { id: "pantry" as QuickAction, label: "What can I make?", icon: "package" as const },
@@ -192,9 +286,11 @@ export default function CollectionScreen() {
         isSelectable={isSelectMode}
         isSelected={selectedRecipeIds.has(item.id)}
         onSelect={() => handleToggleSelect(item.id)}
+        onSwipeToCook={() => handleSwipeToCook(item)}
+        index={index}
       />
     </Animated.View>
-  ), [handleRecipePress, handleLongPress, isSelectMode, selectedRecipeIds, handleToggleSelect]);
+  ), [handleRecipePress, handleLongPress, isSelectMode, selectedRecipeIds, handleToggleSelect, handleSwipeToCook]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -377,6 +473,66 @@ export default function CollectionScreen() {
           </View>
         </Animated.View>
       ) : null}
+
+      {rouletteRecipe ? (
+        <Animated.View 
+          style={[
+            styles.rouletteOverlay,
+            rouletteAnimatedStyle,
+          ]}
+        >
+          <Pressable 
+            style={styles.rouletteBackdrop}
+            onPress={dismissRoulette}
+          />
+          <View style={[styles.rouletteCard, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={[styles.rouletteHeader, { backgroundColor: KitchColors.primary }]}>
+              <Feather name="shuffle" size={24} color="#FFF" />
+              <ThemedText type="h4" style={styles.rouletteTitle}>
+                Recipe Roulette!
+              </ThemedText>
+            </View>
+            <View style={styles.rouletteContent}>
+              <ThemedText type="h3" style={{ color: theme.text, textAlign: "center" }}>
+                {rouletteRecipe.title}
+              </ThemedText>
+              {rouletteRecipe.prepTime || rouletteRecipe.cookTime ? (
+                <View style={styles.rouletteMeta}>
+                  <Feather name="clock" size={16} color={theme.textSecondary} />
+                  <ThemedText type="body" style={{ color: theme.textSecondary, marginLeft: 6 }}>
+                    {(rouletteRecipe.prepTime || 0) + (rouletteRecipe.cookTime || 0)} min
+                  </ThemedText>
+                </View>
+              ) : null}
+              <View style={styles.rouletteActions}>
+                <Pressable
+                  onPress={handleRouletteNavigate}
+                  style={[styles.rouletteButton, { backgroundColor: theme.backgroundSecondary }]}
+                >
+                  <Feather name="eye" size={18} color={theme.text} />
+                  <ThemedText type="bodyMedium" style={{ color: theme.text, marginLeft: 8 }}>
+                    View Recipe
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={handleRouletteCook}
+                  style={[styles.rouletteButton, { backgroundColor: KitchColors.primary }]}
+                >
+                  <Feather name="play" size={18} color="#FFF" />
+                  <ThemedText type="bodyMedium" style={{ color: "#FFF", marginLeft: 8 }}>
+                    Cook Now
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+            <Pressable onPress={dismissRoulette} style={styles.rouletteDismiss}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                Tap anywhere to dismiss
+              </ThemedText>
+            </Pressable>
+          </View>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -495,5 +651,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
+  },
+  rouletteOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  rouletteBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  rouletteCard: {
+    width: "85%",
+    maxWidth: 340,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  rouletteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  rouletteTitle: {
+    color: "#FFF",
+    fontWeight: "700",
+  },
+  rouletteContent: {
+    padding: Spacing.xl,
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  rouletteMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.xs,
+  },
+  rouletteActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  rouletteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+  },
+  rouletteDismiss: {
+    paddingVertical: Spacing.md,
+    alignItems: "center",
   },
 });
