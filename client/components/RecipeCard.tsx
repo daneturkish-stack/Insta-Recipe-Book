@@ -19,6 +19,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Shadows, CardAccentColors, KitchColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
+type CardVariant = "grid" | "large" | "list";
+
 interface RecipeCardProps {
   recipe: Recipe;
   onPress?: () => void;
@@ -28,6 +30,7 @@ interface RecipeCardProps {
   onSelect?: () => void;
   onSwipeToCook?: () => void;
   index?: number;
+  variant?: CardVariant;
 }
 
 const springConfig: WithSpringConfig = {
@@ -55,6 +58,7 @@ export function RecipeCard({
   onSelect,
   onSwipeToCook,
   index = 0,
+  variant = "grid",
 }: RecipeCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
@@ -143,6 +147,113 @@ export function RecipeCard({
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   
   const accentColor = CardAccentColors[index % CardAccentColors.length];
+  const isListVariant = variant === "list";
+
+  if (isListVariant) {
+    return (
+      <View style={styles.swipeContainer}>
+        <Animated.View style={[styles.cookIndicator, cookIndicatorStyle]}>
+          <View style={[styles.cookIconCircle, { backgroundColor: KitchColors.primary }]}>
+            <Feather name="play" size={20} color="#FFF" />
+          </View>
+          <ThemedText type="caption" style={styles.cookText}>
+            Cook!
+          </ThemedText>
+        </Animated.View>
+        <GestureDetector gesture={panGesture}>
+          <AnimatedPressable
+            onPress={handlePress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onLongPress={handleLongPress}
+            delayLongPress={400}
+            style={[
+              styles.listContainer,
+              { 
+                backgroundColor: theme.backgroundDefault,
+                borderLeftWidth: 4,
+                borderLeftColor: accentColor,
+              },
+              Shadows.card,
+              isSelected && { borderWidth: 2, borderColor: theme.primary },
+              animatedCardStyle,
+            ]}
+            testID={`recipe-card-${recipe.id}`}
+          >
+            <View style={styles.listImageContainer}>
+              <Image
+                source={thumbnailSource ? { uri: thumbnailSource } : placeholderImage}
+                style={styles.listImage}
+                contentFit="cover"
+                placeholder={placeholderImage}
+                transition={200}
+              />
+              {isSelectable ? (
+                <View style={[styles.selectIndicatorList, isSelected && { backgroundColor: theme.primary }]}>
+                  {isSelected ? (
+                    <Feather name="check" size={14} color="#FFF" />
+                  ) : (
+                    <View style={[styles.selectCircleSmall, { borderColor: theme.backgroundDefault }]} />
+                  )}
+                </View>
+              ) : null}
+              {isVideo && !isSelectable ? (
+                <View style={styles.listVideoIndicator}>
+                  <Feather name="play" size={12} color="#FFF" />
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.listContent}>
+              <ThemedText 
+                type="bodyMedium" 
+                style={[styles.title, { color: theme.text }]} 
+                numberOfLines={2}
+              >
+                {recipe.title}
+              </ThemedText>
+              <View style={styles.listMetaRow}>
+                {totalTime > 0 ? (
+                  <View style={styles.metaItem}>
+                    <Feather name="clock" size={11} color={theme.primary} />
+                    <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
+                      {totalTime} min
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {recipe.servings ? (
+                  <View style={styles.metaItem}>
+                    <Feather name="users" size={11} color={theme.primary} />
+                    <ThemedText type="caption" style={[styles.metaText, { color: theme.textSecondary }]}>
+                      {recipe.servings}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {recipe.dishType ? (
+                  <View style={[styles.tagSmall, { backgroundColor: theme.primary + "20" }]}>
+                    <ThemedText type="caption" style={[styles.tagTextSmall, { color: theme.primary }]}>
+                      {recipe.dishType}
+                    </ThemedText>
+                  </View>
+                ) : null}
+              </View>
+              {recipe.creatorHandle ? (
+                <ThemedText 
+                  type="caption" 
+                  style={[styles.listCreator, { color: theme.textSecondary }]} 
+                  numberOfLines={1}
+                >
+                  {recipe.creatorHandle}
+                </ThemedText>
+              ) : null}
+            </View>
+            <View style={styles.listActions}>
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            </View>
+          </AnimatedPressable>
+        </GestureDetector>
+      </View>
+    );
+  }
 
   const cardContent = (
     <AnimatedPressable
@@ -441,5 +552,76 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+  },
+  listContainer: {
+    flexDirection: "row",
+    borderRadius: BorderRadius.card,
+    overflow: "hidden",
+  },
+  listImageContainer: {
+    width: 90,
+    height: 90,
+    position: "relative",
+  },
+  listImage: {
+    width: "100%",
+    height: "100%",
+  },
+  selectIndicatorList: {
+    position: "absolute",
+    top: Spacing.xs,
+    left: Spacing.xs,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectCircleSmall: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    backgroundColor: "transparent",
+  },
+  listVideoIndicator: {
+    position: "absolute",
+    bottom: Spacing.xs,
+    right: Spacing.xs,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listContent: {
+    flex: 1,
+    padding: Spacing.md,
+    justifyContent: "center",
+    gap: Spacing.xs,
+  },
+  listMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    alignItems: "center",
+  },
+  tagSmall: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  tagTextSmall: {
+    fontWeight: "600",
+    fontSize: 10,
+  },
+  listCreator: {
+    marginTop: 2,
+  },
+  listActions: {
+    justifyContent: "center",
+    paddingRight: Spacing.md,
   },
 });
