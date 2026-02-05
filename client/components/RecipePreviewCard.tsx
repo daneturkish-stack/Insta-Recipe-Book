@@ -21,6 +21,7 @@ export function RecipePreviewCard({ recipe, index = 0 }: RecipePreviewCardProps)
   
   const accentColor = CardAccentColors[index % CardAccentColors.length];
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  const stepsCount = recipe.instructions?.length || 0;
 
   return (
     <View 
@@ -64,11 +65,7 @@ export function RecipePreviewCard({ recipe, index = 0 }: RecipePreviewCardProps)
             <StatsBadge label={`${recipe.instructions.length} Steps`} />
           ) : null}
           
-          {recipe.difficulty ? (
-            <StatsBadge label={recipe.difficulty} />
-          ) : (
-            <StatsBadge label="Beginner" />
-          )}
+          <StatsBadge label={stepsCount <= 5 ? "Easy" : stepsCount <= 10 ? "Medium" : "Advanced"} />
         </View>
 
         <View style={styles.bottomRow}>

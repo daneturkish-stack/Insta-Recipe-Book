@@ -63,9 +63,15 @@ Preferred communication style: Simple, everyday language.
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
 - **Animations**: React Native Reanimated for smooth micro-interactions
-- **Styling**: Custom design system in `client/constants/theme.ts` with Premium Light palette (Emerald Green #10B981 primary, Amber #FBBF24 accent, off-white #F8F9FA background)
-- **Typography**: Google Fonts (Inter for all text - modern, clean sans-serif)
-- **Design Philosophy**: Premium Light aesthetic with Emerald Green (#10B981) primary, Amber (#FBBF24) accents, and soft off-white (#F8F9FA) backgrounds that make food photography pop. Large rounded corners (24px), soft shadows, and generous spacing.
+- **Styling**: Custom design system in `client/constants/theme.ts` with Fresh Playful palette (Mint/Teal #14B8A6 primary, Amber #FBBF24 accent, Navy #1E3A5F dark sections, light mint #E8F6F3 background)
+- **Typography**: Google Fonts (Inter for all text - modern, clean sans-serif) with hero typography (40px) for splash screens
+- **Design Philosophy**: Fresh, playful cooking app aesthetic with Mint/Teal (#14B8A6) primary, Amber (#FBBF24) accents, and light mint (#E8F6F3) backgrounds. Features:
+  - Colorful card border accents (coral, yellow, blue, lavender, peach)
+  - Pill-shaped buttons with full border radius
+  - Large rounded corners (24px), soft shadows, generous spacing
+  - Navy (#1E3A5F) dark cards for premium sections
+  - Stats badges with light gray pill backgrounds
+  - Category chips with pastel circular backgrounds
 
 ### Backend Architecture
 - **Runtime**: Express.js on Node.js with TypeScript
