@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, CardAccentColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -22,6 +22,7 @@ interface RecipeCardProps {
   isSelected?: boolean;
   onLongPress?: () => void;
   onSelect?: () => void;
+  index?: number;
 }
 
 const springConfig: WithSpringConfig = {
@@ -36,7 +37,15 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
-export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPress, onSelect }: RecipeCardProps) {
+export function RecipeCard({ 
+  recipe, 
+  onPress, 
+  isSelectable, 
+  isSelected, 
+  onLongPress, 
+  onSelect,
+  index = 0,
+}: RecipeCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
@@ -69,6 +78,9 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
   const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
   const thumbnailSource = recipe.imageUrl;
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  
+  // Get accent color for this card
+  const accentColor = CardAccentColors[index % CardAccentColors.length];
 
   return (
     <AnimatedPressable
@@ -79,7 +91,11 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
       delayLongPress={400}
       style={[
         styles.container,
-        { backgroundColor: theme.backgroundDefault },
+        { 
+          backgroundColor: theme.backgroundDefault,
+          borderLeftWidth: 4,
+          borderLeftColor: accentColor,
+        },
         Shadows.card,
         isSelected && { borderWidth: 2, borderColor: theme.primary },
         animatedStyle,
@@ -171,8 +187,8 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
                 </ThemedText>
               </View>
             ) : null}
-            {recipe.vibeTags?.slice(0, 1).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
+            {recipe.vibeTags?.slice(0, 1).map((tag, idx) => (
+              <View key={idx} style={[styles.tag, { backgroundColor: theme.accent + "30" }]}>
                 <ThemedText type="caption" style={[styles.tagText, { color: "#92400E" }]}>
                   {tag}
                 </ThemedText>
@@ -181,15 +197,26 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
           </View>
         ) : null}
 
-        {recipe.creatorHandle ? (
-          <ThemedText 
-            type="caption" 
-            style={[styles.creator, { color: theme.textSecondary }]} 
-            numberOfLines={1}
-          >
-            {recipe.creatorHandle}
-          </ThemedText>
-        ) : null}
+        <View style={styles.bottomRow}>
+          {recipe.creatorHandle ? (
+            <ThemedText 
+              type="caption" 
+              style={[styles.creator, { color: theme.textSecondary }]} 
+              numberOfLines={1}
+            >
+              {recipe.creatorHandle}
+            </ThemedText>
+          ) : null}
+          
+          <View style={styles.actionsRow}>
+            <Pressable style={styles.actionButton}>
+              <Feather name="heart" size={16} color={theme.textSecondary} />
+            </Pressable>
+            <Pressable style={styles.actionButton}>
+              <Feather name="external-link" size={16} color={theme.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
       </View>
     </AnimatedPressable>
   );
@@ -197,7 +224,7 @@ export function RecipeCard({ recipe, onPress, isSelectable, isSelected, onLongPr
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.card, // 24px large rounded corners
+    borderRadius: BorderRadius.card,
     overflow: "hidden",
   },
   imageContainer: {
@@ -291,7 +318,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 11,
   },
-  creator: {
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: Spacing.xs,
+  },
+  creator: {
+    flex: 1,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -4,21 +4,36 @@ import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
+import { StatsBadge } from "@/components/StatsBadge";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, CardAccentColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipePreviewCardProps {
   recipe: Recipe;
+  index?: number;
 }
 
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
-export function RecipePreviewCard({ recipe }: RecipePreviewCardProps) {
+export function RecipePreviewCard({ recipe, index = 0 }: RecipePreviewCardProps) {
   const { theme } = useTheme();
+  
+  const accentColor = CardAccentColors[index % CardAccentColors.length];
+  const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundDefault }, Shadows.card]}>
+    <View 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: theme.backgroundDefault,
+          borderTopWidth: 4,
+          borderTopColor: accentColor,
+        }, 
+        Shadows.card
+      ]}
+    >
       <Image
         source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage}
         style={styles.image}
@@ -40,43 +55,30 @@ export function RecipePreviewCard({ recipe }: RecipePreviewCardProps) {
           </ThemedText>
         ) : null}
 
-        <View style={styles.metaRow}>
-          {recipe.prepTime ? (
-            <View style={styles.metaItem}>
-              <Feather name="clock" size={14} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                Prep: {recipe.prepTime} min
-              </ThemedText>
-            </View>
+        <View style={styles.statsRow}>
+          {totalTime > 0 ? (
+            <StatsBadge icon="clock" label={`${totalTime} min`} />
           ) : null}
-          {recipe.cookTime ? (
-            <View style={styles.metaItem}>
-              <Feather name="thermometer" size={14} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                Cook: {recipe.cookTime} min
-              </ThemedText>
-            </View>
+          
+          {recipe.instructions && recipe.instructions.length > 0 ? (
+            <StatsBadge label={`${recipe.instructions.length} Steps`} />
           ) : null}
-          {recipe.servings ? (
-            <View style={styles.metaItem}>
-              <Feather name="users" size={14} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                {recipe.servings} servings
-              </ThemedText>
-            </View>
-          ) : null}
+          
+          {recipe.difficulty ? (
+            <StatsBadge label={recipe.difficulty} />
+          ) : (
+            <StatsBadge label="Beginner" />
+          )}
         </View>
 
-        <View style={styles.statsRow}>
-          <ThemedText type="caption" style={{ color: theme.accent }}>
-            {recipe.ingredients?.length || 0} ingredients
-          </ThemedText>
-          <ThemedText type="caption" style={[styles.dot, { color: theme.textSecondary }]}>
-            {" "}
-          </ThemedText>
-          <ThemedText type="caption" style={{ color: theme.accent }}>
-            {recipe.instructions?.length || 0} steps
-          </ThemedText>
+        <View style={styles.bottomRow}>
+          <View style={styles.statsInfo}>
+            <ThemedText type="caption" style={{ color: theme.primary }}>
+              {recipe.ingredients?.length || 0} ingredients
+            </ThemedText>
+          </View>
+          
+          <Feather name="heart" size={20} color={theme.coral} />
         </View>
       </View>
     </View>
@@ -85,7 +87,7 @@ export function RecipePreviewCard({ recipe }: RecipePreviewCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.card,
     overflow: "hidden",
   },
   image: {
@@ -94,28 +96,28 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
+    gap: Spacing.sm,
   },
   title: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   description: {
-    marginBottom: Spacing.md,
-  },
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
+    marginBottom: Spacing.sm,
   },
   statsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginVertical: Spacing.sm,
   },
-  dot: {
-    marginHorizontal: Spacing.sm,
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.xs,
+  },
+  statsInfo: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
