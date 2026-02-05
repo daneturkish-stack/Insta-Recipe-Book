@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -340,7 +340,7 @@ export function RemyChat({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.remyIcon}>
-              <Text style={styles.remyIconText}>R</Text>
+              <MaterialCommunityIcons name="chef-hat" size={22} color="#FFF" />
             </View>
             <View>
               <Text style={styles.headerTitle}>Remy</Text>
@@ -491,7 +491,7 @@ export function RemyFloatingButton({
       testID={testID || "remy-floating-button"}
     >
       <View style={styles.floatingButtonInner}>
-        <Text style={styles.floatingButtonText}>R</Text>
+        <MaterialCommunityIcons name="chef-hat" size={28} color="#FFF" />
       </View>
     </AnimatedPressable>
   );
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
   },
   floatingButton: {
     position: "absolute",
-    bottom: 100,
+    bottom: 170,
     right: Spacing.lg,
     width: 56,
     height: 56,
