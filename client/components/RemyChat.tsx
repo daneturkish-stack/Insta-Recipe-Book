@@ -23,7 +23,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { Audio } from "expo-av";
 import { File } from "expo-file-system";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import { KitchColors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { Recipe } from "@/types/recipe";
@@ -68,6 +67,7 @@ export function RemyChat({
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const micScale = useSharedValue(1);
 
@@ -232,37 +232,60 @@ export function RemyChat({
     }
   };
 
-  const speakMessage = (messageId: string, text: string) => {
+  const speakMessage = async (messageId: string, text: string) => {
     Haptics.selectionAsync();
     
     if (isSpeaking && speakingMessageId === messageId) {
-      Speech.stop();
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
       setIsSpeaking(false);
       setSpeakingMessageId(null);
       return;
     }
 
-    if (isSpeaking) {
-      Speech.stop();
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
     }
 
     setIsSpeaking(true);
     setSpeakingMessageId(messageId);
 
-    Speech.speak(text, {
-      onDone: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
-      onStopped: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
-      onError: () => {
-        setIsSpeaking(false);
-        setSpeakingMessageId(null);
-      },
-    });
+    try {
+      const apiUrl = getApiUrl();
+      const response = await fetch(new URL("/api/remy/speak", apiUrl).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: "nova" }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate speech");
+      }
+
+      const { audio } = await response.json();
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mp3;base64,${audio}` },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsSpeaking(false);
+          setSpeakingMessageId(null);
+          sound.unloadAsync();
+          soundRef.current = null;
+        }
+      });
+    } catch (error) {
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+    }
   };
 
   const toggleAutoSpeak = () => {
@@ -272,7 +295,10 @@ export function RemyChat({
 
   useEffect(() => {
     return () => {
-      Speech.stop();
+      if (soundRef.current) {
+        soundRef.current.stopAsync();
+        soundRef.current.unloadAsync();
+      }
     };
   }, []);
 
