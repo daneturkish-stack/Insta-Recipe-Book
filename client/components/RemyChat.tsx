@@ -55,8 +55,8 @@ export function RemyChat({
       id: "welcome",
       role: "assistant",
       content: currentRecipe
-        ? `Hi! I'm Remy, your cooking assistant. I see you're looking at "${currentRecipe.title}" - ask me anything about it! Need substitutions, temperature help, or tips?`
-        : "Hi! I'm Remy, your cooking assistant. Ask me anything about your saved recipes, ingredient substitutions, or cooking tips!",
+        ? `Hey! I'm Remi. I see you're checking out "${currentRecipe.title}" — feel free to ask me anything about it, or we can just chat about food!`
+        : "Hey! I'm Remi. Ask me anything about cooking, your saved recipes, or just food in general — I love talking about it all!",
     },
   ]);
   const [inputText, setInputText] = useState("");
@@ -348,7 +348,7 @@ export function RemyChat({
               <MaterialCommunityIcons name="chef-hat" size={22} color="#FFF" />
             </View>
             <View>
-              <Text style={styles.headerTitle}>Remy</Text>
+              <Text style={styles.headerTitle}>Remi</Text>
               <Text style={styles.headerSubtitle}>Your cooking assistant</Text>
             </View>
           </View>
@@ -414,7 +414,7 @@ export function RemyChat({
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                placeholder="Ask Remy anything..."
+                placeholder="Ask Remi anything..."
                 placeholderTextColor={KitchColors.textSecondary}
                 value={inputText}
                 onChangeText={setInputText}

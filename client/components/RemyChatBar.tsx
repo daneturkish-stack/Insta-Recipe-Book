@@ -38,7 +38,7 @@ function RemyChatBarComponent({ onSubmit, placeholder, disabled }: RemyChatBarPr
         <TextInput
           ref={inputRef}
           style={[styles.chatInput, { color: theme.text }]}
-          placeholder={placeholder || "Hi! I'm Remy. What can I help you cook?"}
+          placeholder={placeholder || "Hi! I'm Remi. What can I help you cook?"}
           placeholderTextColor={theme.textSecondary}
           value={inputValue}
           onChangeText={handleChangeText}

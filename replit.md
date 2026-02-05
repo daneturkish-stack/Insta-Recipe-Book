@@ -13,8 +13,8 @@ Key capabilities:
 - Pantry management with ingredient matching to find makeable recipes
 - Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
 - Cook Mode for step-by-step guided cooking with hands-free voice reading
-- Remy AI assistant for cooking questions, substitutions, and recipe recommendations
-- Text-to-speech for Remy responses with auto-speak toggle
+- Remi AI assistant for food and cooking conversations, recipe help, and recommendations
+- Text-to-speech for Remi responses with auto-speak toggle
 - Cross-platform support (iOS, Android, Web)
 
 ### Recipe Transparency System
@@ -83,8 +83,8 @@ Preferred communication style: Simple, everyday language.
   - Smart search across recipe collection (`/api/recipes/search`)
   - Pantry ingredient matching (`/api/recipes/pantry-match`)
   - Pantry voice input parsing (`/api/pantry/parse-voice`) - converts spoken ingredients to categorized items
-  - Remy AI chat assistant (`/api/remy/chat`) with recipe context awareness
-  - Voice transcription for Remy (`/api/remy/transcribe`)
+  - Remi AI chat assistant (`/api/remy/chat`) with recipe context awareness
+  - Voice transcription for Remi (`/api/remy/transcribe`)
 
 ### Data Storage
 - **Client-side**: AsyncStorage for recipes and pantry items (offline-first approach)

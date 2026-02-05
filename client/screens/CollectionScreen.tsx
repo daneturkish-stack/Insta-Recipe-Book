@@ -274,7 +274,7 @@ export default function CollectionScreen() {
           <View style={styles.thinkingContainer}>
             <ActivityIndicator size="small" color={theme.primary} />
             <ThemedText type="body" style={[styles.thinkingText, { color: theme.textSecondary }]}>
-              Remy is thinking...
+              Remi is thinking...
             </ThemedText>
           </View>
         </Animated.View>

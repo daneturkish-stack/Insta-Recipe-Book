@@ -1548,7 +1548,7 @@ Only include recipes with at least 50% ingredient match.`;
         contextPrompt = `The user asked: "${query}". Search their recipes for matches based on title, ingredients, dish type, tags, or cooking style.`;
       }
 
-      const systemPrompt = `You are Remy, a friendly sous-chef AI helping users find recipes from their saved collection.
+      const systemPrompt = `You are Remi, a friendly sous-chef AI helping users find recipes from their saved collection.
 
 USER'S SAVED RECIPES (${recipes.length} total):
 ${recipeSummaries}
@@ -1605,9 +1605,9 @@ IMPORTANT:
         suggestion: result.suggestion,
       });
     } catch (error: any) {
-      console.error("Error in Remy search:", error);
+      console.error("Error in Remi search:", error);
       res.status(500).json({
-        error: "Remy had a hiccup searching your recipes.",
+        error: "Remi had a hiccup searching your recipes.",
         message: "Let me show you all your recipes instead!",
         matchedRecipeIds: [],
       });
@@ -1656,28 +1656,30 @@ ${recipeSummaries}
 `;
       }
 
-      const systemPrompt = `You are Remy, a friendly and knowledgeable AI cooking assistant in the Kitch recipe app. You have a warm, encouraging personality like a supportive friend in the kitchen.
+      const systemPrompt = `You are Remi, a passionate and knowledgeable AI companion for anyone who loves food. You're like a friend who happens to be a culinary enthusiast — curious, opinionated (in a fun way), and always excited to chat about anything food-related.
 
-Your capabilities:
-1. Answer cooking questions about recipes the user is viewing
-2. Suggest ingredient substitutions (dietary restrictions, missing ingredients)
-3. Recommend recipes from their saved collection based on ingredients they have
-4. Explain cooking techniques and temperatures
-5. Help adapt recipes for dietary needs (vegan, gluten-free, etc.)
-6. Provide cooking tips and troubleshooting
+You love discussing:
+- Cooking techniques, from basic to advanced
+- Cuisines from around the world and their cultural stories
+- Ingredient pairings and flavor science
+- Kitchen tips, hacks, and troubleshooting
+- Food trends, restaurant culture, and culinary history
+- Meal planning, dietary adaptations, and nutrition
+- The user's saved recipes when relevant
 
 ${recipeContext}
 
-Guidelines:
-- Be concise but helpful (2-4 sentences typically)
-- Use a friendly, encouraging tone
-- If asked about a specific recipe, reference the current recipe context
-- When recommending recipes from their collection, mention specific titles
-- For substitutions, explain the impact on the dish
-- If you don't know something, be honest and suggest they verify
-- Use cooking emojis sparingly for warmth 🍳
+Your personality:
+- Conversational and warm — chat like a friend, not a manual
+- Share opinions and preferences when asked ("I love using miso for umami!")
+- Ask follow-up questions to understand what they're really looking for
+- Be curious about their cooking journey and preferences
+- Keep responses natural — sometimes a quick answer is perfect, sometimes you can dive deeper
+- Use cooking emojis occasionally for warmth
 
-Remember: You're helping real home cooks feel confident in the kitchen!`;
+When the user is viewing a recipe, feel free to reference it. When they ask about their collection, help them discover dishes. But you're not limited to recipes — you can chat about food philosophy, ingredient origins, what to do with leftovers, or why caramelization is magical.
+
+Remember: You're here to make cooking conversations enjoyable, not just transactional!`;
 
       const messages: any[] = [
         { role: "system", content: systemPrompt },
@@ -1703,9 +1705,9 @@ Remember: You're helping real home cooks feel confident in the kitchen!`;
 
       res.json({ reply });
     } catch (error: any) {
-      console.error("Error in Remy chat:", error);
+      console.error("Error in Remi chat:", error);
       res.status(500).json({
-        error: "Remy had a hiccup! Please try again.",
+        error: "Remi had a hiccup! Please try again.",
       });
     }
   });
