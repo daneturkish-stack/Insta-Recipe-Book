@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
@@ -7,6 +7,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import os from "node:os";
+import { storage } from "./storage";
 
 const execAsync = promisify(exec);
 
@@ -981,7 +982,111 @@ interface PantryMatchRequest {
   recipes: any[];
 }
 
+async function authenticateRequest(req: Request): Promise<any> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.substring(7);
+  return storage.getUserFromToken(token);
+}
+
+function sanitizeUser(user: any) {
+  const { password, ...safe } = user;
+  return safe;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    try {
+      const { email, password, displayName } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      const result = await storage.registerWithEmail(email, password, displayName);
+      res.json({ user: sanitizeUser(result.user), token: result.token });
+    } catch (err: any) {
+      if (err.message.includes("already exists")) {
+        return res.status(409).json({ error: err.message });
+      }
+      console.error("Registration error:", err);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+      const result = await storage.loginWithEmail(email, password);
+      res.json({ user: sanitizeUser(result.user), token: result.token });
+    } catch (err: any) {
+      if (err.message.includes("Invalid")) {
+        return res.status(401).json({ error: err.message });
+      }
+      console.error("Login error:", err);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/social", async (req: Request, res: Response) => {
+    try {
+      const { provider, providerId, email, displayName, profileImage } = req.body;
+      if (!provider || !providerId || !email) {
+        return res.status(400).json({ error: "Provider, provider ID, and email are required" });
+      }
+      const result = await storage.loginWithProvider(provider, providerId, email, displayName, profileImage);
+      res.json({ user: sanitizeUser(result.user), token: result.token });
+    } catch (err: any) {
+      console.error("Social auth error:", err);
+      res.status(500).json({ error: "Social authentication failed" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const trialStartDate = new Date(user.trialStartDate);
+      const now = new Date();
+      const trialDaysLeft = Math.max(0, 30 - Math.floor((now.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const trialExpired = trialDaysLeft === 0;
+      const isSubscribed = user.subscriptionStatus === "active";
+
+      res.json({
+        user: sanitizeUser(user),
+        trial: {
+          daysLeft: trialDaysLeft,
+          expired: trialExpired,
+          startDate: user.trialStartDate,
+        },
+        hasAccess: isSubscribed || !trialExpired,
+      });
+    } catch (err: any) {
+      console.error("Auth check error:", err);
+      res.status(500).json({ error: "Failed to check authentication" });
+    }
+  });
+
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        await storage.deleteSession(token);
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Logout error:", err);
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
   // Generate recipe from Instagram/TikTok URL
   app.post("/api/recipes/generate", async (req: Request, res: Response) => {
     try {
