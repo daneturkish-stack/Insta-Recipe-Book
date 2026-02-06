@@ -64,11 +64,8 @@ export function RemyChat({
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const { ttsVoice, dietaryPreferences } = usePreferences();
+  const { dietaryPreferences } = usePreferences();
 
   const micScale = useSharedValue(1);
 
@@ -229,81 +226,8 @@ export function RemyChat({
     }
   };
 
-  const speakMessage = async (messageId: string, text: string) => {
-    Haptics.selectionAsync();
-    
-    if (isSpeaking && speakingMessageId === messageId) {
-      if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-      return;
-    }
-
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-    }
-
-    setIsSpeaking(true);
-    setSpeakingMessageId(messageId);
-
-    try {
-      const apiUrl = getApiUrl();
-      const response = await fetch(new URL("/api/remy/speak", apiUrl).toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: ttsVoice }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate speech");
-      }
-
-      const { audio } = await response.json();
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${audio}` },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsSpeaking(false);
-          setSpeakingMessageId(null);
-          sound.unloadAsync();
-          soundRef.current = null;
-        }
-      });
-    } catch (error) {
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-    }
-  };
-
-  const speakLatestMessage = () => {
-    const latestAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
-    if (latestAssistantMessage) {
-      speakMessage(latestAssistantMessage.id, latestAssistantMessage.content);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.stopAsync();
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, []);
-
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
-    const isCurrentlySpeaking = isSpeaking && speakingMessageId === item.id;
 
     return (
       <Animated.View
@@ -356,18 +280,6 @@ export function RemyChat({
             </View>
           </View>
           <View style={styles.headerActions}>
-            <Pressable
-              onPress={speakLatestMessage}
-              style={[styles.playButton, isSpeaking && styles.playButtonActive]}
-              hitSlop={8}
-              testID="remy-play-button"
-            >
-              <Feather 
-                name={isSpeaking ? "volume-x" : "volume-2"} 
-                size={20} 
-                color={isSpeaking ? KitchColors.primary : KitchColors.textSecondary} 
-              />
-            </Pressable>
             <Pressable
               onPress={onClose}
               style={styles.closeButton}
@@ -553,15 +465,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.md,
   },
-  playButton: {
-    padding: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    backgroundColor: KitchColors.neutral,
-    marginRight: Spacing.xs,
-  },
-  playButtonActive: {
-    backgroundColor: KitchColors.primary + "20",
-  },
   chatContainer: {
     flex: 1,
   },
@@ -616,11 +519,6 @@ const styles = StyleSheet.create({
   },
   assistantText: {
     color: KitchColors.textPrimary,
-  },
-  speakButton: {
-    marginTop: Spacing.xs,
-    alignSelf: "flex-end",
-    padding: Spacing.xs,
   },
   emptyState: {
     flex: 1,

@@ -349,7 +349,7 @@ export default function RemiScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const { data: recipes } = useRecipes();
-  const { ttsVoice, dietaryPreferences } = usePreferences();
+  const { dietaryPreferences } = usePreferences();
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -362,18 +362,13 @@ export default function RemiScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
   const hasUserMessaged = messages.some((m) => m.role === "user");
   const flatListRef = useRef<FlatList>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
 
   const [animatingMessageId, setAnimatingMessageId] = useState<string | null>("welcome");
   const [revealedWords, setRevealedWords] = useState(0);
   const animationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingSpeakRef = useRef<{ messageId: string; text: string } | null>(null);
-  const audioPlayStartedRef = useRef(false);
 
   const getWordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
@@ -562,132 +557,8 @@ export default function RemiScreen() {
     }
   };
 
-  const speakMessage = async (messageId: string, text: string) => {
-    Haptics.selectionAsync();
-
-    if (isSpeaking && speakingMessageId === messageId) {
-      if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-      if (animationTimerRef.current) {
-        clearInterval(animationTimerRef.current);
-        animationTimerRef.current = null;
-      }
-      setAnimatingMessageId(null);
-      setRevealedWords(getWordCount(text));
-      pendingSpeakRef.current = null;
-      return;
-    }
-
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-    }
-
-    if (animationTimerRef.current) {
-      clearInterval(animationTimerRef.current);
-      animationTimerRef.current = null;
-    }
-
-    setIsSpeaking(true);
-    setSpeakingMessageId(messageId);
-    setAnimatingMessageId(messageId);
-    setRevealedWords(0);
-    pendingSpeakRef.current = { messageId, text };
-    audioPlayStartedRef.current = false;
-
-    try {
-      const response = await fetch(
-        new URL("/api/remy/speak", getApiUrl()).toString(),
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice: ttsVoice }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to generate speech");
-
-      const { audio } = await response.json();
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${audio}` },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded) {
-          if (status.isPlaying && !audioPlayStartedRef.current) {
-            audioPlayStartedRef.current = true;
-            const pending = pendingSpeakRef.current;
-            if (pending) {
-              const totalWords = getWordCount(pending.text);
-              const durationMs = status.durationMillis || totalWords * (1000 / WORDS_PER_SECOND);
-              const intervalMs = durationMs / totalWords;
-
-              let count = 0;
-              if (animationTimerRef.current) {
-                clearInterval(animationTimerRef.current);
-              }
-              animationTimerRef.current = setInterval(() => {
-                count++;
-                setRevealedWords(count);
-                if (count >= totalWords) {
-                  if (animationTimerRef.current) {
-                    clearInterval(animationTimerRef.current);
-                    animationTimerRef.current = null;
-                  }
-                }
-              }, intervalMs);
-            }
-          }
-
-          if (status.didJustFinish) {
-            setIsSpeaking(false);
-            setSpeakingMessageId(null);
-            if (animationTimerRef.current) {
-              clearInterval(animationTimerRef.current);
-              animationTimerRef.current = null;
-            }
-            setAnimatingMessageId(null);
-            pendingSpeakRef.current = null;
-            sound.unloadAsync();
-            soundRef.current = null;
-          }
-        }
-      });
-    } catch (error) {
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-      if (animationTimerRef.current) {
-        clearInterval(animationTimerRef.current);
-        animationTimerRef.current = null;
-      }
-      setAnimatingMessageId(null);
-      pendingSpeakRef.current = null;
-    }
-  };
-
-  const speakLatestMessage = () => {
-    const latestAssistantMessage = [...messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    if (latestAssistantMessage) {
-      speakMessage(latestAssistantMessage.id, latestAssistantMessage.content);
-    }
-  };
-
   useEffect(() => {
     return () => {
-      if (soundRef.current) {
-        soundRef.current.stopAsync();
-        soundRef.current.unloadAsync();
-      }
       if (animationTimerRef.current) {
         clearInterval(animationTimerRef.current);
       }
@@ -767,30 +638,6 @@ export default function RemiScreen() {
               Your sous chef
             </Text>
           </View>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable
-            onPress={speakLatestMessage}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isDark
-                  ? theme.backgroundDefault
-                  : KitchColors.neutral,
-              },
-              isSpeaking
-                ? { backgroundColor: theme.primary + "20" }
-                : undefined,
-            ]}
-            hitSlop={8}
-            testID="remi-play-button"
-          >
-            <Feather
-              name={isSpeaking ? "volume-x" : "volume-2"}
-              size={20}
-              color={isSpeaking ? theme.primary : theme.textSecondary}
-            />
-          </Pressable>
         </View>
       </View>
 
@@ -996,15 +843,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     ...Typography.caption,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  headerButton: {
-    padding: Spacing.xs,
-    borderRadius: BorderRadius.full,
   },
   chatContainer: {
     flex: 1,
