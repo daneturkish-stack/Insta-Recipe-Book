@@ -121,8 +121,8 @@ export default function MainTabNavigator() {
 const styles = StyleSheet.create({
   activeIconWrapper: {},
   tabIcon: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     resizeMode: "contain",
   },
 });
