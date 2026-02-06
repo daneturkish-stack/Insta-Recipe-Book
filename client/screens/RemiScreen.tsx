@@ -10,12 +10,14 @@ import {
   Platform,
   ScrollView,
   Modal,
+  Image,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import cookingIcon from "../assets/images/cooking.png";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -581,7 +583,7 @@ export default function RemiScreen() {
           <View
             style={[styles.remyAvatar, { backgroundColor: theme.primary }]}
           >
-            <MaterialCommunityIcons name="chef-hat" size={14} color="#FFF" />
+            <Image source={cookingIcon} style={{ width: 16, height: 16, tintColor: "#FFF" }} />
           </View>
         ) : null}
         <View
@@ -626,7 +628,7 @@ export default function RemiScreen() {
       >
         <View style={styles.headerLeft}>
           <View style={[styles.remyIcon, { backgroundColor: theme.primary }]}>
-            <MaterialCommunityIcons name="chef-hat" size={22} color="#FFF" />
+            <Image source={cookingIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
           </View>
           <View>
             <Text style={[styles.headerTitle, { color: theme.text }]}>

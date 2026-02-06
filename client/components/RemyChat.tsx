@@ -10,9 +10,11 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import cookingIcon from "../assets/images/cooking.png";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -272,7 +274,7 @@ export function RemyChat({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.remyIcon}>
-              <MaterialCommunityIcons name="chef-hat" size={22} color="#FFF" />
+              <Image source={cookingIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
             </View>
             <View>
               <Text style={styles.headerTitle}>Remi</Text>
@@ -411,7 +413,7 @@ export function RemyFloatingButton({
       testID={testID || "remy-floating-button"}
     >
       <View style={styles.floatingButtonInner}>
-        <MaterialCommunityIcons name="chef-hat" size={28} color="#FFF" />
+        <Image source={cookingIcon} style={{ width: 30, height: 30, tintColor: "#FFF" }} />
       </View>
     </AnimatedPressable>
   );

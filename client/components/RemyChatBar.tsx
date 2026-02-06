@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, memo } from "react";
-import { StyleSheet, View, TextInput, Pressable, TextInputProps } from "react-native";
+import { StyleSheet, View, TextInput, Pressable, TextInputProps, Image } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
+import cookingIcon from "../assets/images/cooking.png";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -32,7 +33,7 @@ function RemyChatBarComponent({ onSubmit, placeholder, disabled }: RemyChatBarPr
   return (
     <View style={[styles.remyBar, { backgroundColor: theme.backgroundDefault }]}>
       <View style={[styles.remyAvatar, { backgroundColor: theme.primary }]}>
-        <ThemedText style={styles.remyEmoji}>👨‍🍳</ThemedText>
+        <Image source={cookingIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
       </View>
       <View style={styles.remyChatInput}>
         <TextInput
