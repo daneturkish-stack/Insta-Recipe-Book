@@ -51,7 +51,7 @@ export default function RemiScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hello, lovely! I'm Remi. Whether you fancy a chat about what's for dinner, need a hand with a tricky recipe, or just want to talk all things food — I'm right here. Right then, what shall we cook up?",
+      content: "Hi there, I'm Remi. I'm here to help with anything food and cooking — whether it's figuring out what to make tonight, working through a tricky recipe, or just chatting about food. What can I help with?",
     },
   ]);
   const [inputText, setInputText] = useState("");

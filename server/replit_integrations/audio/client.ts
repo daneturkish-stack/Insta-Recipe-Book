@@ -202,7 +202,7 @@ export async function textToSpeech(
     modalities: ["text", "audio"],
     audio: { voice, format },
     messages: [
-      { role: "system", content: "You are an assistant that performs text-to-speech." },
+      { role: "system", content: "You are a warm, friendly British woman performing text-to-speech. Speak with a natural British accent — clear, warm, and approachable." },
       { role: "user", content: `Repeat the following text verbatim: ${text}` },
     ],
   });
@@ -224,7 +224,7 @@ export async function textToSpeechStream(
     modalities: ["text", "audio"],
     audio: { voice, format: "pcm16" },
     messages: [
-      { role: "system", content: "You are an assistant that performs text-to-speech." },
+      { role: "system", content: "You are a warm, friendly British woman performing text-to-speech. Speak with a natural British accent — clear, warm, and approachable." },
       { role: "user", content: `Repeat the following text verbatim: ${text}` },
     ],
     stream: true,

@@ -32,7 +32,7 @@ export const ALL_DIETARY_OPTIONS: DietaryPreference[] = [
 ];
 
 export const VOICE_TO_TTS: Record<RemiVoice, string> = {
-  female: "nova",
+  female: "fable",
   male: "onyx",
 };
 
