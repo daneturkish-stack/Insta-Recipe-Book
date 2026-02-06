@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getApiUrl } from "@/lib/query-client";
 import { setAuthToken, getAuthToken, removeAuthToken } from "@/lib/auth-token";
+import { identifyRevenueCatUser } from "@/hooks/useRevenueCat";
 
 export interface AuthUser {
   id: string;
@@ -39,6 +40,7 @@ interface AuthContextValue extends AuthState {
     profileImage?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  refreshAccess: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -76,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokenState(storedToken);
       setTrial(data.trial);
       setHasAccess(data.hasAccess);
+      identifyRevenueCatUser(data.user.id);
     } catch {
       await removeAuthToken();
     } finally {
@@ -92,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setAuthToken(data.token);
       setTokenState(data.token);
       setUser(data.user);
+      identifyRevenueCatUser(data.user.id);
 
       const url = new URL("/api/auth/me", baseUrl);
       const res = await fetch(url, {
@@ -173,6 +177,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [baseUrl, handleAuthResponse],
   );
 
+  const refreshAccess = useCallback(async () => {
+    try {
+      const storedToken = await getAuthToken();
+      if (!storedToken) return;
+
+      const url = new URL("/api/auth/me", baseUrl);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        setTrial(data.trial);
+        setHasAccess(data.hasAccess);
+      }
+    } catch (err) {
+      console.error("Failed to refresh access:", err);
+    }
+  }, [baseUrl]);
+
   const logout = useCallback(async () => {
     try {
       if (token) {
@@ -202,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     socialLogin,
     logout,
+    refreshAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1073,6 +1073,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/auth/subscription", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { subscriptionStatus } = req.body;
+      if (!subscriptionStatus || !["active", "expired", "cancelled", "trial"].includes(subscriptionStatus)) {
+        return res.status(400).json({ error: "Invalid subscription status" });
+      }
+
+      await storage.updateSubscriptionStatus(user.id, subscriptionStatus);
+      res.json({ success: true, subscriptionStatus });
+    } catch (err: any) {
+      console.error("Subscription update error:", err);
+      res.status(500).json({ error: "Failed to update subscription" });
+    }
+  });
+
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
       const authHeader = req.headers.authorization;

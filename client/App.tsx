@@ -27,6 +27,7 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator, { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/useAuth";
+import { configureRevenueCat } from "@/hooks/useRevenueCat";
 import { KitchColors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -154,6 +155,10 @@ export default function App() {
       subscription.remove();
     };
   }, [handleDeepLink]);
+
+  useEffect(() => {
+    configureRevenueCat();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
