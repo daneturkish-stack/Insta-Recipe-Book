@@ -19,6 +19,9 @@ Key capabilities:
 - Dietary preferences (Vegetarian, Vegan, Gluten-Free, etc.) that Remi respects in suggestions
 - Native gesture controls for intuitive cooking experience
 - Cross-platform support (iOS, Android, Web)
+- User authentication (email/password, Apple Sign-In, Google/Facebook ready)
+- 30-day free trial with hard paywall via RevenueCat
+- In-app subscriptions managed through RevenueCat SDK
 
 ### Gesture Controls (Native Mobile Features)
 The app includes intuitive gesture controls designed for hands-free cooking:
@@ -111,10 +114,22 @@ Preferred communication style: Simple, everyday language.
   - Remi AI chat assistant (`/api/remy/chat`) with recipe context awareness
   - Voice transcription for Remi (`/api/remy/transcribe`)
 
+### Authentication & Subscriptions
+- **Auth**: Email/password with scrypt hashing, Apple Sign-In (iOS), Google/Facebook OAuth (UI ready, needs OAuth config)
+- **Sessions**: Bearer token-based, stored in SecureStore (native) / AsyncStorage (web), managed via `client/lib/auth-token.ts`
+- **Trial System**: 30-day free trial starts on signup, tracked server-side via `trial_start_date`
+- **Subscriptions**: RevenueCat SDK (`react-native-purchases`) for in-app purchases
+  - Configured with `EXPO_PUBLIC_REVENUECAT_API_KEY` env var
+  - User identified with RevenueCat on login via `identifyRevenueCatUser()`
+  - After purchase, subscription status synced to backend via `POST /api/auth/subscription`
+  - PaywallScreen shows when `hasAccess` is false (trial expired + no active subscription)
+- **Access Logic**: `active` subscription → access granted; `expired`/`cancelled` → access revoked; `trial` → time-based (30 days)
+- **Navigation Gating**: `RootStackNavigator` shows AuthScreen → PaywallScreen → Main app based on auth/access state
+
 ### Data Storage
 - **Client-side**: AsyncStorage for recipes and pantry items (offline-first approach)
 - **Server-side**: PostgreSQL with Drizzle ORM (schema in `shared/schema.ts`)
-- **Current Usage**: Users table exists; recipes are stored client-side only
+- **Database Tables**: `users` (auth, profile, trial/subscription), `sessions` (auth tokens)
 
 ### Project Structure
 ```
@@ -151,6 +166,12 @@ shared/           # Shared code between client/server
 - **PostgreSQL**: Connected via `DATABASE_URL` environment variable
 - **Drizzle ORM**: Schema management and type-safe queries
 
+### Subscriptions
+- **RevenueCat**: In-app purchase management via `react-native-purchases`
+  - Environment variable: `EXPO_PUBLIC_REVENUECAT_API_KEY`
+  - Entitlement ID: `premium`
+  - Hook: `client/hooks/useRevenueCat.ts`
+
 ### Key npm Packages
 - `expo` (SDK 54): Core mobile framework
 - `@tanstack/react-query`: Data fetching and caching
@@ -158,6 +179,8 @@ shared/           # Shared code between client/server
 - `expo-image`: Optimized image loading
 - `openai`: AI API client
 - `drizzle-orm` + `drizzle-zod`: Database ORM with Zod validation
+- `react-native-purchases`: RevenueCat SDK for subscriptions
+- `expo-apple-authentication`: Apple Sign-In
 
 ### Deep Linking
 - Custom scheme: `kitch://`
