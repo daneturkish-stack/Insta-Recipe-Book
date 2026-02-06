@@ -16,7 +16,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows, CardAccentColors, KitchColors, VibeTagColors } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
 
 type CardVariant = "grid" | "large" | "list";
@@ -146,7 +146,6 @@ export function RecipeCard({
   const thumbnailSource = recipe.imageUrl;
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   
-  const accentColor = CardAccentColors[index % CardAccentColors.length];
   const isListVariant = variant === "list";
 
   if (isListVariant) {
@@ -171,8 +170,6 @@ export function RecipeCard({
               styles.listContainer,
               { 
                 backgroundColor: theme.backgroundDefault,
-                borderLeftWidth: 4,
-                borderLeftColor: accentColor,
               },
               Shadows.card,
               isSelected && { borderWidth: 2, borderColor: theme.primary },
@@ -266,8 +263,6 @@ export function RecipeCard({
         styles.container,
         { 
           backgroundColor: theme.backgroundDefault,
-          borderLeftWidth: 4,
-          borderLeftColor: accentColor,
         },
         Shadows.card,
         isSelected && { borderWidth: 2, borderColor: theme.primary },
