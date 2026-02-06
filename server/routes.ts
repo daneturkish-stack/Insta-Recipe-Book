@@ -1777,25 +1777,6 @@ You're not a search engine. You're a brilliant, sparkling cooking companion with
     }
   });
 
-  app.post("/api/remy/speak", async (req: Request, res: Response) => {
-    try {
-      const { text, voice = "nova" } = req.body;
-      
-      if (!text) {
-        return res.status(400).json({ error: "Text is required" });
-      }
-
-      const { textToSpeech } = await import("./replit_integrations/audio/client");
-      const audioBuffer = await textToSpeech(text, voice, "mp3");
-      const audioBase64 = audioBuffer.toString("base64");
-      
-      res.json({ audio: audioBase64 });
-    } catch (error: any) {
-      console.error("Error generating speech:", error);
-      res.status(500).json({ error: "Could not generate speech" });
-    }
-  });
-
   // Parse voice input for pantry items
   app.post("/api/pantry/parse-voice", async (req: Request, res: Response) => {
     try {
