@@ -43,6 +43,45 @@ const WORDS_PER_SECOND = 3.2;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const PROMPT_SUGGESTIONS: {
+  label: string;
+  icon: string;
+  prompt: string;
+  action?: "tips" | "send";
+}[] = [
+  {
+    label: "Tips & tricks",
+    icon: "book-open",
+    prompt: "",
+    action: "tips",
+  },
+  {
+    label: "What should I cook tonight?",
+    icon: "sun",
+    prompt: "What should I cook tonight? I want something tasty but not too complicated.",
+  },
+  {
+    label: "Quick weeknight dinner",
+    icon: "clock",
+    prompt: "Suggest a quick weeknight dinner I can make in under 30 minutes.",
+  },
+  {
+    label: "Help with a substitution",
+    icon: "repeat",
+    prompt: "I need help finding a good ingredient substitution.",
+  },
+  {
+    label: "Improve my cooking",
+    icon: "trending-up",
+    prompt: "What are some simple techniques that will make my everyday cooking taste better?",
+  },
+  {
+    label: "What's in season?",
+    icon: "calendar",
+    prompt: "What fruits and vegetables are in season right now and how should I use them?",
+  },
+];
+
 function TypewriterText({
   text,
   isAnimating,
@@ -326,6 +365,7 @@ export default function RemiScreen() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
+  const hasUserMessaged = messages.some((m) => m.role === "user");
   const flatListRef = useRef<FlatList>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -730,25 +770,6 @@ export default function RemiScreen() {
         </View>
         <View style={styles.headerActions}>
           <Pressable
-            onPress={() => setShowTips(true)}
-            style={[
-              styles.headerButton,
-              {
-                backgroundColor: isDark
-                  ? theme.backgroundDefault
-                  : KitchColors.neutral,
-              },
-            ]}
-            hitSlop={8}
-            testID="remi-tips-button"
-          >
-            <Feather
-              name="book-open"
-              size={18}
-              color={theme.textSecondary}
-            />
-          </Pressable>
-          <Pressable
             onPress={speakLatestMessage}
             style={[
               styles.headerButton,
@@ -814,6 +835,52 @@ export default function RemiScreen() {
             },
           ]}
         >
+          {hasUserMessaged ? null : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionsRow}
+              style={styles.suggestionsScroll}
+            >
+              {PROMPT_SUGGESTIONS.map((suggestion) => (
+                <Pressable
+                  key={suggestion.label}
+                  style={[
+                    styles.suggestionChip,
+                    {
+                      backgroundColor: isDark
+                        ? theme.backgroundDefault
+                        : KitchColors.neutral,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (suggestion.action === "tips") {
+                      setShowTips(true);
+                    } else {
+                      sendMessage(suggestion.prompt);
+                    }
+                  }}
+                  testID={`suggestion-${suggestion.label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <Feather
+                    name={suggestion.icon as any}
+                    size={14}
+                    color={theme.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.suggestionText,
+                      { color: theme.text },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {suggestion.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
           <View style={styles.inputRow}>
             <TextInput
               style={[
@@ -995,6 +1062,27 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...Typography.body,
+  },
+  suggestionsScroll: {
+    flexGrow: 0,
+    marginBottom: Spacing.sm,
+  },
+  suggestionsRow: {
+    gap: Spacing.xs,
+    paddingHorizontal: 2,
+  },
+  suggestionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  suggestionText: {
+    ...Typography.small,
+    fontFamily: "Inter_500Medium",
   },
   inputContainer: {
     paddingHorizontal: Spacing.md,
