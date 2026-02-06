@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
@@ -40,6 +41,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RemiScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const { data: recipes } = useRecipes();
@@ -374,7 +376,7 @@ export default function RemiScreen() {
         />
 
         <View
-          style={[styles.inputContainer, { paddingBottom: insets.bottom + Spacing.sm, backgroundColor: theme.backgroundRoot, borderTopColor: theme.border }]}
+          style={[styles.inputContainer, { paddingBottom: tabBarHeight + Spacing.sm, backgroundColor: theme.backgroundRoot, borderTopColor: theme.border }]}
         >
           <View style={styles.inputRow}>
             <TextInput
