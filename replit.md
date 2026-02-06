@@ -13,7 +13,7 @@ Key capabilities:
 - Pantry management with ingredient matching to find makeable recipes
 - Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
 - Cook Mode for step-by-step guided cooking with hands-free voice reading
-- Remi AI assistant for food and cooking conversations, recipe help, and recommendations
+- Remi AI assistant (dedicated tab) for food and cooking conversations, recipe help, and recommendations — Jamie Oliver-inspired conversational tone
 - Text-to-speech for Remi responses with auto-speak toggle and male/female voice selection
 - Dietary preferences (Vegetarian, Vegan, Gluten-Free, etc.) that Remi respects in suggestions
 - Native gesture controls for intuitive cooking experience
@@ -81,7 +81,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **Framework**: React Native with Expo SDK 54 (New Architecture enabled)
 - **Navigation**: React Navigation v7 with native stack navigators
-  - Tab-based navigation (Collection, Add Recipe, Pantry, Profile)
+  - Tab-based navigation (Collection, Add Recipe, Remi, Pantry, Profile)
   - Stack navigation within each tab for detail views
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
