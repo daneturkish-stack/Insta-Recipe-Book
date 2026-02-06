@@ -21,7 +21,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
-import { RemyChat, RemyFloatingButton } from "@/components/RemyChat";
+
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useDeleteRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
 import { apiRequest } from "@/lib/query-client";
@@ -75,7 +75,7 @@ export default function RecipeDetailScreen() {
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [showTranscript, setShowTranscript] = useState(false);
-  const [showRemyChat, setShowRemyChat] = useState(false);
+
   const [confidenceExpanded, setConfidenceExpanded] = useState(false);
   const [showLinkCorrectionModal, setShowLinkCorrectionModal] = useState(false);
   const [manualLinkInput, setManualLinkInput] = useState("");
@@ -683,17 +683,6 @@ export default function RecipeDetailScreen() {
           </ThemedText>
         </Pressable>
       </View>
-
-      <RemyFloatingButton 
-        onPress={() => setShowRemyChat(true)} 
-        testID="remy-floating-button"
-      />
-      
-      <RemyChat
-        visible={showRemyChat}
-        onClose={() => setShowRemyChat(false)}
-        currentRecipe={recipe}
-      />
 
       {/* Link Correction Modal */}
       <Modal

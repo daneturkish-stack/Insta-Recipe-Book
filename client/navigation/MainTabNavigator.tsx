@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View } from "react-native";
 
@@ -8,12 +8,14 @@ import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import RemiScreen from "@/screens/RemiScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { KitchColors } from "@/constants/theme";
 
 export type MainTabParamList = {
   CollectionTab: undefined;
   AddRecipeTab: undefined;
+  RemiTab: undefined;
   PantryTab: undefined;
   ProfileTab: undefined;
 };
@@ -27,7 +29,7 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       initialRouteName="CollectionTab"
       screenOptions={{
-        tabBarActiveTintColor: KitchColors.primary, // Emerald Green for active
+        tabBarActiveTintColor: KitchColors.primary,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
           position: "absolute",
@@ -61,13 +63,8 @@ export default function MainTabNavigator() {
         component={CollectionStackNavigator}
         options={{
           title: "Recipes",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Feather 
-              name="book-open" 
-              size={22} 
-              color={color}
-              style={{ strokeWidth: focused ? 2 : 1.5 }}
-            />
+          tabBarIcon: ({ color }) => (
+            <Feather name="book-open" size={22} color={color} />
           ),
         }}
       />
@@ -76,13 +73,19 @@ export default function MainTabNavigator() {
         component={AddRecipeStackNavigator}
         options={{
           title: "Add",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Feather 
-              name="plus-circle" 
-              size={22} 
-              color={color}
-              style={{ strokeWidth: focused ? 2 : 1.5 }}
-            />
+          tabBarIcon: ({ color }) => (
+            <Feather name="plus-circle" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="RemiTab"
+        component={RemiScreen}
+        options={{
+          title: "Remi",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons name="chef-hat" size={24} color={color} />
           ),
         }}
       />
@@ -91,15 +94,8 @@ export default function MainTabNavigator() {
         component={PantryStackNavigator}
         options={{
           title: "Pantry",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View style={focused ? styles.activeIconWrapper : undefined}>
-              <Feather 
-                name="package" 
-                size={22} 
-                color={color}
-                style={{ strokeWidth: focused ? 2 : 1.5 }}
-              />
-            </View>
+          tabBarIcon: ({ color }) => (
+            <Feather name="package" size={22} color={color} />
           ),
         }}
       />
@@ -108,13 +104,8 @@ export default function MainTabNavigator() {
         component={ProfileStackNavigator}
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Feather 
-              name="user" 
-              size={22} 
-              color={color}
-              style={{ strokeWidth: focused ? 2 : 1.5 }}
-            />
+          tabBarIcon: ({ color }) => (
+            <Feather name="user" size={22} color={color} />
           ),
         }}
       />
@@ -123,7 +114,5 @@ export default function MainTabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  activeIconWrapper: {
-    // Optional: add subtle background for active state
-  },
+  activeIconWrapper: {},
 });
