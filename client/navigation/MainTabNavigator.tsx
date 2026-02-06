@@ -1,8 +1,8 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, View } from "react-native";
+import { Image, Platform, StyleSheet, View } from "react-native";
 
 import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
@@ -11,6 +11,11 @@ import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import RemiScreen from "@/screens/RemiScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { KitchColors } from "@/constants/theme";
+
+import foodTrayIcon from "../assets/images/food-tray.png";
+import cookingIcon from "../assets/images/cooking.png";
+import healthyFoodIcon from "../assets/images/healthy-food.png";
+import chefsHatIcon from "../assets/images/chefs-hat.png";
 
 export type MainTabParamList = {
   CollectionTab: undefined;
@@ -64,7 +69,7 @@ export default function MainTabNavigator() {
         options={{
           title: "Recipes",
           tabBarIcon: ({ color }) => (
-            <Feather name="book-open" size={22} color={color} />
+            <Image source={foodTrayIcon} style={[styles.tabIcon, { tintColor: color }]} />
           ),
         }}
       />
@@ -84,8 +89,8 @@ export default function MainTabNavigator() {
         options={{
           title: "Remi",
           headerShown: false,
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons name="chef-hat" size={24} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Image source={cookingIcon} style={[styles.tabIcon, { tintColor: color }]} />
           ),
         }}
       />
@@ -95,7 +100,7 @@ export default function MainTabNavigator() {
         options={{
           title: "Pantry",
           tabBarIcon: ({ color }) => (
-            <Feather name="package" size={22} color={color} />
+            <Image source={healthyFoodIcon} style={[styles.tabIcon, { tintColor: color }]} />
           ),
         }}
       />
@@ -105,7 +110,7 @@ export default function MainTabNavigator() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <Feather name="user" size={22} color={color} />
+            <Image source={chefsHatIcon} style={[styles.tabIcon, { tintColor: color }]} />
           ),
         }}
       />
@@ -115,4 +120,9 @@ export default function MainTabNavigator() {
 
 const styles = StyleSheet.create({
   activeIconWrapper: {},
+  tabIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: "contain",
+  },
 });
