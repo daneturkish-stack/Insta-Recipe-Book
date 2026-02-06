@@ -11,12 +11,13 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipes } from "@/hooks/useRecipes";
+import { useAuth } from "@/hooks/useAuth";
 import {
   usePreferences,
   ALL_DIETARY_OPTIONS,
   DietaryPreference,
 } from "@/hooks/usePreferences";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
 const avatarImage = require("../../assets/images/avatar-preset.png");
 
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { data: recipes } = useRecipes();
+  const { user, trial, logout } = useAuth();
   const {
     dietaryPreferences,
     toggleDietaryPreference,
@@ -39,11 +41,13 @@ export default function ProfileScreen() {
     label,
     value,
     onPress,
+    destructive,
   }: {
     icon: keyof typeof Feather.glyphMap;
     label: string;
     value?: string;
     onPress?: () => void;
+    destructive?: boolean;
   }) => (
     <Pressable
       onPress={() => {
@@ -59,8 +63,8 @@ export default function ProfileScreen() {
       ]}
     >
       <View style={styles.settingsLeft}>
-        <Feather name={icon} size={20} color={theme.primary} />
-        <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
+        <Feather name={icon} size={20} color={destructive ? KitchColors.error : theme.primary} />
+        <ThemedText type="body" style={{ marginLeft: Spacing.md, color: destructive ? KitchColors.error : theme.text }}>
           {label}
         </ThemedText>
       </View>
@@ -108,6 +112,15 @@ export default function ProfileScreen() {
     );
   };
 
+  const trialDaysText = trial
+    ? trial.expired
+      ? "Expired"
+      : `${trial.daysLeft} days left`
+    : "";
+
+  const subscriptionLabel = user?.subscriptionStatus === "active"
+    ? "Pro"
+    : trialDaysText;
 
   return (
     <KeyboardAwareScrollViewCompat
@@ -120,16 +133,24 @@ export default function ProfileScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
       <View style={styles.profileSection}>
-        <Image
-          source={avatarImage}
-          style={styles.avatar}
-          contentFit="cover"
-        />
+        {user?.profileImage ? (
+          <Image
+            source={{ uri: user.profileImage }}
+            style={styles.avatar}
+            contentFit="cover"
+          />
+        ) : (
+          <Image
+            source={avatarImage}
+            style={styles.avatar}
+            contentFit="cover"
+          />
+        )}
         <ThemedText type="h3" style={styles.name}>
-          Home Chef
+          {user?.displayName || "Home Chef"}
         </ThemedText>
         <ThemedText type="body" style={{ color: theme.textSecondary }}>
-          Recipe collector
+          {user?.email || "Recipe collector"}
         </ThemedText>
 
         <View style={[styles.statsCard, { backgroundColor: theme.backgroundDefault }]}>
@@ -143,6 +164,31 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
+
+      {trial && !trial.expired && user?.subscriptionStatus !== "active" ? (
+        <View style={[styles.trialCard, { backgroundColor: `${KitchColors.accent}15` }]}>
+          <View style={styles.trialHeader}>
+            <Feather name="gift" size={18} color={KitchColors.accent} />
+            <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: KitchColors.accent }}>
+              Free Trial
+            </ThemedText>
+          </View>
+          <ThemedText type="h3" style={{ marginVertical: Spacing.sm }}>
+            {trial.daysLeft} days remaining
+          </ThemedText>
+          <View style={styles.trialProgressBg}>
+            <View
+              style={[
+                styles.trialProgressFill,
+                {
+                  backgroundColor: KitchColors.accent,
+                  width: `${Math.max(5, (trial.daysLeft / 30) * 100)}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
@@ -163,9 +209,14 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          Preferences
+          Account
         </ThemedText>
         <View style={styles.settingsGroup}>
+          <SettingsRow
+            icon="user"
+            label="Subscription"
+            value={subscriptionLabel}
+          />
           <SettingsRow icon="moon" label="Dark Mode" value="System" />
         </View>
       </View>
@@ -178,6 +229,17 @@ export default function ProfileScreen() {
           <SettingsRow icon="info" label="Version" value="1.0.0" />
           <SettingsRow icon="file-text" label="Privacy Policy" onPress={() => {}} />
           <SettingsRow icon="shield" label="Terms of Service" onPress={() => {}} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.settingsGroup}>
+          <SettingsRow
+            icon="log-out"
+            label="Sign Out"
+            onPress={logout}
+            destructive
+          />
         </View>
       </View>
 
@@ -219,6 +281,25 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: "center",
+  },
+  trialCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.card,
+    marginBottom: Spacing["2xl"],
+  },
+  trialHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  trialProgressBg: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(232, 168, 56, 0.2)",
+    overflow: "hidden",
+  },
+  trialProgressFill: {
+    height: 6,
+    borderRadius: 3,
   },
   section: {
     marginBottom: Spacing["2xl"],
