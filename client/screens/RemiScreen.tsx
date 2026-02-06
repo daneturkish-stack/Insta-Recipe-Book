@@ -37,7 +37,63 @@ interface Message {
   content: string;
 }
 
+const WORDS_PER_SECOND = 3.2;
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function TypewriterText({
+  text,
+  isAnimating,
+  revealedCount,
+  highlightColor,
+  textColor,
+}: {
+  text: string;
+  isAnimating: boolean;
+  revealedCount: number;
+  highlightColor: string;
+  textColor: string;
+}) {
+  if (!isAnimating) {
+    return <Text style={[styles.messageText, { color: textColor }]}>{text}</Text>;
+  }
+
+  const words = text.split(/(\s+)/);
+  let wordIndex = 0;
+
+  return (
+    <Text style={[styles.messageText, { color: textColor }]}>
+      {words.map((segment, i) => {
+        if (/^\s+$/.test(segment)) {
+          const prevWordIndex = wordIndex;
+          return prevWordIndex <= revealedCount ? (
+            <Text key={i}>{segment}</Text>
+          ) : null;
+        }
+
+        wordIndex++;
+        const currentWordIndex = wordIndex;
+
+        if (currentWordIndex > revealedCount) return null;
+
+        const isLatest = currentWordIndex === revealedCount;
+
+        return (
+          <Text
+            key={i}
+            style={
+              isLatest
+                ? { color: highlightColor, fontFamily: "Inter_600SemiBold" }
+                : undefined
+            }
+          >
+            {segment}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
 
 export default function RemiScreen() {
   const insets = useSafeAreaInsets();
@@ -62,6 +118,48 @@ export default function RemiScreen() {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+
+  const [animatingMessageId, setAnimatingMessageId] = useState<string | null>("welcome");
+  const [revealedWords, setRevealedWords] = useState(0);
+  const animationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const getWordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+  const startTypewriter = useCallback(
+    (messageId: string, text: string, speakSync: boolean = false) => {
+      if (animationTimerRef.current) {
+        clearInterval(animationTimerRef.current);
+      }
+      setAnimatingMessageId(messageId);
+      setRevealedWords(0);
+
+      const totalWords = getWordCount(text);
+      const intervalMs = speakSync
+        ? (1000 / WORDS_PER_SECOND)
+        : Math.max(30, Math.min(80, 2000 / totalWords));
+
+      let count = 0;
+      animationTimerRef.current = setInterval(() => {
+        count++;
+        setRevealedWords(count);
+        if (count >= totalWords) {
+          if (animationTimerRef.current) {
+            clearInterval(animationTimerRef.current);
+            animationTimerRef.current = null;
+          }
+          setAnimatingMessageId(null);
+        }
+      }, intervalMs);
+    },
+    []
+  );
+
+  useEffect(() => {
+    startTypewriter("welcome", messages[0].content, false);
+    return () => {
+      if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+    };
+  }, []);
 
   const micScale = useSharedValue(1);
 
@@ -136,6 +234,7 @@ export default function RemiScreen() {
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
+        startTypewriter(assistantMessage.id, data.reply, false);
       } catch (error: any) {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -143,11 +242,12 @@ export default function RemiScreen() {
           content: "Oh no, something went a bit wonky there! Give it another go for me?",
         };
         setMessages((prev) => [...prev, errorMessage]);
+        startTypewriter(errorMessage.id, errorMessage.content, false);
       } finally {
         setIsLoading(false);
       }
     },
-    [messages, recipes, dietaryPreferences]
+    [messages, recipes, dietaryPreferences, startTypewriter]
   );
 
   const startRecording = async () => {
@@ -220,6 +320,12 @@ export default function RemiScreen() {
       }
       setIsSpeaking(false);
       setSpeakingMessageId(null);
+      if (animationTimerRef.current) {
+        clearInterval(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+      setAnimatingMessageId(null);
+      setRevealedWords(getWordCount(text));
       return;
     }
 
@@ -231,6 +337,7 @@ export default function RemiScreen() {
 
     setIsSpeaking(true);
     setSpeakingMessageId(messageId);
+    startTypewriter(messageId, text, true);
 
     try {
       const response = await fetch(
@@ -255,6 +362,11 @@ export default function RemiScreen() {
         if (status.isLoaded && status.didJustFinish) {
           setIsSpeaking(false);
           setSpeakingMessageId(null);
+          if (animationTimerRef.current) {
+            clearInterval(animationTimerRef.current);
+            animationTimerRef.current = null;
+          }
+          setAnimatingMessageId(null);
           sound.unloadAsync();
           soundRef.current = null;
         }
@@ -262,6 +374,11 @@ export default function RemiScreen() {
     } catch (error) {
       setIsSpeaking(false);
       setSpeakingMessageId(null);
+      if (animationTimerRef.current) {
+        clearInterval(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+      setAnimatingMessageId(null);
     }
   };
 
@@ -278,18 +395,22 @@ export default function RemiScreen() {
         soundRef.current.stopAsync();
         soundRef.current.unloadAsync();
       }
+      if (animationTimerRef.current) {
+        clearInterval(animationTimerRef.current);
+      }
     };
   }, []);
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
+    const isAnimating = animatingMessageId === item.id;
 
     return (
       <Animated.View
         entering={FadeIn.duration(200)}
         style={[
-          styles.messageBubble,
-          isUser ? styles.userBubble : styles.assistantBubble,
+          styles.messageRow,
+          isUser ? styles.userRow : styles.assistantRow,
         ]}
       >
         {!isUser ? (
@@ -302,17 +423,20 @@ export default function RemiScreen() {
             styles.messageContent,
             isUser
               ? [styles.userContent, { backgroundColor: theme.primary }]
-              : [styles.assistantContent, { backgroundColor: isDark ? theme.backgroundDefault : KitchColors.neutral, borderColor: theme.border }],
+              : styles.assistantContent,
           ]}
         >
-          <Text
-            style={[
-              styles.messageText,
-              isUser ? styles.userText : { color: theme.text },
-            ]}
-          >
-            {item.content}
-          </Text>
+          {isUser ? (
+            <Text style={[styles.messageText, styles.userText]}>{item.content}</Text>
+          ) : (
+            <TypewriterText
+              text={item.content}
+              isAnimating={isAnimating}
+              revealedCount={isAnimating ? revealedWords : getWordCount(item.content)}
+              highlightColor={theme.primary}
+              textColor={theme.text}
+            />
+          )}
         </View>
       </Animated.View>
     );
@@ -480,21 +604,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesList: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
   },
-  messageBubble: {
+  messageRow: {
     flexDirection: "row",
-    marginBottom: Spacing.md,
-    maxWidth: "85%",
+    marginBottom: Spacing.lg,
+    maxWidth: "88%",
   },
-  userBubble: {
+  userRow: {
     alignSelf: "flex-end",
   },
-  assistantBubble: {
+  assistantRow: {
     alignSelf: "flex-start",
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+    alignItems: "flex-start",
   },
   remyAvatar: {
     width: 28,
@@ -502,19 +627,23 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 2,
   },
   messageContent: {
+    flex: 1,
+  },
+  userContent: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
   },
-  userContent: {},
   assistantContent: {
-    borderWidth: 1,
+    paddingVertical: 2,
   },
   messageText: {
-    ...Typography.body,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 26,
+    fontFamily: "Inter_400Regular",
   },
   userText: {
     color: "#FFF",
