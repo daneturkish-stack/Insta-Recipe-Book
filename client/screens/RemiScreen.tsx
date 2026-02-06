@@ -8,6 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   Platform,
+  ScrollView,
+  Modal,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -95,6 +97,213 @@ function TypewriterText({
   );
 }
 
+interface TipItem {
+  icon: string;
+  iconFamily: "feather" | "mci";
+  title: string;
+  description: string;
+}
+
+const TIPS: { section: string; items: TipItem[] }[] = [
+  {
+    section: "Saving Recipes",
+    items: [
+      {
+        icon: "link",
+        iconFamily: "feather",
+        title: "Paste a Link",
+        description:
+          "Go to the Add tab and paste an Instagram Reel or TikTok link. Kitch will use AI to extract the full recipe for you automatically.",
+      },
+      {
+        icon: "alert-circle",
+        iconFamily: "feather",
+        title: "Recipe Not Quite Right?",
+        description:
+          "Each recipe shows an accuracy badge (High, Medium, or Low). If something looks off, check the source info — you can tap through to the original post or the creator's website.",
+      },
+    ],
+  },
+  {
+    section: "Gesture Shortcuts",
+    items: [
+      {
+        icon: "gesture-swipe-right",
+        iconFamily: "mci",
+        title: "Swipe Right to Cook",
+        description:
+          "On any recipe card in your collection, swipe right to jump straight into Cook Mode with step-by-step guidance.",
+      },
+      {
+        icon: "cellphone-vibrate",
+        iconFamily: "mci",
+        title: "Shake for Recipe Roulette",
+        description:
+          "Can't decide what to make? Give your phone a shake on the Collection screen and Kitch will pick a recipe for you — prioritising ones you can make with your pantry.",
+      },
+      {
+        icon: "gesture-pinch",
+        iconFamily: "mci",
+        title: "Pinch to Scale Ingredients",
+        description:
+          "On a recipe's detail page, pinch in or out on the ingredients section to scale the servings up or down. You can also use the +/- buttons.",
+      },
+    ],
+  },
+  {
+    section: "Pantry & Matching",
+    items: [
+      {
+        icon: "shopping-bag",
+        iconFamily: "feather",
+        title: "Add Pantry Items",
+        description:
+          "Head to the Pantry tab and add what you have at home. Kitch will match your ingredients to your saved recipes and show you what you can make.",
+      },
+      {
+        icon: "mic",
+        iconFamily: "feather",
+        title: "Voice Input",
+        description:
+          "Tap the microphone in the Pantry tab and speak your ingredients aloud — Kitch will parse and categorise them automatically. Great when you're unloading shopping!",
+      },
+    ],
+  },
+  {
+    section: "Cooking with Kitch",
+    items: [
+      {
+        icon: "play-circle",
+        iconFamily: "feather",
+        title: "Cook Mode",
+        description:
+          "Tap 'Start Cooking' on any recipe to enter full-screen Cook Mode. It reads each step aloud so you can keep your hands free.",
+      },
+      {
+        icon: "message-circle",
+        iconFamily: "feather",
+        title: "Ask Remi",
+        description:
+          "That's me! Ask me for recipe suggestions, substitutions, technique tips, or just have a chat about food. I know about all your saved recipes too.",
+      },
+    ],
+  },
+];
+
+function TipsModal({
+  visible,
+  onClose,
+  theme,
+  isDark,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  theme: any;
+  isDark: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={[tipsStyles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <View
+          style={[
+            tipsStyles.header,
+            {
+              paddingTop: insets.top + Spacing.sm,
+              borderBottomColor: theme.border,
+            },
+          ]}
+        >
+          <View style={tipsStyles.headerLeft}>
+            <View style={[tipsStyles.headerIcon, { backgroundColor: KitchColors.accent }]}>
+              <Feather name="book-open" size={20} color="#FFF" />
+            </View>
+            <Text style={[tipsStyles.headerTitle, { color: theme.text }]}>
+              Tips & Tricks
+            </Text>
+          </View>
+          <Pressable onPress={onClose} hitSlop={12} testID="tips-close-button">
+            <Feather name="x" size={24} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={[
+            tipsStyles.scrollContent,
+            { paddingBottom: insets.bottom + Spacing.xl },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={[tipsStyles.intro, { color: theme.textSecondary }]}>
+            Here are some handy ways to get the most out of Kitch.
+          </Text>
+
+          {TIPS.map((section) => (
+            <View key={section.section} style={tipsStyles.section}>
+              <Text style={[tipsStyles.sectionTitle, { color: theme.text }]}>
+                {section.section}
+              </Text>
+              {section.items.map((tip) => (
+                <View
+                  key={tip.title}
+                  style={[
+                    tipsStyles.tipCard,
+                    {
+                      backgroundColor: isDark
+                        ? theme.backgroundDefault
+                        : KitchColors.neutral,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      tipsStyles.tipIconWrap,
+                      { backgroundColor: theme.primary + "18" },
+                    ]}
+                  >
+                    {tip.iconFamily === "feather" ? (
+                      <Feather
+                        name={tip.icon as any}
+                        size={18}
+                        color={theme.primary}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={tip.icon as any}
+                        size={18}
+                        color={theme.primary}
+                      />
+                    )}
+                  </View>
+                  <View style={tipsStyles.tipTextWrap}>
+                    <Text style={[tipsStyles.tipTitle, { color: theme.text }]}>
+                      {tip.title}
+                    </Text>
+                    <Text
+                      style={[
+                        tipsStyles.tipDescription,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {tip.description}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
 export default function RemiScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -107,7 +316,7 @@ export default function RemiScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi there, I'm Remi. I'm here to help with anything food and cooking — whether it's figuring out what to make tonight, working through a tricky recipe, or just chatting about food. What can I help with?",
+      content: "Hi there, I'm Remi. I'm here to help with anything food and cooking \u2014 whether it's figuring out what to make tonight, working through a tricky recipe, or just chatting about food. What can I help with?",
     },
   ]);
   const [inputText, setInputText] = useState("");
@@ -116,12 +325,15 @@ export default function RemiScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [showTips, setShowTips] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
   const [animatingMessageId, setAnimatingMessageId] = useState<string | null>("welcome");
   const [revealedWords, setRevealedWords] = useState(0);
   const animationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingSpeakRef = useRef<{ messageId: string; text: string } | null>(null);
+  const audioPlayStartedRef = useRef(false);
 
   const getWordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
@@ -135,7 +347,7 @@ export default function RemiScreen() {
 
       const totalWords = getWordCount(text);
       const intervalMs = speakSync
-        ? (1000 / WORDS_PER_SECOND)
+        ? 1000 / WORDS_PER_SECOND
         : Math.max(30, Math.min(80, 2000 / totalWords));
 
       let count = 0;
@@ -239,7 +451,8 @@ export default function RemiScreen() {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "Oh no, something went a bit wonky there! Give it another go for me?",
+          content:
+            "Oh no, something went a bit wonky there! Give it another go for me?",
         };
         setMessages((prev) => [...prev, errorMessage]);
         startTypewriter(errorMessage.id, errorMessage.content, false);
@@ -326,6 +539,7 @@ export default function RemiScreen() {
       }
       setAnimatingMessageId(null);
       setRevealedWords(getWordCount(text));
+      pendingSpeakRef.current = null;
       return;
     }
 
@@ -335,9 +549,17 @@ export default function RemiScreen() {
       soundRef.current = null;
     }
 
+    if (animationTimerRef.current) {
+      clearInterval(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+
     setIsSpeaking(true);
     setSpeakingMessageId(messageId);
-    startTypewriter(messageId, text, true);
+    setAnimatingMessageId(messageId);
+    setRevealedWords(0);
+    pendingSpeakRef.current = { messageId, text };
+    audioPlayStartedRef.current = false;
 
     try {
       const response = await fetch(
@@ -359,16 +581,44 @@ export default function RemiScreen() {
       soundRef.current = sound;
 
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsSpeaking(false);
-          setSpeakingMessageId(null);
-          if (animationTimerRef.current) {
-            clearInterval(animationTimerRef.current);
-            animationTimerRef.current = null;
+        if (status.isLoaded) {
+          if (status.isPlaying && !audioPlayStartedRef.current) {
+            audioPlayStartedRef.current = true;
+            const pending = pendingSpeakRef.current;
+            if (pending) {
+              const totalWords = getWordCount(pending.text);
+              const durationMs = status.durationMillis || totalWords * (1000 / WORDS_PER_SECOND);
+              const intervalMs = durationMs / totalWords;
+
+              let count = 0;
+              if (animationTimerRef.current) {
+                clearInterval(animationTimerRef.current);
+              }
+              animationTimerRef.current = setInterval(() => {
+                count++;
+                setRevealedWords(count);
+                if (count >= totalWords) {
+                  if (animationTimerRef.current) {
+                    clearInterval(animationTimerRef.current);
+                    animationTimerRef.current = null;
+                  }
+                }
+              }, intervalMs);
+            }
           }
-          setAnimatingMessageId(null);
-          sound.unloadAsync();
-          soundRef.current = null;
+
+          if (status.didJustFinish) {
+            setIsSpeaking(false);
+            setSpeakingMessageId(null);
+            if (animationTimerRef.current) {
+              clearInterval(animationTimerRef.current);
+              animationTimerRef.current = null;
+            }
+            setAnimatingMessageId(null);
+            pendingSpeakRef.current = null;
+            sound.unloadAsync();
+            soundRef.current = null;
+          }
         }
       });
     } catch (error) {
@@ -379,11 +629,14 @@ export default function RemiScreen() {
         animationTimerRef.current = null;
       }
       setAnimatingMessageId(null);
+      pendingSpeakRef.current = null;
     }
   };
 
   const speakLatestMessage = () => {
-    const latestAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
+    const latestAssistantMessage = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
     if (latestAssistantMessage) {
       speakMessage(latestAssistantMessage.id, latestAssistantMessage.content);
     }
@@ -414,7 +667,9 @@ export default function RemiScreen() {
         ]}
       >
         {!isUser ? (
-          <View style={[styles.remyAvatar, { backgroundColor: theme.primary }]}>
+          <View
+            style={[styles.remyAvatar, { backgroundColor: theme.primary }]}
+          >
             <MaterialCommunityIcons name="chef-hat" size={14} color="#FFF" />
           </View>
         ) : null}
@@ -427,12 +682,16 @@ export default function RemiScreen() {
           ]}
         >
           {isUser ? (
-            <Text style={[styles.messageText, styles.userText]}>{item.content}</Text>
+            <Text style={[styles.messageText, styles.userText]}>
+              {item.content}
+            </Text>
           ) : (
             <TypewriterText
               text={item.content}
               isAnimating={isAnimating}
-              revealedCount={isAnimating ? revealedWords : getWordCount(item.content)}
+              revealedCount={
+                isAnimating ? revealedWords : getWordCount(item.content)
+              }
               highlightColor={theme.primary}
               textColor={theme.text}
             />
@@ -444,20 +703,64 @@ export default function RemiScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.sm, backgroundColor: theme.backgroundRoot, borderBottomColor: theme.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + Spacing.sm,
+            backgroundColor: theme.backgroundRoot,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
         <View style={styles.headerLeft}>
           <View style={[styles.remyIcon, { backgroundColor: theme.primary }]}>
             <MaterialCommunityIcons name="chef-hat" size={22} color="#FFF" />
           </View>
           <View>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Remi</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Your kitchen companion</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>
+              Remi
+            </Text>
+            <Text
+              style={[styles.headerSubtitle, { color: theme.textSecondary }]}
+            >
+              Your kitchen companion
+            </Text>
           </View>
         </View>
         <View style={styles.headerActions}>
           <Pressable
+            onPress={() => setShowTips(true)}
+            style={[
+              styles.headerButton,
+              {
+                backgroundColor: isDark
+                  ? theme.backgroundDefault
+                  : KitchColors.neutral,
+              },
+            ]}
+            hitSlop={8}
+            testID="remi-tips-button"
+          >
+            <Feather
+              name="book-open"
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+          <Pressable
             onPress={speakLatestMessage}
-            style={[styles.playButton, { backgroundColor: isDark ? theme.backgroundDefault : KitchColors.neutral }, isSpeaking && { backgroundColor: theme.primary + "20" }]}
+            style={[
+              styles.headerButton,
+              {
+                backgroundColor: isDark
+                  ? theme.backgroundDefault
+                  : KitchColors.neutral,
+              },
+              isSpeaking
+                ? { backgroundColor: theme.primary + "20" }
+                : undefined,
+            ]}
             hitSlop={8}
             testID="remi-play-button"
           >
@@ -484,7 +787,9 @@ export default function RemiScreen() {
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              <Text
+                style={[styles.emptyText, { color: theme.textSecondary }]}
+              >
                 Ask me anything about cooking!
               </Text>
             </View>
@@ -500,11 +805,27 @@ export default function RemiScreen() {
         />
 
         <View
-          style={[styles.inputContainer, { paddingBottom: tabBarHeight + Spacing.sm, backgroundColor: theme.backgroundRoot, borderTopColor: theme.border }]}
+          style={[
+            styles.inputContainer,
+            {
+              paddingBottom: tabBarHeight + Spacing.sm,
+              backgroundColor: theme.backgroundRoot,
+              borderTopColor: theme.border,
+            },
+          ]}
         >
           <View style={styles.inputRow}>
             <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: isDark ? theme.backgroundDefault : KitchColors.neutral, borderColor: theme.border }]}
+              style={[
+                styles.input,
+                {
+                  color: theme.text,
+                  backgroundColor: isDark
+                    ? theme.backgroundDefault
+                    : KitchColors.neutral,
+                  borderColor: theme.border,
+                },
+              ]}
               placeholder="Ask Remi anything..."
               placeholderTextColor={theme.textSecondary}
               value={inputText}
@@ -516,7 +837,16 @@ export default function RemiScreen() {
             />
 
             <AnimatedPressable
-              style={[styles.micButton, { backgroundColor: isDark ? theme.backgroundDefault : KitchColors.neutral, borderColor: theme.border }, micAnimatedStyle]}
+              style={[
+                styles.micButton,
+                {
+                  backgroundColor: isDark
+                    ? theme.backgroundDefault
+                    : KitchColors.neutral,
+                  borderColor: theme.border,
+                },
+                micAnimatedStyle,
+              ]}
               onPressIn={startRecording}
               onPressOut={stopRecording}
               disabled={isLoading}
@@ -550,13 +880,22 @@ export default function RemiScreen() {
           {isRecording ? (
             <Animated.View entering={FadeIn} style={styles.recordingHint}>
               <View style={styles.recordingDot} />
-              <Text style={[styles.recordingText, { color: KitchColors.error }]}>
+              <Text
+                style={[styles.recordingText, { color: KitchColors.error }]}
+              >
                 Listening... Release to send
               </Text>
             </Animated.View>
           ) : null}
         </View>
       </KeyboardAvoidingView>
+
+      <TipsModal
+        visible={showTips}
+        onClose={() => setShowTips(false)}
+        theme={theme}
+        isDark={isDark}
+      />
     </View>
   );
 }
@@ -594,9 +933,9 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
-  playButton: {
+  headerButton: {
     padding: Spacing.xs,
     borderRadius: BorderRadius.full,
   },
@@ -709,5 +1048,75 @@ const styles = StyleSheet.create({
   },
   recordingText: {
     ...Typography.caption,
+  },
+});
+
+const tipsStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    ...Typography.h3,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  intro: {
+    ...Typography.body,
+    marginBottom: Spacing.xl,
+  },
+  section: {
+    marginBottom: Spacing.xl,
+  },
+  sectionTitle: {
+    ...Typography.h4,
+    marginBottom: Spacing.md,
+  },
+  tipCard: {
+    flexDirection: "row",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+    alignItems: "flex-start",
+  },
+  tipIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tipTextWrap: {
+    flex: 1,
+  },
+  tipTitle: {
+    ...Typography.bodyMedium,
+    marginBottom: 2,
+  },
+  tipDescription: {
+    ...Typography.small,
+    lineHeight: 20,
   },
 });
