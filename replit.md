@@ -14,7 +14,9 @@ Key capabilities:
 - Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
 - Cook Mode for step-by-step guided cooking with hands-free voice reading
 - Remi AI assistant (dedicated tab) for food and cooking conversations, recipe help, and recommendations — Jamie Oliver-inspired conversational tone
-- Text-to-speech for Remi responses with auto-speak toggle and male/female voice selection
+- Remi chat UI: ChatGPT-style clean layout (no speech bubbles), typewriter text effect with word highlighting, synced to TTS audio playback
+- Remi Tips & Tricks guide: built-in modal with app usage tips (gestures, saving recipes, accuracy, pantry, Cook Mode)
+- Text-to-speech for Remi responses with auto-speak toggle and male/female voice selection (female uses "fable" British voice)
 - Dietary preferences (Vegetarian, Vegan, Gluten-Free, etc.) that Remi respects in suggestions
 - Native gesture controls for intuitive cooking experience
 - Cross-platform support (iOS, Android, Web)
