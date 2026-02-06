@@ -24,7 +24,7 @@ import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const appIcon = require("../../assets/images/app-icon.png");
+const appIcon = require("../../assets/images/icon.png");
 
 type AuthMode = "welcome" | "login" | "register";
 

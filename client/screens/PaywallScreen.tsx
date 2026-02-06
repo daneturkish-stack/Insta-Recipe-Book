@@ -10,7 +10,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
-const appIcon = require("../../assets/images/app-icon.png");
+const appIcon = require("../../assets/images/icon.png");
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
