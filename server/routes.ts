@@ -1057,15 +1057,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trialDaysLeft = Math.max(0, 30 - Math.floor((now.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60 * 24)));
       const trialExpired = trialDaysLeft === 0;
       const isSubscribed = user.subscriptionStatus === "active";
+      const isExplicitlyRevoked = user.subscriptionStatus === "expired" || user.subscriptionStatus === "cancelled";
+
+      let hasAccess: boolean;
+      if (isSubscribed) {
+        hasAccess = true;
+      } else if (isExplicitlyRevoked) {
+        hasAccess = false;
+      } else {
+        hasAccess = !trialExpired;
+      }
 
       res.json({
         user: sanitizeUser(user),
         trial: {
-          daysLeft: trialDaysLeft,
-          expired: trialExpired,
+          daysLeft: isExplicitlyRevoked ? 0 : trialDaysLeft,
+          expired: isExplicitlyRevoked || trialExpired,
           startDate: user.trialStartDate,
         },
-        hasAccess: isSubscribed || !trialExpired,
+        hasAccess,
       });
     } catch (err: any) {
       console.error("Auth check error:", err);
