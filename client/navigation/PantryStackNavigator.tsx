@@ -24,7 +24,7 @@ export default function PantryStackNavigator() {
         name="Pantry"
         component={PantryScreen}
         options={{
-          headerTitle: () => <HeaderTitle title="My Pantry" />,
+          headerTitle: () => <HeaderTitle />,
         }}
       />
       <Stack.Screen

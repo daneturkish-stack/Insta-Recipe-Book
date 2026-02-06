@@ -71,7 +71,7 @@ export default function CollectionStackNavigator() {
         name="Collection"
         component={CollectionScreen}
         options={{
-          headerTitle: () => <HeaderTitle title="Kitch" />,
+          headerTitle: () => <HeaderTitle />,
           headerRight: () => <ShoppingListHeaderButton />,
         }}
       />
