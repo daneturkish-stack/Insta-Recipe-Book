@@ -5,21 +5,19 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 
-interface HeaderTitleProps {
-  title: string;
-}
+const logoLight = require("../../assets/images/logo-light.png");
+const logoDark = require("../../assets/images/logo-dark.png");
 
-export function HeaderTitle({ title }: HeaderTitleProps) {
-  const { theme } = useTheme();
+export function HeaderTitle() {
+  const { isDark } = useTheme();
 
   return (
     <View style={styles.container}>
       <Image
-        source={require("../../assets/images/icon.png")}
-        style={styles.icon}
+        source={isDark ? logoDark : logoLight}
+        style={styles.logo}
         resizeMode="contain"
       />
-      <ThemedText type="h4" style={styles.title}>{title}</ThemedText>
     </View>
   );
 }
@@ -47,14 +45,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  icon: {
-    width: 32,
-    height: 32,
-    marginRight: Spacing.sm,
-    borderRadius: 8,
-  },
-  title: {
-    fontSize: 18,
+  logo: {
+    width: 100,
+    height: 36,
   },
   screenTitleContainer: {
     alignItems: "center",
