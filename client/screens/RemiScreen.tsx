@@ -51,7 +51,7 @@ export default function RemiScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hey, lovely! I'm Remi. Whether you fancy chatting about what's for dinner tonight, need a hand with a tricky recipe, or just want to geek out about food — I'm all yours. What are we cooking up?",
+      content: "Hello, lovely! I'm Remi. Whether you fancy a chat about what's for dinner, need a hand with a tricky recipe, or just want to talk all things food — I'm right here. Right then, what shall we cook up?",
     },
   ]);
   const [inputText, setInputText] = useState("");
@@ -327,7 +327,7 @@ export default function RemiScreen() {
           </View>
           <View>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Remi</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Your cooking mate</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Your kitchen companion</Text>
           </View>
         </View>
         <View style={styles.headerActions}>
