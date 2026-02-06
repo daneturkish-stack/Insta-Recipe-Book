@@ -1721,9 +1721,9 @@ You're not a search engine. You're a brilliant, sparkling cooking companion with
       messages.push({ role: "user", content: message });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
+        model: "gpt-4.1",
         messages,
-        max_completion_tokens: 512,
+        max_completion_tokens: 1024,
       });
 
       const reply = response.choices[0]?.message?.content;

@@ -764,7 +764,7 @@ export default function RemiScreen() {
             <Text
               style={[styles.headerSubtitle, { color: theme.textSecondary }]}
             >
-              Your kitchen companion
+              Your sous chef
             </Text>
           </View>
         </View>
