@@ -21,13 +21,14 @@
                     import { ThemedText } from "@/components/ThemedText";
                     import { useTheme } from "@/hooks/useTheme";
                     import { useAuth } from "@/hooks/useAuth";
+                    import { getApiUrl } from "@/lib/query-client";
                     import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
                     WebBrowser.maybeCompleteAuthSession();
 
                     const appIcon = require("../../assets/images/icon.png");
 
-                    const GOOGLE_WEB_CLIENT_ID = "52014612790-iprjnuhmrooptif86bfhf2lhot7iml82.apps.googleusercontent.com";
+                    const GOOGLE_WEB_CLIENT_ID = "52014612790-dds59pc44ugsd01af80ks26idk3ibluu.apps.googleusercontent.com";
                     const FB_CLIENT_ID = "1652831865939554";
 
                     type AuthMode = "welcome" | "login" | "register";
@@ -47,8 +48,10 @@
 
                       const handleGoogleLogin = async () => {
                         setIsSubmitting(true);
+                        setErrorMsg("");
                         try {
-                          const redirectUri = Linking.createURL("auth/google");
+                          const apiBase = getApiUrl().replace(/\/$/, "");
+                          const redirectUri = `${apiBase}/api/auth/google/callback`;
                           const authUrl =
                             `https://accounts.google.com/o/oauth2/v2/auth?` +
                             `client_id=${GOOGLE_WEB_CLIENT_ID}` +
@@ -58,6 +61,21 @@
 
                           const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
                           if (result.type === "success" && result.url) {
+                            const urlObj = new URL(result.url);
+                            const token = urlObj.searchParams.get("token");
+                            const userJson = urlObj.searchParams.get("user");
+                            if (token && userJson) {
+                              const user = JSON.parse(decodeURIComponent(userJson));
+                              await socialLogin({
+                                provider: "google",
+                                providerId: user.providerId || user.id?.toString(),
+                                email: user.email,
+                                displayName: user.displayName || user.email?.split("@")[0],
+                                profileImage: user.profileImage,
+                              });
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                              return;
+                            }
                             const hash = result.url.split("#")[1];
                             if (hash) {
                               const params = new URLSearchParams(hash);
@@ -80,18 +98,26 @@
                       const fetchGoogleProfile = async (accessToken: string) => {
                         setIsSubmitting(true);
                         try {
-                          const res = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-                            headers: { Authorization: `Bearer ${accessToken}` },
+                          const apiBase = getApiUrl().replace(/\/$/, "");
+                          const res = await fetch(`${apiBase}/api/auth/google/token`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ access_token: accessToken }),
                           });
-                          const profile = await res.json();
-                          await socialLogin({
-                            provider: "google",
-                            providerId: profile.id,
-                            email: profile.email,
-                            displayName: profile.name || profile.email.split("@")[0],
-                            profileImage: profile.picture,
-                          });
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          const data = await res.json();
+                          if (data.user && data.token) {
+                            await socialLogin({
+                              provider: "google",
+                              providerId: data.user.providerId || data.user.id?.toString(),
+                              email: data.user.email,
+                              displayName: data.user.displayName || data.user.email?.split("@")[0],
+                              profileImage: data.user.profileImage,
+                            });
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          } else {
+                            setErrorMsg(data.error || "Google login failed. Please try again.");
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                          }
                         } catch (err: any) {
                           setErrorMsg("Google login failed. Please try again.");
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
