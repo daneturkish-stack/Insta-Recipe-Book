@@ -85,14 +85,7 @@
           }
         }
       ],
-      "expo-web-browser",
-      [
-        "expo-facebook",
-        {
-          "appId": "1652831865939554",
-          "displayName": "Kitch"
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "reactCompiler": true

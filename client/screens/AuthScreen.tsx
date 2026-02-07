@@ -16,8 +16,7 @@
                     import * as WebBrowser from "expo-web-browser";
                     import * as AppleAuthentication from "expo-apple-authentication";
 
-                    import * as Google from "expo-auth-session/providers/google";
-                    import * as AuthSession from "expo-auth-session";
+                    import * as Linking from "expo-linking";
 
                     import { ThemedText } from "@/components/ThemedText";
                     import { useTheme } from "@/hooks/useTheme";
@@ -28,11 +27,8 @@
 
                     const appIcon = require("../../assets/images/icon.png");
 
+                    const GOOGLE_WEB_CLIENT_ID = "52014612790-iprjnuhmrooptif86bfhf2lhot7iml82.apps.googleusercontent.com";
                     const FB_CLIENT_ID = "1652831865939554";
-                    const fbDiscovery = {
-                      authorizationEndpoint: "https://www.facebook.com/v18.0/dialog/oauth",
-                      tokenEndpoint: "https://graph.facebook.com/v18.0/oauth/access_token",
-                    };
 
                     type AuthMode = "welcome" | "login" | "register";
 
@@ -49,44 +45,37 @@
                       const [errorMsg, setErrorMsg] = useState("");
                       const [showPassword, setShowPassword] = useState(false);
 
-                      const [gRequest, gResponse, gPromptAsync] = Google.useAuthRequest({
-                        androidClientId: "52014612790-iprjnuhmrooptif86bfhf2lhot7iml82.apps.googleusercontent.com",
-                        iosClientId: "52014612790-dds59pc44ugsd01af80ks26idk3ibluu.apps.googleusercontent.com",
-                      });
+                      const handleGoogleLogin = async () => {
+                        setIsSubmitting(true);
+                        try {
+                          const redirectUri = Linking.createURL("auth/google");
+                          const authUrl =
+                            `https://accounts.google.com/o/oauth2/v2/auth?` +
+                            `client_id=${GOOGLE_WEB_CLIENT_ID}` +
+                            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                            `&response_type=token` +
+                            `&scope=${encodeURIComponent("openid email profile")}`;
 
-                      const fbRedirectUri = AuthSession.makeRedirectUri({ scheme: "kitch" });
-                      const [fRequest, fResponse, fPromptAsync] = AuthSession.useAuthRequest(
-                        {
-                          clientId: FB_CLIENT_ID,
-                          redirectUri: fbRedirectUri,
-                          responseType: AuthSession.ResponseType.Token,
-                          scopes: ["public_profile", "email"],
-                        },
-                        fbDiscovery,
-                      );
-
-                      useEffect(() => {
-                        if (gResponse?.type === "success") {
-                          const accessToken = gResponse.authentication?.accessToken;
-                          if (accessToken) {
-                            fetchGoogleProfile(accessToken);
+                          const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+                          if (result.type === "success" && result.url) {
+                            const hash = result.url.split("#")[1];
+                            if (hash) {
+                              const params = new URLSearchParams(hash);
+                              const accessToken = params.get("access_token");
+                              if (accessToken) {
+                                await fetchGoogleProfile(accessToken);
+                                return;
+                              }
+                            }
+                            setErrorMsg("Google login failed. Please try again.");
                           }
-                        } else if (gResponse?.type === "error") {
+                        } catch (err: any) {
                           setErrorMsg("Google login failed. Please try again.");
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        } finally {
+                          setIsSubmitting(false);
                         }
-                      }, [gResponse]);
-
-                      useEffect(() => {
-                        if (fResponse?.type === "success") {
-                          const params = fResponse.params;
-                          const accessToken = params?.access_token;
-                          if (accessToken) {
-                            fetchFacebookProfile(accessToken);
-                          }
-                        } else if (fResponse?.type === "error") {
-                          setErrorMsg("Facebook login failed. Please try again.");
-                        }
-                      }, [fResponse]);
+                      };
 
                       const fetchGoogleProfile = async (accessToken: string) => {
                         setIsSubmitting(true);
@@ -105,6 +94,38 @@
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         } catch (err: any) {
                           setErrorMsg("Google login failed. Please try again.");
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      };
+
+                      const handleFacebookLogin = async () => {
+                        setIsSubmitting(true);
+                        try {
+                          const redirectUri = Linking.createURL("auth/facebook");
+                          const authUrl =
+                            `https://www.facebook.com/v18.0/dialog/oauth?` +
+                            `client_id=${FB_CLIENT_ID}` +
+                            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                            `&response_type=token` +
+                            `&scope=public_profile,email`;
+
+                          const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+                          if (result.type === "success" && result.url) {
+                            const hash = result.url.split("#")[1];
+                            if (hash) {
+                              const params = new URLSearchParams(hash);
+                              const accessToken = params.get("access_token");
+                              if (accessToken) {
+                                await fetchFacebookProfile(accessToken);
+                                return;
+                              }
+                            }
+                            setErrorMsg("Facebook login failed. Please try again.");
+                          }
+                        } catch (err: any) {
+                          setErrorMsg("Facebook login failed. Please try again.");
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                         } finally {
                           setIsSubmitting(false);
@@ -216,8 +237,8 @@
                           <Pressable
                             testID="button-google-login"
                             style={[styles.socialButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border, borderWidth: 1 }]}
-                            onPress={() => gPromptAsync()}
-                            disabled={!gRequest || isSubmitting}
+                            onPress={handleGoogleLogin}
+                            disabled={isSubmitting}
                           >
                             <View style={styles.googleIcon}>
                               <ThemedText type="bodyMedium" style={{ color: "#4285F4", fontSize: 18 }}>G</ThemedText>
@@ -230,8 +251,8 @@
                           <Pressable
                             testID="button-facebook-login"
                             style={[styles.socialButton, { backgroundColor: "#1877F2" }]}
-                            onPress={() => fPromptAsync()}
-                            disabled={!fRequest || isSubmitting}
+                            onPress={handleFacebookLogin}
+                            disabled={isSubmitting}
                           >
                             <Feather name="facebook" size={20} color="#FFFFFF" />
                             <ThemedText type="bodyMedium" style={[styles.socialButtonText, { color: "#FFFFFF" }]}>
