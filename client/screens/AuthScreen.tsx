@@ -16,9 +16,8 @@
                     import * as WebBrowser from "expo-web-browser";
                     import * as AppleAuthentication from "expo-apple-authentication";
 
-                    // --- OAuth Providers ---
                     import * as Google from "expo-auth-session/providers/google";
-                    import * as Facebook from "expo-auth-session/providers/facebook";
+                    import * as AuthSession from "expo-auth-session";
 
                     import { ThemedText } from "@/components/ThemedText";
                     import { useTheme } from "@/hooks/useTheme";
@@ -28,6 +27,12 @@
                     WebBrowser.maybeCompleteAuthSession();
 
                     const appIcon = require("../../assets/images/icon.png");
+
+                    const FB_CLIENT_ID = "1652831865939554";
+                    const fbDiscovery = {
+                      authorizationEndpoint: "https://www.facebook.com/v18.0/dialog/oauth",
+                      tokenEndpoint: "https://graph.facebook.com/v18.0/oauth/access_token",
+                    };
 
                     type AuthMode = "welcome" | "login" | "register";
 
@@ -44,46 +49,85 @@
                       const [errorMsg, setErrorMsg] = useState("");
                       const [showPassword, setShowPassword] = useState(false);
 
-                      // --- Google Configuration ---
                       const [gRequest, gResponse, gPromptAsync] = Google.useAuthRequest({
                         androidClientId: "52014612790-iprjnuhmrooptif86bfhf2lhot7iml82.apps.googleusercontent.com",
                         iosClientId: "52014612790-dds59pc44ugsd01af80ks26idk3ibluu.apps.googleusercontent.com",
                       });
 
-                      // --- Facebook Configuration ---
-                      const [fRequest, fResponse, fPromptAsync] = Facebook.useAuthRequest({
-                        clientId: "1652831865939554",
-                      });
+                      const fbRedirectUri = AuthSession.makeRedirectUri({ scheme: "kitch" });
+                      const [fRequest, fResponse, fPromptAsync] = AuthSession.useAuthRequest(
+                        {
+                          clientId: FB_CLIENT_ID,
+                          redirectUri: fbRedirectUri,
+                          responseType: AuthSession.ResponseType.Token,
+                          scopes: ["public_profile", "email"],
+                        },
+                        fbDiscovery,
+                      );
 
-                      // Handle Google OAuth Result
                       useEffect(() => {
                         if (gResponse?.type === "success") {
-                          const { authentication } = gResponse;
-                          handleSocialLogin("google", authentication?.accessToken);
+                          const accessToken = gResponse.authentication?.accessToken;
+                          if (accessToken) {
+                            fetchGoogleProfile(accessToken);
+                          }
                         } else if (gResponse?.type === "error") {
-                          setErrorMsg("Google login failed. Check your configuration.");
+                          setErrorMsg("Google login failed. Please try again.");
                         }
                       }, [gResponse]);
 
-                      // Handle Facebook OAuth Result
                       useEffect(() => {
                         if (fResponse?.type === "success") {
-                          const { authentication } = fResponse;
-                          handleSocialLogin("facebook", authentication?.accessToken);
+                          const params = fResponse.params;
+                          const accessToken = params?.access_token;
+                          if (accessToken) {
+                            fetchFacebookProfile(accessToken);
+                          }
+                        } else if (fResponse?.type === "error") {
+                          setErrorMsg("Facebook login failed. Please try again.");
                         }
                       }, [fResponse]);
 
-                      const handleSocialLogin = async (provider: string, token?: string) => {
-                        if (!token) return;
+                      const fetchGoogleProfile = async (accessToken: string) => {
                         setIsSubmitting(true);
                         try {
+                          const res = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+                            headers: { Authorization: `Bearer ${accessToken}` },
+                          });
+                          const profile = await res.json();
                           await socialLogin({
-                            provider,
-                            token,
+                            provider: "google",
+                            providerId: profile.id,
+                            email: profile.email,
+                            displayName: profile.name || profile.email.split("@")[0],
+                            profileImage: profile.picture,
                           });
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         } catch (err: any) {
-                          setErrorMsg(`${provider} login failed. Please try again.`);
+                          setErrorMsg("Google login failed. Please try again.");
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      };
+
+                      const fetchFacebookProfile = async (accessToken: string) => {
+                        setIsSubmitting(true);
+                        try {
+                          const res = await fetch(
+                            `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`,
+                          );
+                          const profile = await res.json();
+                          await socialLogin({
+                            provider: "facebook",
+                            providerId: profile.id,
+                            email: profile.email || `fb_${profile.id}@facebook.com`,
+                            displayName: profile.name || "Facebook User",
+                            profileImage: profile.picture?.data?.url,
+                          });
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        } catch (err: any) {
+                          setErrorMsg("Facebook login failed. Please try again.");
                           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                         } finally {
                           setIsSubmitting(false);
