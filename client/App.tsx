@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser"; // Added for OAuth
 
 import {
   useFonts,
@@ -29,6 +30,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/useAuth";
 import { configureRevenueCat } from "@/hooks/useRevenueCat";
 import { KitchColors } from "@/constants/theme";
+
+// Initialize WebBrowser for authentication redirects
+WebBrowser.maybeCompleteAuthSession();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -119,7 +123,7 @@ export default function App() {
 
   const handleDeepLink = useCallback((event: { url: string }) => {
     const { url } = event;
-    
+
     if (isInstagramOrTikTokUrl(url)) {
       navigationRef.current?.navigate("Main", {
         screen: "AddRecipeTab",
@@ -144,7 +148,7 @@ export default function App() {
 
   useEffect(() => {
     const subscription = Linking.addEventListener("url", handleDeepLink);
-    
+
     Linking.getInitialURL().then((url) => {
       if (url) {
         handleDeepLink({ url });

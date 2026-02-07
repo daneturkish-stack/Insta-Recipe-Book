@@ -6,21 +6,26 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kitch",
+    "facebookAppId": "1652831865939554",
+    "facebookScheme": "fb1652831865939554",
+    "facebookDisplayName": "Kitch",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kitch.app",
-      "associatedDomains": ["applinks:kitch.replit.app"]
+      "associatedDomains": [
+        "applinks:kitch.replit.app"
+      ]
     },
     "android": {
+      "package": "com.kitch.app",
       "adaptiveIcon": {
         "backgroundColor": "#F9F8F4",
         "foregroundImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.kitch.app",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -45,11 +50,16 @@
               "host": "vm.tiktok.com"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "SEND",
-          "category": ["DEFAULT"],
+          "category": [
+            "DEFAULT"
+          ],
           "data": [
             {
               "mimeType": "text/plain"
@@ -75,10 +85,22 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-facebook",
+        {
+          "appId": "1652831865939554",
+          "displayName": "Kitch"
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8bb6a0c2-4e86-4cd9-abe5-7589eddff872"
+      }
     }
   }
 }
