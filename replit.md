@@ -91,6 +91,13 @@ When the AI fills in missing measurements or techniques, it references trusted s
 - Displays creator name, handle, avatar, and platform badge
 - "View Original Post" button links back to the source URL
 
+### Cook Mode Upgrades (YouTube Sync, Remi Voice, Timers)
+- **YouTube Player Integration**: YouTube recipes (`platform === 'youtube'` with `videoUrl`) show an embedded YouTube player at the top of Cook Mode. Player auto-seeks to step timestamps when navigating steps.
+- **Structured Instructions**: Instructions now support both plain strings and `{ text, timestamp }` objects via `InstructionStep` type. The `timestamp` field enables YouTube video sync per step.
+- **Ask Remi Mic Button**: Floating mic FAB (bottom-right) in Cook Mode. Triggers haptic pulse and reads out step-specific ingredients via TTS. Hackathon demo keyword detection for "How much?" / "What ingredients?" queries.
+- **Timer Detection**: RegEx scans instruction text for time mentions (e.g., "10 mins", "2 hours", "30 seconds"). Renders inline "Start Timer" buttons. Active timers show countdown badge. Native alert fires when timer hits zero.
+- **Dependencies**: `react-native-youtube-iframe` + `react-native-web-webview` (web fallback)
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
