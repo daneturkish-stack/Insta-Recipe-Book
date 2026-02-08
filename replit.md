@@ -76,6 +76,21 @@ When the AI fills in missing measurements or techniques, it references trusted s
 - Marcella Hazan
 - Samin Nosrat / Salt Fat Acid Heat
 
+## Recent Changes (Feb 2026)
+
+### Smart Ghost Shopping List
+- Shopping list now groups items by aisle category headers (Produce, Meat, Dairy, Bakery, etc.)
+- Duplicate ingredients are consolidated: amounts merge when units match, or show combined amounts
+- Pantry cross-reference: when adding recipes to shopping list, ingredients are compared against the user's pantry
+- Ghost state: pantry-matched items appear with `inPantry: true` and `isChecked: true` by default, shown at 50% opacity with an "In Pantry" badge
+- Users can uncheck ghost items if they need to buy more
+- Items are sorted by aisle order, with pantry items appearing last within each aisle
+
+### Creator Credits on Recipe Detail
+- New "Creator Credits" section at the bottom of the Recipe Detail screen
+- Displays creator name, handle, avatar, and platform badge
+- "View Original Post" button links back to the source URL
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
