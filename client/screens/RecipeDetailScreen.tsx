@@ -661,6 +661,71 @@ export default function RecipeDetailScreen() {
                 </ThemedText>
               </Pressable>
             </View>
+
+            {/* Creator Credits Section */}
+            {(recipe.creatorName || recipe.creatorHandle) ? (
+              <Animated.View entering={FadeInDown.delay(500).duration(400)}>
+                <View style={[styles.creatorCreditsSection, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
+                  <View style={styles.creatorCreditsHeader}>
+                    <Feather name="award" size={18} color={theme.primary} />
+                    <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+                      Creator Credits
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.creatorCreditsContent}>
+                    {recipe.creatorAvatar ? (
+                      <Image
+                        source={{ uri: recipe.creatorAvatar }}
+                        style={styles.creditsAvatarImage}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View style={[styles.creditsAvatar, { backgroundColor: theme.primary }]}>
+                        <Feather name="user" size={20} color="#FFF" />
+                      </View>
+                    )}
+                    <View style={styles.creditsInfo}>
+                      {recipe.creatorName ? (
+                        <ThemedText type="bodyMedium" style={{ fontWeight: "600" }}>
+                          {recipe.creatorName}
+                        </ThemedText>
+                      ) : null}
+                      {recipe.creatorHandle ? (
+                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                          {recipe.creatorHandle}
+                        </ThemedText>
+                      ) : null}
+                      {recipe.platform ? (
+                        <View style={[styles.creditsPlatformBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                          <Feather
+                            name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"}
+                            size={12}
+                            color={theme.textSecondary}
+                          />
+                          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, textTransform: "capitalize" }}>
+                            {recipe.platform}
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {recipe.sourceUrl ? (
+                    <Pressable
+                      onPress={handleOpenSource}
+                      style={[styles.viewSourceButton, { backgroundColor: theme.primary }]}
+                      testID="button-creator-source"
+                    >
+                      <Feather name="external-link" size={16} color="#FFF" />
+                      <ThemedText type="bodyMedium" style={{ color: "#FFF", marginLeft: Spacing.sm }}>
+                        View Original Post
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Animated.View>
+            ) : null}
           </Animated.View>
         </View>
       </ScrollView>
@@ -1152,5 +1217,54 @@ const styles = StyleSheet.create({
   scaleIndicatorText: {
     color: "#FFF",
     fontWeight: "700",
+  },
+  creatorCreditsSection: {
+    borderRadius: BorderRadius.card,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  creatorCreditsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  creatorCreditsContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  creditsAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  creditsAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: Spacing.md,
+  },
+  creditsInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  creditsPlatformBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    marginTop: 2,
+  },
+  viewSourceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
   },
 });
