@@ -1,0 +1,155 @@
+{
+  "id": "5bef3ade-3237-4e81-8a40-9a8b63648dcf",
+  "createdAt": "2026-02-08T09:36:57.363Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1770543417363-3251",
+    "contentType": "application/javascript",
+    "url": "https://aa69b736-842e-49a6-9f18-c621989c4d13-00-38ufpvvh80veh.kirk.replit.dev/1770543417363-3251/_expo/static/js/android/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {
+      "projectId": "8bb6a0c2-4e86-4cd9-abe5-7589eddff872"
+    },
+    "expoClient": {
+      "name": "Kitch",
+      "slug": "kitch",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "kitch",
+      "facebookAppId": "1652831865939554",
+      "facebookScheme": "fb1652831865939554",
+      "facebookDisplayName": "Kitch",
+      "userInterfaceStyle": "automatic",
+      "newArchEnabled": true,
+      "ios": {
+        "supportsTablet": true,
+        "bundleIdentifier": "com.kitch.app",
+        "associatedDomains": [
+          "applinks:kitch.replit.app"
+        ]
+      },
+      "android": {
+        "package": "com.kitch.app",
+        "adaptiveIcon": {
+          "backgroundColor": "#F9F8F4",
+          "foregroundImage": "./assets/images/icon.png",
+          "foregroundImageUrl": "https://aa69b736-842e-49a6-9f18-c621989c4d13-00-38ufpvvh80veh.kirk.replit.dev/assets/./assets/images/icon.png"
+        },
+        "edgeToEdgeEnabled": true,
+        "predictiveBackGestureEnabled": false,
+        "intentFilters": [
+          {
+            "action": "VIEW",
+            "autoVerify": true,
+            "data": [
+              {
+                "scheme": "https",
+                "host": "*.instagram.com",
+                "pathPrefix": "/reel"
+              },
+              {
+                "scheme": "https",
+                "host": "*.instagram.com",
+                "pathPrefix": "/p"
+              },
+              {
+                "scheme": "https",
+                "host": "*.tiktok.com"
+              },
+              {
+                "scheme": "https",
+                "host": "vm.tiktok.com"
+              }
+            ],
+            "category": [
+              "BROWSABLE",
+              "DEFAULT"
+            ]
+          },
+          {
+            "action": "SEND",
+            "category": [
+              "DEFAULT"
+            ],
+            "data": [
+              {
+                "mimeType": "text/plain"
+              }
+            ]
+          }
+        ]
+      },
+      "web": {
+        "output": "single",
+        "favicon": "./assets/images/icon.png"
+      },
+      "plugins": [
+        [
+          "expo-splash-screen",
+          {
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200,
+            "resizeMode": "contain",
+            "backgroundColor": "#F9F8F4",
+            "dark": {
+              "backgroundColor": "#121212"
+            }
+          }
+        ],
+        "expo-web-browser"
+      ],
+      "experiments": {
+        "reactCompiler": true
+      },
+      "extra": {
+        "eas": {
+          "projectId": "8bb6a0c2-4e86-4cd9-abe5-7589eddff872"
+        }
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "/home/runner/workspace",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "/home/runner/workspace/app.json",
+        "packageJsonPath": "/home/runner/workspace/package.json",
+        "pluginHistory": {
+          "expo-splash-screen": {
+            "name": "expo-splash-screen",
+            "version": "31.0.11"
+          },
+          "expo-web-browser": {
+            "name": "expo-web-browser",
+            "version": "15.0.10"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "androidStatusBar": {
+        "backgroundColor": "#F9F8F4"
+      },
+      "iconUrl": "https://aa69b736-842e-49a6-9f18-c621989c4d13-00-38ufpvvh80veh.kirk.replit.dev/assets/./assets/images/icon.png",
+      "hostUri": "aa69b736-842e-49a6-9f18-c621989c4d13-00-38ufpvvh80veh.kirk.replit.dev/android"
+    },
+    "expoGo": {
+      "debuggerHost": "aa69b736-842e-49a6-9f18-c621989c4d13-00-38ufpvvh80veh.kirk.replit.dev/android",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "/home/runner/workspace"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "client/index"
+    },
+    "scopeKey": "@anonymous/kitch-f9da60ea-4edd-41f4-b33b-2e026bef8f78"
+  }
+}
