@@ -82,53 +82,68 @@ export default function ShoppingListScreen() {
     clearAll.mutate();
   }, [clearAll]);
 
-  const renderItem = useCallback(({ item }: { item: ShoppingListItem }) => (
-    <Animated.View
-      entering={FadeInDown.duration(200)}
-      exiting={FadeOut.duration(150)}
-      layout={Layout.springify()}
-    >
-      <Pressable
-        onPress={() => handleToggleItem(item.id)}
-        style={[
-          styles.itemRow,
-          { backgroundColor: theme.backgroundDefault },
-          item.isChecked && { opacity: 0.6 },
-        ]}
+  const renderItem = useCallback(({ item }: { item: ShoppingListItem }) => {
+    const isGhost = item.inPantry && item.isChecked;
+    return (
+      <Animated.View
+        entering={FadeInDown.duration(200)}
+        exiting={FadeOut.duration(150)}
+        layout={Layout.springify()}
       >
-        <View style={[
-          styles.checkbox,
-          { borderColor: item.isChecked ? theme.primary : theme.border },
-          item.isChecked && { backgroundColor: theme.primary },
-        ]}>
-          {item.isChecked ? (
-            <Feather name="check" size={14} color="#FFF" />
-          ) : null}
-        </View>
-        <View style={styles.itemContent}>
-          <ThemedText
-            type="bodyMedium"
-            style={[
-              { color: theme.text },
-              item.isChecked && { textDecorationLine: "line-through" },
-            ]}
-          >
-            {item.name}
-          </ThemedText>
-          {item.amount ? (
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {item.amount} {item.unit}
+        <Pressable
+          onPress={() => handleToggleItem(item.id)}
+          style={[
+            styles.itemRow,
+            { backgroundColor: theme.backgroundDefault },
+            isGhost && { opacity: 0.5 },
+            !isGhost && item.isChecked && { opacity: 0.6 },
+          ]}
+          testID={`item-${item.id}`}
+        >
+          <View style={[
+            styles.checkbox,
+            { borderColor: item.isChecked ? theme.primary : theme.border },
+            item.isChecked && { backgroundColor: theme.primary },
+          ]}>
+            {item.isChecked ? (
+              <Feather name="check" size={14} color="#FFF" />
+            ) : null}
+          </View>
+          <View style={styles.itemContent}>
+            <View style={styles.itemNameRow}>
+              <ThemedText
+                type="bodyMedium"
+                style={[
+                  { color: theme.text },
+                  item.isChecked && { textDecorationLine: "line-through" },
+                ]}
+              >
+                {item.name}
+              </ThemedText>
+              {item.inPantry ? (
+                <View style={[styles.pantryBadge, { backgroundColor: theme.primary + "15" }]}>
+                  <Feather name="home" size={10} color={theme.primary} />
+                  <ThemedText type="caption" style={{ color: theme.primary, marginLeft: 3, fontSize: 10 }}>
+                    In Pantry
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+            {item.amount ? (
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                {item.amount} {item.unit}
+              </ThemedText>
+            ) : null}
+          </View>
+          {item.recipeTitles && item.recipeTitles.length > 0 ? (
+            <ThemedText type="caption" style={{ color: theme.textSecondary, maxWidth: 100 }} numberOfLines={1}>
+              {item.recipeTitles[0]}
             </ThemedText>
           ) : null}
-        </View>
-        {item.recipeTitles && item.recipeTitles.length > 0 ? (
-          <ThemedText type="caption" style={{ color: theme.textSecondary, maxWidth: 100 }} numberOfLines={1}>
-            {item.recipeTitles[0]}
-          </ThemedText>
-        ) : null}
-      </Pressable>
-    </Animated.View>
-  ), [handleToggleItem, theme]);
+        </Pressable>
+      </Animated.View>
+    );
+  }, [handleToggleItem, theme]);
 
   const renderSectionHeader = useCallback((section: AisleSection) => {
     const aisleCategory = AISLE_CATEGORIES.find((c) => c.id === section.aisle);
@@ -293,6 +308,19 @@ const styles = StyleSheet.create({
   },
   itemContent: {
     flex: 1,
+  },
+  itemNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    flexWrap: "wrap",
+  },
+  pantryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
   },
   emptyContainer: {
     flex: 1,
