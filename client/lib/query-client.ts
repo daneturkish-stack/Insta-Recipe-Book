@@ -2,15 +2,17 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getCachedToken } from "@/lib/auth-token";
 
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
+  const host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  let url = new URL(`https://${host}`);
+  // Clean the host by removing any existing http:// or https:// to prevent double protocols
+  const cleanHost = host.replace(/^https?:\/\//, '');
 
-  return url.href;
+  // Return a consistent, absolute URL
+  return `https://${cleanHost}`;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -34,16 +36,20 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const baseUrl = getApiUrl();
-  const url = new URL(route, baseUrl);
+
+  // Ensure the route is clean and the baseUrl is properly formatted
+  const cleanRoute = route.startsWith('/') ? route : `/${route}`;
+  const url = new URL(cleanRoute, baseUrl);
 
   const headers: Record<string, string> = {
     ...getAuthHeaders(),
   };
+
   if (data) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(url, {
+  const res = await fetch(url.href, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -55,15 +61,17 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const baseUrl = getApiUrl();
-    const url = new URL(queryKey.join("/") as string, baseUrl);
+    const cleanRoute = queryKey.join("/");
+    const url = new URL(cleanRoute.startsWith('/') ? cleanRoute : `/${cleanRoute}`, baseUrl);
 
-    const res = await fetch(url, {
+    const res = await fetch(url.href, {
       credentials: "include",
       headers: getAuthHeaders(),
     });
