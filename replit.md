@@ -47,7 +47,7 @@ The app includes intuitive gesture controls designed for hands-free cooking:
 ### Recipe Transparency System
 Kitch provides full transparency about where recipe information comes from and how accurate it is:
 
-**Confidence Levels:**
+**Confidence Levels (now returned by both server logic AND the LLM):**
 - **High**: Full recipe found on **verified** creator's website with explicit measurements
 - **Medium**: Extracted from video transcript, filled from authoritative sources, OR found on unverified website
 - **Low**: Reconstructed from social post caption only - details may be estimated
@@ -105,9 +105,12 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Express.js on Node.js with TypeScript
 - **API Design**: RESTful endpoints under `/api/` prefix
 - **AI Integration**: OpenAI API via Replit AI Integrations for:
-  - Recipe extraction from social media URLs (`/api/recipes/generate`)
+  - Recipe extraction from social media URLs including YouTube (`/api/recipes/generate`)
+  - YouTube transcript fetching via `youtube-transcript` package (captions API)
   - Video transcription with Whisper for accurate ingredient/instruction extraction
   - Web search fallback to find creator's full recipe on their website/blog when social media post is incomplete
+  - Per-ingredient `isEstimated` flags and `aisle` (AisleCategory) tagging
+  - Per-recipe `isEstimatedInstructions` flag and LLM-returned `confidence` level
   - Smart search across recipe collection (`/api/recipes/search`)
   - Pantry ingredient matching (`/api/recipes/pantry-match`)
   - Pantry voice input parsing (`/api/pantry/parse-voice`) - converts spoken ingredients to categorized items
