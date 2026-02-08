@@ -13,6 +13,7 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 import type { CollectionStackParamList } from "@/navigation/CollectionStackNavigator";
 import type { Recipe, Ingredient, ShoppingListItem, AisleCategory } from "@/types/recipe";
+import { AISLE_CATEGORIES } from "@/types/recipe";
 
 type RouteParams = RouteProp<CollectionStackParamList, "CreateShoppingList">;
 
@@ -183,8 +184,56 @@ export default function CreateShoppingListScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const newItems = categorizedItems.filter((item) => !item.inPantry);
-      const mergedList = [...(existingList || []), ...newItems];
+      const newItems: ShoppingListItem[] = categorizedItems.map((item) => ({
+        ...item,
+        isChecked: item.inPantry,
+      }));
+
+      const mergedList = [...(existingList || [])];
+
+      for (const newItem of newItems) {
+        const normalizedNew = normalizeIngredientName(newItem.name);
+        const existingIndex = mergedList.findIndex(
+          (existing) => normalizeIngredientName(existing.name) === normalizedNew
+        );
+
+        if (existingIndex >= 0) {
+          const existing = mergedList[existingIndex];
+          const existingAmount = parseFloat(existing.amount) || 0;
+          const newAmount = parseFloat(newItem.amount) || 0;
+
+          if (existing.unit.toLowerCase() === newItem.unit.toLowerCase() && existingAmount > 0 && newAmount > 0) {
+            mergedList[existingIndex] = {
+              ...existing,
+              amount: (existingAmount + newAmount).toString(),
+              recipeIds: [...new Set([...existing.recipeIds, ...newItem.recipeIds])],
+              recipeTitles: [...new Set([...existing.recipeTitles, ...newItem.recipeTitles])],
+              inPantry: existing.inPantry && newItem.inPantry,
+              isChecked: existing.inPantry && newItem.inPantry ? true : existing.isChecked,
+            };
+          } else {
+            mergedList[existingIndex] = {
+              ...existing,
+              amount: `${existing.amount} ${existing.unit} + ${newItem.amount} ${newItem.unit}`.trim(),
+              unit: "",
+              recipeIds: [...new Set([...existing.recipeIds, ...newItem.recipeIds])],
+              recipeTitles: [...new Set([...existing.recipeTitles, ...newItem.recipeTitles])],
+              inPantry: existing.inPantry && newItem.inPantry,
+              isChecked: existing.inPantry && newItem.inPantry ? true : existing.isChecked,
+            };
+          }
+        } else {
+          mergedList.push(newItem);
+        }
+      }
+
+      mergedList.sort((a, b) => {
+        const aisleOrder = AISLE_CATEGORIES.findIndex((c) => c.id === a.aisle) - AISLE_CATEGORIES.findIndex((c) => c.id === b.aisle);
+        if (aisleOrder !== 0) return aisleOrder;
+        if (a.inPantry !== b.inPantry) return a.inPantry ? 1 : -1;
+        return 0;
+      });
+
       await saveShoppingList.mutateAsync(mergedList);
       navigation.replace("ShoppingList");
     } catch (error) {
@@ -315,10 +364,10 @@ export default function CreateShoppingListScreen() {
         >
           <Pressable
             onPress={handleSaveList}
-            disabled={isProcessing || shoppingCount === 0}
+            disabled={isProcessing || (shoppingCount === 0 && inPantryCount === 0)}
             style={[
               styles.saveButton,
-              { backgroundColor: shoppingCount > 0 ? theme.primary : theme.textSecondary },
+              { backgroundColor: (shoppingCount > 0 || inPantryCount > 0) ? theme.primary : theme.textSecondary },
             ]}
           >
             {isProcessing ? (
@@ -327,7 +376,7 @@ export default function CreateShoppingListScreen() {
               <>
                 <Feather name="check" size={20} color="#FFF" />
                 <ThemedText type="bodyMedium" style={{ color: "#FFF", marginLeft: Spacing.sm }}>
-                  {shoppingCount > 0 ? `Add ${shoppingCount} Items to List` : "Nothing to Add"}
+                  {shoppingCount > 0 ? `Add ${shoppingCount + inPantryCount} Items to List` : inPantryCount > 0 ? `Add ${inPantryCount} Pantry Items` : "Nothing to Add"}
                 </ThemedText>
               </>
             )}
