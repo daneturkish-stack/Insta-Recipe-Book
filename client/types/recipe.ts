@@ -26,6 +26,13 @@ export interface RecipeSource {
   verificationMethod?: VerificationMethod; // How the source was verified
 }
 
+export interface InstructionStep {
+  text: string;
+  timestamp?: number;
+}
+
+export type Instruction = string | InstructionStep;
+
 export interface Recipe {
   id: string;
   title: string;
@@ -37,7 +44,7 @@ export interface Recipe {
   cookTime?: number;
   servings?: number;
   ingredients: Ingredient[];
-  instructions: string[];
+  instructions: (string | InstructionStep)[];
   // Smart categorization
   dishType?: string; // Breakfast, Pasta, Dessert, etc.
   vibeTags?: string[]; // Vegan, High-Protein, Quick, etc.
