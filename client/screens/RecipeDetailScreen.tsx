@@ -571,7 +571,7 @@ export default function RecipeDetailScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <ThemedText type="body" style={styles.instructionText}>
-                      {instruction}
+                      {typeof instruction === "string" ? instruction : instruction.text}
                     </ThemedText>
                     {recipe.isEstimatedInstructions ? (
                       <View style={styles.aiEnhancedBadge}>

@@ -1,22 +1,36 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { StyleSheet, View, Pressable, Dimensions, StatusBar, ScrollView } from "react-native";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { StyleSheet, View, Pressable, Dimensions, StatusBar, ScrollView, Alert, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import Animated, { FadeIn, SlideInRight } from "react-native-reanimated";
+import YoutubePlayer from "react-native-youtube-iframe";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useRecipe } from "@/hooks/useRecipes";
 import { CookModeColors, CookModeTypography, Spacing, BorderRadius } from "@/constants/theme";
-import { Ingredient } from "@/types/recipe";
+import { Ingredient, InstructionStep } from "@/types/recipe";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-function getStepIngredients(instruction: string, ingredients: Ingredient[]): Ingredient[] {
-  if (!instruction || !ingredients) return [];
-  const lowerInstruction = instruction.toLowerCase();
+function getInstructionText(instruction: string | InstructionStep): string {
+  if (typeof instruction === "string") return instruction;
+  return instruction.text;
+}
+
+function getInstructionTimestamp(instruction: string | InstructionStep): number | undefined {
+  if (typeof instruction === "object" && instruction.timestamp !== undefined) {
+    return instruction.timestamp;
+  }
+  return undefined;
+}
+
+function getStepIngredients(instruction: string | InstructionStep, ingredients: Ingredient[]): Ingredient[] {
+  const text = getInstructionText(instruction);
+  if (!text || !ingredients) return [];
+  const lowerInstruction = text.toLowerCase();
   return ingredients.filter((ingredient) => {
     const name = ingredient.name.toLowerCase();
     const words = name.split(/\s+/);
@@ -26,6 +40,42 @@ function getStepIngredients(instruction: string, ingredients: Ingredient[]): Ing
     return lowerInstruction.includes(name);
   });
 }
+
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+function parseTimeMentions(text: string): { amount: number; unit: string; totalSeconds: number }[] {
+  const results: { amount: number; unit: string; totalSeconds: number }[] = [];
+  const pattern = /(\d+)\s*(min(?:ute)?s?|hour?s?|hr?s?|sec(?:ond)?s?)/gi;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const amount = parseInt(match[1], 10);
+    const unitRaw = match[2].toLowerCase();
+    let unit = "minutes";
+    let totalSeconds = 0;
+    if (unitRaw.startsWith("sec")) {
+      unit = "seconds";
+      totalSeconds = amount;
+    } else if (unitRaw.startsWith("h")) {
+      unit = "hours";
+      totalSeconds = amount * 3600;
+    } else {
+      unit = "minutes";
+      totalSeconds = amount * 60;
+    }
+    results.push({ amount, unit, totalSeconds });
+  }
+  return results;
+}
+
+const REMI_KEYWORDS = [
+  { patterns: ["how much", "how many", "what amount"], type: "ingredients" as const },
+  { patterns: ["what ingredients", "which ingredients", "ingredients for"], type: "ingredients" as const },
+  { patterns: ["what temperature", "how hot", "what temp"], type: "temperature" as const },
+  { patterns: ["how long", "what time", "how many minutes"], type: "time" as const },
+];
 
 export default function CookModeScreen() {
   const insets = useSafeAreaInsets();
@@ -37,13 +87,46 @@ export default function CookModeScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoRead, setAutoRead] = useState(false);
+  const [activeTimers, setActiveTimers] = useState<Record<string, number>>({});
+  const playerRef = useRef<any>(null);
+  const timerIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   const totalSteps = recipe?.instructions?.length || 0;
+
+  const currentInstructionText = useMemo(() => {
+    if (!recipe?.instructions?.[currentStep]) return "";
+    return getInstructionText(recipe.instructions[currentStep]);
+  }, [recipe, currentStep]);
 
   const stepIngredients = useMemo(() => {
     if (!recipe?.instructions?.[currentStep] || !recipe?.ingredients) return [];
     return getStepIngredients(recipe.instructions[currentStep], recipe.ingredients);
   }, [recipe, currentStep]);
+
+  const timeMentions = useMemo(() => {
+    return parseTimeMentions(currentInstructionText);
+  }, [currentInstructionText]);
+
+  const hasYouTubeVideo = useMemo(() => {
+    return recipe?.platform === "youtube" && recipe?.videoUrl && extractYouTubeId(recipe.videoUrl);
+  }, [recipe]);
+
+  const youtubeVideoId = useMemo(() => {
+    if (!recipe?.videoUrl) return null;
+    return extractYouTubeId(recipe.videoUrl);
+  }, [recipe?.videoUrl]);
+
+  useEffect(() => {
+    if (hasYouTubeVideo && playerRef.current) {
+      const instruction = recipe?.instructions?.[currentStep];
+      if (instruction) {
+        const timestamp = getInstructionTimestamp(instruction);
+        if (timestamp !== undefined) {
+          playerRef.current.seekTo(timestamp, true);
+        }
+      }
+    }
+  }, [currentStep, hasYouTubeVideo, recipe]);
 
   const speakInstruction = useCallback((text: string) => {
     Speech.stop();
@@ -60,20 +143,21 @@ export default function CookModeScreen() {
     if (isSpeaking) {
       Speech.stop();
       setIsSpeaking(false);
-    } else if (recipe?.instructions?.[currentStep]) {
-      speakInstruction(recipe.instructions[currentStep]);
+    } else if (currentInstructionText) {
+      speakInstruction(currentInstructionText);
     }
-  }, [isSpeaking, recipe, currentStep, speakInstruction]);
+  }, [isSpeaking, currentInstructionText, speakInstruction]);
 
   useEffect(() => {
-    if (autoRead && recipe?.instructions?.[currentStep]) {
-      speakInstruction(recipe.instructions[currentStep]);
+    if (autoRead && currentInstructionText) {
+      speakInstruction(currentInstructionText);
     }
-  }, [currentStep, autoRead, recipe, speakInstruction]);
+  }, [currentStep, autoRead, currentInstructionText, speakInstruction]);
 
   useEffect(() => {
     return () => {
       Speech.stop();
+      Object.values(timerIntervalsRef.current).forEach(clearInterval);
     };
   }, []);
 
@@ -95,6 +179,49 @@ export default function CookModeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.goBack();
   };
+
+  const startTimer = useCallback((totalSeconds: number, label: string) => {
+    const timerKey = `${currentStep}-${label}`;
+    if (activeTimers[timerKey] !== undefined) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActiveTimers((prev) => ({ ...prev, [timerKey]: totalSeconds }));
+
+    const interval = setInterval(() => {
+      setActiveTimers((prev) => {
+        const remaining = (prev[timerKey] || 0) - 1;
+        if (remaining <= 0) {
+          clearInterval(interval);
+          delete timerIntervalsRef.current[timerKey];
+          Alert.alert("Timer Done", `${label} timer is up! Time to move on.`);
+          const { [timerKey]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [timerKey]: remaining };
+      });
+    }, 1000);
+
+    timerIntervalsRef.current[timerKey] = interval;
+  }, [currentStep, activeTimers]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleAskRemi = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    if (stepIngredients.length > 0) {
+      const ingredientList = stepIngredients
+        .map((i) => `${i.amount} ${i.unit} ${i.name}`.trim())
+        .join(", ");
+      speakInstruction(`For this step, you'll need: ${ingredientList}`);
+    } else {
+      speakInstruction("No specific ingredients identified for this step. Try asking about the next step!");
+    }
+  }, [stepIngredients, speakInstruction]);
 
   if (!recipe) {
     return (
@@ -121,7 +248,7 @@ export default function CookModeScreen() {
         <View style={styles.headerActions}>
           <Pressable 
             onPress={() => setAutoRead(!autoRead)} 
-            style={[styles.headerButton, autoRead && styles.headerButtonActive]}
+            style={[styles.headerButton, autoRead ? styles.headerButtonActive : null]}
             testID="cook-mode-auto-read"
           >
             <Feather name={autoRead ? "volume-2" : "volume-x"} size={22} color={autoRead ? CookModeColors.primary : CookModeColors.text} />
@@ -151,6 +278,22 @@ export default function CookModeScreen() {
 
       {/* Main Content */}
       <ScrollView style={styles.contentScroll} contentContainerStyle={styles.content}>
+        {/* YouTube Player */}
+        {hasYouTubeVideo && youtubeVideoId ? (
+          <View style={styles.youtubeContainer}>
+            <YoutubePlayer
+              ref={playerRef}
+              height={Math.round((SCREEN_WIDTH - Spacing["3xl"] * 2) * 9 / 16)}
+              width={SCREEN_WIDTH - Spacing["3xl"] * 2}
+              videoId={youtubeVideoId}
+              play={false}
+              webViewProps={{
+                allowsInlineMediaPlayback: true,
+              }}
+            />
+          </View>
+        ) : null}
+
         <Animated.View 
           key={currentStep}
           entering={SlideInRight.duration(300)}
@@ -162,7 +305,7 @@ export default function CookModeScreen() {
             </ThemedText>
             <Pressable 
               onPress={toggleSpeak} 
-              style={[styles.speakButton, isSpeaking && styles.speakButtonActive]}
+              style={[styles.speakButton, isSpeaking ? styles.speakButtonActive : null]}
               testID="cook-mode-speak"
             >
               <Feather 
@@ -173,8 +316,41 @@ export default function CookModeScreen() {
             </Pressable>
           </View>
           <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text }]}>
-            {recipe.instructions[currentStep]}
+            {currentInstructionText}
           </ThemedText>
+
+          {/* Timer Detection */}
+          {timeMentions.length > 0 ? (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.timerSection}>
+              {timeMentions.map((mention, index) => {
+                const timerKey = `${currentStep}-${mention.amount} ${mention.unit}`;
+                const isActive = activeTimers[timerKey] !== undefined;
+                return (
+                  <View key={index} style={styles.timerRow}>
+                    {isActive ? (
+                      <View style={styles.activeTimerBadge}>
+                        <Feather name="clock" size={14} color={CookModeColors.accent} />
+                        <ThemedText style={styles.activeTimerText}>
+                          {formatTimer(activeTimers[timerKey])}
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => startTimer(mention.totalSeconds, `${mention.amount} ${mention.unit}`)}
+                        style={styles.startTimerButton}
+                        testID={`start-timer-${index}`}
+                      >
+                        <Feather name="clock" size={14} color={CookModeColors.background} />
+                        <ThemedText style={styles.startTimerText}>
+                          Start {mention.amount} {mention.unit} Timer
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })}
+            </Animated.View>
+          ) : null}
 
           {stepIngredients.length > 0 ? (
             <Animated.View entering={FadeIn.duration(300)} style={styles.ingredientsSection}>
@@ -247,6 +423,15 @@ export default function CookModeScreen() {
         style={styles.tapZoneRight} 
         onPress={handleNext}
       />
+
+      {/* Ask Remi Floating Mic Button */}
+      <Pressable
+        onPress={handleAskRemi}
+        style={[styles.askRemiFab, { bottom: insets.bottom + Spacing.xl + 80 }]}
+        testID="ask-remi-mic"
+      >
+        <Feather name="mic" size={24} color={CookModeColors.text} />
+      </Pressable>
     </View>
   );
 }
@@ -306,6 +491,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing["3xl"],
     paddingVertical: Spacing.xl,
   },
+  youtubeContainer: {
+    marginBottom: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    overflow: "hidden",
+    alignSelf: "center",
+  },
   stepContainer: {
     alignItems: "center",
   },
@@ -322,6 +513,46 @@ const styles = StyleSheet.create({
   },
   speakButtonActive: {
     backgroundColor: CookModeColors.surface,
+  },
+  timerSection: {
+    marginTop: Spacing.lg,
+    width: "100%",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  timerRow: {
+    alignItems: "center",
+  },
+  startTimerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    backgroundColor: CookModeColors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  startTimerText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: CookModeColors.background,
+  },
+  activeTimerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    backgroundColor: CookModeColors.surface,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: CookModeColors.accent,
+  },
+  activeTimerText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: CookModeColors.accent,
+    fontVariant: ["tabular-nums"],
   },
   ingredientsSection: {
     marginTop: Spacing["2xl"],
@@ -403,5 +634,20 @@ const styles = StyleSheet.create({
     top: 120,
     bottom: 160,
     width: SCREEN_WIDTH * 0.3,
+  },
+  askRemiFab: {
+    position: "absolute",
+    right: Spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: CookModeColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });
