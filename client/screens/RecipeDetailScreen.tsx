@@ -289,11 +289,15 @@ export default function RecipeDetailScreen() {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   const stepsCount = recipe.instructions?.length || 0;
 
+  const confidenceLevel = recipe.confidence || (recipe.isEstimated ? "medium" : "high");
+  const confidenceLabel = confidenceLevel === "high" ? "High" : confidenceLevel === "medium" ? "Medium" : "Low";
+  const confidenceColor = confidenceLevel === "high" ? "#059669" : confidenceLevel === "medium" ? "#E8A838" : "#DC2626";
+
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Image Section - Large rounded corners */}
@@ -378,6 +382,18 @@ export default function RecipeDetailScreen() {
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>Difficulty</ThemedText>
                 <ThemedText type="bodyMedium">
                   {stepsCount <= 5 ? "Easy" : stepsCount <= 10 ? "Medium" : "Hard"}
+                </ThemedText>
+              </View>
+              
+              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
+              
+              <View style={styles.statItem}>
+                <View style={[styles.statIcon, { backgroundColor: confidenceColor + "15" }]}>
+                  <Feather name="shield" size={18} color={confidenceColor} />
+                </View>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Accuracy</ThemedText>
+                <ThemedText type="bodyMedium" style={{ color: confidenceColor }}>
+                  {confidenceLabel}
                 </ThemedText>
               </View>
             </View>
@@ -553,9 +569,19 @@ export default function RecipeDetailScreen() {
                       {index + 1}
                     </ThemedText>
                   </View>
-                  <ThemedText type="body" style={styles.instructionText}>
-                    {instruction}
-                  </ThemedText>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="body" style={styles.instructionText}>
+                      {instruction}
+                    </ThemedText>
+                    {recipe.isEstimatedInstructions ? (
+                      <View style={styles.aiEnhancedBadge}>
+                        <Feather name="cpu" size={10} color={theme.textSecondary} />
+                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, fontSize: 10 }}>
+                          AI-enhanced
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               ))}
             </View>
@@ -588,158 +614,108 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Action Buttons Row */}
-            <View style={styles.actionButtonsRow}>
-              {/* View Original Button */}
-              <Pressable
-                onPress={handleOpenSource}
-                style={styles.iconButton}
-                testID="button-view-original"
-              >
-                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
-                  <Feather name={recipe.platform === "tiktok" ? "video" : "instagram"} size={20} color={theme.text} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                  Original
-                </ThemedText>
+            {/* Utility Icon Bar */}
+            <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.utilityBar}>
+              <Pressable onPress={handleOpenSource} style={styles.utilityButton} testID="button-view-original">
+                <Feather name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"} size={16} color={theme.textSecondary} />
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Original</ThemedText>
               </Pressable>
 
-              {/* View Full Recipe Button */}
+              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
+
               {recipe.creatorRecipeUrl ? (
-                <Pressable
-                  onPress={handleOpenCreatorRecipe}
-                  style={styles.iconButton}
-                  testID="button-creator-recipe"
-                >
-                  <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
-                    <Feather name="book-open" size={20} color={theme.text} />
-                  </View>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                    Recipe
-                  </ThemedText>
+                <Pressable onPress={handleOpenCreatorRecipe} style={styles.utilityButton} testID="button-creator-recipe">
+                  <Feather name="book-open" size={16} color={theme.textSecondary} />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Recipe</ThemedText>
                 </Pressable>
               ) : (
-                <Pressable
-                  onPress={handleSearchFullRecipe}
-                  style={styles.iconButton}
-                  testID="button-search-recipe"
-                >
-                  <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
-                    <Feather name="search" size={20} color={theme.text} />
-                  </View>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                    Find
-                  </ThemedText>
+                <Pressable onPress={handleSearchFullRecipe} style={styles.utilityButton} testID="button-search-recipe">
+                  <Feather name="search" size={16} color={theme.textSecondary} />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Find</ThemedText>
                 </Pressable>
               )}
 
-              {/* Report Wrong Link Button */}
-              <Pressable
-                onPress={handleWrongLink}
-                style={styles.iconButton}
-                testID="button-wrong-link"
-              >
-                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
-                  <Feather name="alert-circle" size={20} color={theme.text} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                  Report
-                </ThemedText>
+              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
+
+              <Pressable onPress={handleWrongLink} style={styles.utilityButton} testID="button-wrong-link">
+                <Feather name="alert-circle" size={16} color={theme.textSecondary} />
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Report</ThemedText>
               </Pressable>
 
-              {/* Delete Button */}
-              <Pressable
-                onPress={handleDelete}
-                style={styles.iconButton}
-                testID="button-delete-recipe"
-              >
-                <View style={[styles.iconCircle, styles.iconCircleShadow, { backgroundColor: theme.backgroundDefault, borderWidth: 1, borderColor: theme.border }]}>
-                  <Feather name="trash-2" size={20} color={theme.textSecondary} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                  Delete
-                </ThemedText>
+              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
+
+              <Pressable onPress={handleDelete} style={styles.utilityButton} testID="button-delete-recipe">
+                <Feather name="trash-2" size={16} color={theme.textSecondary} />
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Delete</ThemedText>
               </Pressable>
             </View>
+            <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
 
-            {/* Creator Credits Section */}
+            {/* Creator Credits - Compact */}
             {(recipe.creatorName || recipe.creatorHandle) ? (
-              <Animated.View entering={FadeInDown.delay(500).duration(400)}>
-                <View style={[styles.creatorCreditsSection, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
-                  <View style={styles.creatorCreditsHeader}>
-                    <Feather name="award" size={18} color={theme.primary} />
-                    <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
-                      Creator Credits
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.creatorCreditsContent}>
-                    {recipe.creatorAvatar ? (
-                      <Image
-                        source={{ uri: recipe.creatorAvatar }}
-                        style={styles.creditsAvatarImage}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={[styles.creditsAvatar, { backgroundColor: theme.primary }]}>
-                        <Feather name="user" size={20} color="#FFF" />
-                      </View>
-                    )}
-                    <View style={styles.creditsInfo}>
-                      {recipe.creatorName ? (
-                        <ThemedText type="bodyMedium" style={{ fontWeight: "600" }}>
-                          {recipe.creatorName}
-                        </ThemedText>
-                      ) : null}
+              <View style={[styles.creatorCardCompact, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
+                <View style={styles.creatorCardRow}>
+                  {recipe.creatorAvatar ? (
+                    <Image source={{ uri: recipe.creatorAvatar }} style={styles.creatorCardAvatar} contentFit="cover" />
+                  ) : (
+                    <View style={[styles.creatorCardAvatarFallback, { backgroundColor: theme.primary }]}>
+                      <Feather name="user" size={16} color="#FFF" />
+                    </View>
+                  )}
+                  <View style={styles.creatorCardInfo}>
+                    {recipe.creatorName ? (
+                      <ThemedText type="bodyMedium" style={{ fontWeight: "600" }} numberOfLines={1}>
+                        {recipe.creatorName}
+                      </ThemedText>
+                    ) : null}
+                    <View style={styles.creatorCardHandleRow}>
                       {recipe.creatorHandle ? (
-                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                        <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
                           {recipe.creatorHandle}
                         </ThemedText>
                       ) : null}
                       {recipe.platform ? (
-                        <View style={[styles.creditsPlatformBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                        <View style={[styles.creatorCardPlatformBadge, { backgroundColor: theme.backgroundSecondary }]}>
                           <Feather
                             name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"}
-                            size={12}
+                            size={10}
                             color={theme.textSecondary}
                           />
-                          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, textTransform: "capitalize" }}>
+                          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 3, fontSize: 10, textTransform: "capitalize" }}>
                             {recipe.platform}
                           </ThemedText>
                         </View>
                       ) : null}
                     </View>
                   </View>
-
                   {recipe.sourceUrl ? (
-                    <Pressable
-                      onPress={handleOpenSource}
-                      style={[styles.viewSourceButton, { backgroundColor: theme.primary }]}
-                      testID="button-creator-source"
-                    >
-                      <Feather name="external-link" size={16} color="#FFF" />
-                      <ThemedText type="bodyMedium" style={{ color: "#FFF", marginLeft: Spacing.sm }}>
-                        View Original Post
-                      </ThemedText>
+                    <Pressable onPress={handleOpenSource} style={styles.creatorCardLink} testID="button-creator-source">
+                      <ThemedText type="caption" style={{ color: theme.primary, marginRight: 4 }}>View Post</ThemedText>
+                      <Feather name="external-link" size={12} color={theme.primary} />
                     </Pressable>
                   ) : null}
                 </View>
-              </Animated.View>
+              </View>
             ) : null}
           </Animated.View>
         </View>
       </ScrollView>
 
-      {/* Floating Cook Mode Button - Emerald Green */}
+      {/* Sticky Cook Mode Footer */}
       <View 
         style={[
-          styles.floatingButtonContainer, 
-          { bottom: tabBarHeight + Spacing.lg }
+          styles.cookFooter, 
+          { 
+            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.sm,
+            borderTopColor: theme.border,
+          }
         ]}
       >
         <Pressable
           onPress={handleStartCookMode}
-          style={[styles.cookModeButton, { backgroundColor: theme.primary }, Shadows.button]}
+          style={[styles.cookFooterButton, { backgroundColor: theme.primary }, Shadows.button]}
           testID="button-start-cooking"
         >
           <Feather name="play-circle" size={22} color="#FFF" />
@@ -1025,17 +1001,20 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 28,
   },
-  floatingButtonContainer: {
+  cookFooter: {
     position: "absolute",
-    left: Spacing.lg,
-    right: Spacing["5xl"],
-    zIndex: 100,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
   },
-  cookModeButton: {
+  cookFooterButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 56,
+    height: 52,
     borderRadius: BorderRadius.full,
   },
   cookModeButtonText: {
@@ -1077,33 +1056,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.full,
   },
-  actionButtonsRow: {
+  aiEnhancedBadge: {
     flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    opacity: 0.7,
+  },
+  utilityDivider: {
+    height: 1,
+    marginHorizontal: -Spacing.xl,
+  },
+  utilityBar: {
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-around",
-    alignItems: "flex-start",
-    paddingVertical: Spacing.lg,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
   },
-  iconButton: {
+  utilityButton: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
-    minWidth: 70,
+    flex: 1,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconCircleShadow: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+  utilityVertDivider: {
+    width: 1,
+    height: 28,
   },
   modalOverlay: {
     flex: 1,
@@ -1218,53 +1196,50 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
   },
-  creatorCreditsSection: {
-    borderRadius: BorderRadius.card,
-    padding: Spacing.xl,
+  creatorCardCompact: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginTop: Spacing.lg,
     marginBottom: Spacing.xl,
   },
-  creatorCreditsHeader: {
+  creatorCardRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.lg,
   },
-  creatorCreditsContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
+  creatorCardAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: Spacing.md,
   },
-  creditsAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  creatorCardAvatarFallback: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
   },
-  creditsAvatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: Spacing.md,
-  },
-  creditsInfo: {
+  creatorCardInfo: {
     flex: 1,
-    gap: 3,
+    gap: 2,
   },
-  creditsPlatformBadge: {
+  creatorCardHandleRow: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    marginTop: 2,
+    gap: Spacing.sm,
   },
-  viewSourceButton: {
+  creatorCardPlatformBadge: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.md,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: BorderRadius.full,
+  },
+  creatorCardLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+    paddingLeft: Spacing.sm,
   },
 });
