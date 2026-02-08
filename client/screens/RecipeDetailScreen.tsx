@@ -708,7 +708,8 @@ export default function RecipeDetailScreen() {
           styles.cookFooter, 
           { 
             backgroundColor: theme.backgroundRoot,
-            paddingBottom: insets.bottom + Spacing.sm,
+            paddingBottom: Spacing.sm,
+            bottom: tabBarHeight,
             borderTopColor: theme.border,
           }
         ]}
