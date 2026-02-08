@@ -29,16 +29,19 @@ export interface AuthState {
   hasAccess: boolean;
 }
 
+interface SocialLoginParams {
+  provider: string;
+  token?: string;
+  providerId?: string;
+  email?: string;
+  displayName?: string;
+  profileImage?: string;
+}
+
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
-  socialLogin: (params: {
-    provider: string;
-    providerId: string;
-    email: string;
-    displayName: string;
-    profileImage?: string;
-  }) => Promise<void>;
+  socialLogin: (params: SocialLoginParams) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccess: () => Promise<void>;
 }
@@ -152,13 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const socialLogin = useCallback(
-    async (params: {
-      provider: string;
-      providerId: string;
-      email: string;
-      displayName: string;
-      profileImage?: string;
-    }) => {
+    async (params: SocialLoginParams) => {
       const url = new URL("/api/auth/social", baseUrl);
       const res = await fetch(url, {
         method: "POST",

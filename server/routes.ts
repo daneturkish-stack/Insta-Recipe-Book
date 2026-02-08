@@ -995,77 +995,6 @@ function sanitizeUser(user: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.get("/api/auth/google/callback", (req: Request, res: Response) => {
-    res.send(`<!DOCTYPE html>
-<html><head><title>Signing in...</title>
-<style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#FAF7F5;color:#1E293B}
-.spinner{border:3px solid #e5e7eb;border-top:3px solid #0D9488;border-radius:50%;width:32px;height:32px;animation:spin 1s linear infinite;margin-bottom:16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.container{text-align:center}</style></head>
-<body><div class="container"><div class="spinner"></div><p>Signing you in...</p></div>
-<script>
-(function(){
-  var hash = window.location.hash.substring(1);
-  if(hash){
-    var params = new URLSearchParams(hash);
-    var token = params.get('access_token');
-    if(token){
-      fetch('/api/auth/google/token', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({access_token: token})
-      }).then(function(r){return r.json()}).then(function(data){
-        if(data.user && data.token){
-          document.querySelector('p').textContent = 'Success! Returning to app...';
-          if(window.opener){
-            window.opener.postMessage({type:'google-auth',payload:data},'*');
-            setTimeout(function(){window.close()},500);
-          } else {
-            window.location.href = 'kitch://auth/google?token=' + encodeURIComponent(data.token) + '&user=' + encodeURIComponent(JSON.stringify(data.user));
-          }
-        } else {
-          document.querySelector('p').textContent = 'Login failed: ' + (data.error || 'Unknown error');
-        }
-      }).catch(function(e){
-        document.querySelector('p').textContent = 'Login failed. Please try again.';
-      });
-    } else {
-      document.querySelector('p').textContent = 'No token received from Google.';
-    }
-  } else {
-    document.querySelector('p').textContent = 'No authentication data received.';
-  }
-})();
-</script></body></html>`);
-  });
-
-  app.post("/api/auth/google/token", async (req: Request, res: Response) => {
-    try {
-      const { access_token } = req.body;
-      if (!access_token) {
-        return res.status(400).json({ error: "Access token is required" });
-      }
-      const profileRes = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-      if (!profileRes.ok) {
-        return res.status(401).json({ error: "Invalid Google token" });
-      }
-      const profile = await profileRes.json() as any;
-      const result = await storage.loginWithProvider(
-        "google",
-        profile.id,
-        profile.email,
-        profile.name || profile.email.split("@")[0],
-        profile.picture
-      );
-      res.json({ user: sanitizeUser(result.user), token: result.token });
-    } catch (err: any) {
-      console.error("Google auth error:", err);
-      res.status(500).json({ error: "Google authentication failed" });
-    }
-  });
-
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { email, password, displayName } = req.body;
@@ -1105,11 +1034,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/social", async (req: Request, res: Response) => {
     try {
-      const { provider, providerId, email, displayName, profileImage } = req.body;
-      if (!provider || !providerId || !email) {
-        return res.status(400).json({ error: "Provider, provider ID, and email are required" });
+      const { provider, token, providerId, email, displayName, profileImage } = req.body;
+
+      if (!provider) {
+        return res.status(400).json({ error: "Provider is required" });
       }
-      const result = await storage.loginWithProvider(provider, providerId, email, displayName, profileImage);
+
+      let resolvedProviderId = providerId;
+      let resolvedEmail = email;
+      let resolvedDisplayName = displayName;
+      let resolvedProfileImage = profileImage;
+
+      if (token && (provider === "google" || provider === "facebook")) {
+        if (provider === "google") {
+          const profileRes = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!profileRes.ok) {
+            return res.status(401).json({ error: "Invalid Google token" });
+          }
+          const profile = await profileRes.json() as any;
+          resolvedProviderId = profile.id;
+          resolvedEmail = profile.email;
+          resolvedDisplayName = profile.name || profile.email?.split("@")[0];
+          resolvedProfileImage = profile.picture;
+        } else if (provider === "facebook") {
+          const profileRes = await fetch(
+            `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${token}`
+          );
+          if (!profileRes.ok) {
+            return res.status(401).json({ error: "Invalid Facebook token" });
+          }
+          const profile = await profileRes.json() as any;
+          resolvedProviderId = profile.id;
+          resolvedEmail = profile.email || `fb_${profile.id}@facebook.com`;
+          resolvedDisplayName = profile.name || "Facebook User";
+          resolvedProfileImage = profile.picture?.data?.url;
+        }
+      }
+
+      if (!resolvedProviderId || !resolvedEmail) {
+        return res.status(400).json({ error: "Could not resolve user identity from provider" });
+      }
+
+      const result = await storage.loginWithProvider(
+        provider,
+        resolvedProviderId,
+        resolvedEmail,
+        resolvedDisplayName,
+        resolvedProfileImage
+      );
       res.json({ user: sanitizeUser(result.user), token: result.token });
     } catch (err: any) {
       console.error("Social auth error:", err);
