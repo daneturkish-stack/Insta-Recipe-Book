@@ -2,13 +2,16 @@ export interface Ingredient {
   name: string;
   amount: string;
   unit: string;
+  aisle?: AisleCategory; // Added for Phase 2 grouping
+  isEstimated?: boolean; // Labeling specific AI-filled gaps
 }
 
 export type RecipeSourceType = 
   | "creator_website"      // Full recipe found on creator's website
   | "authoritative_source" // Details filled in from top chefs/publications
   | "video_transcript"     // Extracted primarily from video content
-  | "social_post_only";    // Only had caption/post text to work with
+  | "social_post_only"     // Only had caption/post text to work with
+  | "ai_generated";         // Added for when source is thin
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
@@ -42,16 +45,17 @@ export interface Recipe {
   creatorName?: string;
   creatorAvatar?: string; // Profile picture URL
   creatorRecipeUrl?: string; // Link to full recipe on creator's website/blog
-  manualSearchQuery?: string; // Search query if no recipe URL found - user can search manually
+  manualSearchQuery?: string; // Search query if no recipe URL found
   // Transparency & verification
-  originalTranscript?: string; // Raw extracted text from post for user verification
-  isEstimated?: boolean; // True if AI had to infer details not explicitly stated
+  originalTranscript?: string; // Raw extracted text from post
+  isEstimated?: boolean; // True if AI had to infer details
+  isEstimatedInstructions?: boolean; // Added for Phase 1
   confidence?: ConfidenceLevel; // How accurate this recipe is to the original
   recipeSource?: RecipeSource; // Where the recipe details came from
-  authoritativeReference?: string; // If filled from a known source, which one
+  authoritativeReference?: string; // If filled from a known source
   // Metadata
   createdAt: string;
-  platform?: "instagram" | "tiktok" | "manual";
+  platform?: "instagram" | "tiktok" | "youtube" | "manual"; // Added YouTube
 }
 
 export interface PantryItem {
@@ -62,48 +66,16 @@ export interface PantryItem {
 }
 
 export const DISH_TYPES = [
-  "Breakfast",
-  "Lunch",
-  "Dinner",
-  "Dessert",
-  "Snack",
-  "Appetizer",
-  "Soup",
-  "Salad",
-  "Pasta",
-  "Rice & Grains",
-  "Sandwich",
-  "Pizza",
-  "Seafood",
-  "Meat",
-  "Vegetarian",
-  "Baked Goods",
-  "Drinks",
-  "Sauce",
+  "Breakfast", "Lunch", "Dinner", "Dessert", "Snack", "Appetizer", 
+  "Soup", "Salad", "Pasta", "Rice & Grains", "Sandwich", "Pizza", 
+  "Seafood", "Meat", "Vegetarian", "Baked Goods", "Drinks", "Sauce",
 ] as const;
 
 export const VIBE_TAGS = [
-  "Quick & Easy",
-  "15-Min Meals",
-  "30-Min Meals",
-  "One-Pot",
-  "Meal Prep",
-  "Budget-Friendly",
-  "High-Protein",
-  "Low-Carb",
-  "Vegan",
-  "Vegetarian",
-  "Gluten-Free",
-  "Dairy-Free",
-  "Keto",
-  "Comfort Food",
-  "Healthy",
-  "Indulgent",
-  "Kid-Friendly",
-  "Date Night",
-  "Lazy Sunday",
-  "Party Food",
-  "Batch Cooking",
+  "Quick & Easy", "15-Min Meals", "30-Min Meals", "One-Pot", "Meal Prep", 
+  "Budget-Friendly", "High-Protein", "Low-Carb", "Vegan", "Vegetarian", 
+  "Gluten-Free", "Dairy-Free", "Keto", "Comfort Food", "Healthy", 
+  "Indulgent", "Kid-Friendly", "Date Night", "Lazy Sunday", "Party Food", "Batch Cooking",
 ] as const;
 
 export const PANTRY_CATEGORIES = [
@@ -116,16 +88,8 @@ export const PANTRY_CATEGORIES = [
 ] as const;
 
 export type AisleCategory = 
-  | "produce"
-  | "meat"
-  | "seafood"
-  | "dairy"
-  | "bakery"
-  | "frozen"
-  | "pantry"
-  | "spices"
-  | "beverages"
-  | "other";
+  | "produce" | "meat" | "seafood" | "dairy" | "bakery" 
+  | "frozen" | "pantry" | "spices" | "beverages" | "other";
 
 export const AISLE_CATEGORIES: { id: AisleCategory; label: string; icon: string }[] = [
   { id: "produce", label: "Produce", icon: "leaf" },

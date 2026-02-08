@@ -14,6 +14,7 @@ import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as AppleAuthentication from "expo-apple-authentication";
+import * as AuthSession from "expo-auth-session"; // Added for manual redirect control
 
 // Standard Expo Auth Hooks (Live Ready)
 import * as Google from "expo-auth-session/providers/google";
@@ -50,9 +51,13 @@ export default function AuthScreen() {
     webClientId: "52014612790-dds59pc44ugsd01af80ks26idk3ibluu.apps.googleusercontent.com",
   });
 
-  // --- FACEBOOK CONFIGURATION (Live Ready) ---
+  // --- FACEBOOK CONFIGURATION (Proxy Fix) ---
   const [fRequest, fResponse, fPromptAsync] = Facebook.useAuthRequest({
     clientId: "1652831865939554",
+    // Forces the use of the Expo proxy to resolve "No redirect present in URI" errors in development
+    redirectUri: AuthSession.makeRedirectUri({
+      useProxy: true,
+    }),
   });
 
   // Handle Google Response
