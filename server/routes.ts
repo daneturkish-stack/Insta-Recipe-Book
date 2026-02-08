@@ -1223,6 +1223,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Image URL: ${pageData.imageUrl || 'none'}`);
       console.log(`Video URL: ${pageData.videoUrl || 'none'}`);
 
+      // YouTube oEmbed fallback - get video title/channel when page fetch fails (429 rate limit)
+      if (platform === 'youtube' && !pageData.text) {
+        console.log(`YouTube page fetch failed, trying oEmbed API for metadata...`);
+        try {
+          const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+          const oembedRes = await fetch(oembedUrl);
+          if (oembedRes.ok) {
+            const oembedData = await oembedRes.json() as { title?: string; author_name?: string; thumbnail_url?: string };
+            const parts: string[] = [];
+            if (oembedData.title) parts.push(`Video Title: ${oembedData.title}`);
+            if (oembedData.author_name) {
+              parts.push(`Channel: ${oembedData.author_name}`);
+              if (!creatorHandle) creatorHandle = oembedData.author_name;
+            }
+            if (parts.length > 0) {
+              pageData.text = parts.join('\n');
+              console.log(`oEmbed metadata retrieved: ${pageData.text}`);
+            }
+            if (oembedData.thumbnail_url && !pageData.imageUrl) {
+              pageData.imageUrl = oembedData.thumbnail_url;
+            }
+          }
+        } catch (oembedErr) {
+          console.log(`oEmbed fallback also failed`);
+        }
+      }
+
       // Try to get transcript - YouTube uses dedicated transcript API, others use video transcription
       let videoTranscript: string | null = null;
       
@@ -1332,7 +1359,9 @@ ${videoTranscript}`);
 ${pageData.text}`);
       }
       
-      if (contentSections.length > 0) {
+      const hasSubstantiveContent = videoTranscript || (pageData.text && pageData.text.length > 200);
+
+      if (contentSections.length > 0 && hasSubstantiveContent) {
         userPrompt = `Extract the recipe from this ${platform} food post.
 
 SOURCE URL: ${url}
@@ -1355,18 +1384,37 @@ Include:
 - Step-by-step instructions (match what the creator actually said/did)
 
 IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the content. Set isEstimated to false if the transcript provides all ingredients and steps explicitly.`;
+      } else if (contentSections.length > 0) {
+        userPrompt = `I have limited metadata from this ${platform} food post but could not access the full video transcript or detailed content.
+
+SOURCE URL: ${url}
+
+${contentSections.join('\n\n---\n\n')}
+
+Based on the title and available metadata, provide a COMPLETE, well-researched recipe for this exact dish. Since I only have the title/metadata and not the creator's exact recipe, use authoritative culinary sources to provide accurate measurements and instructions.
+
+You MUST provide:
+- The recipe title (use the video/post title)
+- Brief appetizing description
+- Prep and cook times
+- Number of servings
+- Complete ingredient list with proper measurements
+- Detailed step-by-step instructions
+- Creator info if available from metadata
+
+Set isEstimated to true, isEstimatedInstructions to true, and confidence to "low". Set sourceNote to explain that the recipe was reconstructed from the video title since the full content was not accessible.`;
       } else {
-        userPrompt = `I need to extract a recipe from this ${platform} URL, but I couldn't fetch the full content: ${url}
+        userPrompt = `I need to extract a recipe from this ${platform} URL, but I couldn't fetch the full content or transcript: ${url}
 
-Please analyze the URL carefully. If it contains any hints about the recipe (like keywords in the URL path), use those to determine what dish this is.
+Please analyze the URL carefully. If it contains any hints about the recipe (like keywords in the URL path or video ID), use those to determine what dish this is.
 
-If you cannot determine the specific recipe from the URL, respond with this error format:
+If you cannot determine the specific recipe from the URL at all, respond with this error format:
 {
   "error": "Could not extract recipe content. Please try pasting the recipe description or ingredients directly.",
   "title": null
 }
 
-Otherwise, if you can identify the dish from the URL, provide a complete recipe for that specific dish.`
+Otherwise, if you can identify or reasonably infer the dish from the URL, provide a complete, well-researched recipe for that specific dish. Mark isEstimated as true and confidence as "low" since the content couldn't be directly accessed. Set sourceNote to explain that the recipe was reconstructed based on available metadata.`
       }
 
       const response = await openai.chat.completions.create({
