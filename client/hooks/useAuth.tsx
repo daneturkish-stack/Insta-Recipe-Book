@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const url = new URL("/api/auth/me", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
 
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       identifyRevenueCatUser(data.user.id);
 
       const url = new URL("/api/auth/me", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${data.token}` },
       });
 
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const url = new URL("/api/auth/login", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -125,7 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Login failed");
+        let message = "Login failed";
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed.error || parsed.message || text;
+        } catch {
+          message = text || "Login failed";
+        }
+        throw new Error(message);
       }
 
       const data = await res.json();
@@ -137,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (email: string, password: string, displayName: string) => {
       const url = new URL("/api/auth/register", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, displayName }),
@@ -145,7 +152,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Registration failed");
+        let message = "Registration failed";
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed.error || parsed.message || text;
+        } catch {
+          message = text || "Registration failed";
+        }
+        throw new Error(message);
       }
 
       const data = await res.json();
@@ -157,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const socialLogin = useCallback(
     async (params: SocialLoginParams) => {
       const url = new URL("/api/auth/social", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
@@ -165,7 +179,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Social login failed");
+        let message = "Social login failed";
+        try {
+          const parsed = JSON.parse(text);
+          message = parsed.error || parsed.message || text;
+        } catch {
+          message = text || "Social login failed";
+        }
+        throw new Error(message);
       }
 
       const data = await res.json();
@@ -180,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!storedToken) return;
 
       const url = new URL("/api/auth/me", baseUrl);
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
 
@@ -199,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (token) {
         const url = new URL("/api/auth/logout", baseUrl);
-        await fetch(url, {
+        await fetch(url.toString(), {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });

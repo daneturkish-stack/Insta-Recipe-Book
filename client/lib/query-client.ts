@@ -26,7 +26,13 @@ function getAuthHeaders(): Record<string, string> {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed.error || parsed.message || text;
+    } catch {
+    }
+    throw new Error(`${res.status}: ${message}`);
   }
 }
 
@@ -81,6 +87,10 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error("Server returned an unexpected response");
+    }
     return await res.json();
   };
 

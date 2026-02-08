@@ -163,7 +163,7 @@ async function syncSubscriptionToBackend(status: string) {
 
     const baseUrl = getApiUrl();
     const url = new URL("/api/auth/subscription", baseUrl);
-    await fetch(url, {
+    await fetch(url.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
