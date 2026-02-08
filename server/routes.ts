@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import os from "node:os";
 import { storage } from "./storage";
+import { YoutubeTranscript } from "youtube-transcript";
 
 const execAsync = promisify(exec);
 
@@ -1173,12 +1174,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const instagramPattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels)\/[\w-]+/i;
       const tiktokPattern = /^https?:\/\/(www\.)?(tiktok\.com|vm\.tiktok\.com)\//i;
+      const youtubePattern = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i;
       
-      let platform: "instagram" | "tiktok" | "manual" = "manual";
+      let platform: "instagram" | "tiktok" | "youtube" | "manual" = "manual";
       if (instagramPattern.test(url)) {
         platform = "instagram";
       } else if (tiktokPattern.test(url)) {
         platform = "tiktok";
+      } else if (youtubePattern.test(url)) {
+        platform = "youtube";
       }
 
       // Extract creator handle from URL if possible
@@ -1196,10 +1200,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Pattern 2: Instagram URL with username before /reel/ or /p/
       if (!creatorHandle && platform === 'instagram') {
-        // Match: instagram.com/thehappypear/reel/xxx or instagram.com/thehappypear/p/xxx
         const igUserMatch = url.match(/instagram\.com\/([^\/]+)\/(?:reel|p|reels)\//i);
         if (igUserMatch && igUserMatch[1] && !['reel', 'p', 'reels', 'stories'].includes(igUserMatch[1].toLowerCase())) {
           creatorHandle = `@${igUserMatch[1]}`;
+        }
+      }
+      
+      // Pattern 3: YouTube channel handle (youtube.com/@handle/...)
+      if (!creatorHandle && platform === 'youtube') {
+        const ytHandleMatch = url.match(/youtube\.com\/@([^\/\?]+)/i);
+        if (ytHandleMatch) {
+          creatorHandle = `@${ytHandleMatch[1]}`;
         }
       }
       
@@ -1212,9 +1223,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Image URL: ${pageData.imageUrl || 'none'}`);
       console.log(`Video URL: ${pageData.videoUrl || 'none'}`);
 
-      // Try to transcribe video if available
+      // Try to get transcript - YouTube uses dedicated transcript API, others use video transcription
       let videoTranscript: string | null = null;
-      if (pageData.videoUrl) {
+      
+      if (platform === 'youtube') {
+        console.log(`Fetching YouTube transcript...`);
+        try {
+          const transcriptItems = await YoutubeTranscript.fetchTranscript(url);
+          if (transcriptItems && transcriptItems.length > 0) {
+            videoTranscript = transcriptItems.map(item => item.text).join(' ');
+            console.log(`YouTube transcript fetched: ${videoTranscript.length} chars`);
+          }
+        } catch (ytError: any) {
+          console.log(`YouTube transcript not available: ${ytError.message}. Will fall back to page content.`);
+        }
+      }
+      
+      if (!videoTranscript && pageData.videoUrl) {
         console.log(`Attempting video transcription...`);
         videoTranscript = await transcribeVideoFromUrl(pageData.videoUrl);
         console.log(`Video transcript: ${videoTranscript ? 'Success' : 'Failed/None'}`);
@@ -1244,8 +1269,28 @@ Extract and categorize with:
 3. creatorHandle: Extract from content if available
 4. creatorName: Extract from content if available
 5. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated
-6. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
-7. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
+6. isEstimatedInstructions: Set to true if any instruction steps were inferred or reconstructed rather than directly stated in the source
+7. confidence: Overall confidence in the extraction accuracy. Use "high" if all data comes directly from the source, "medium" if some details were inferred, "low" if significant reconstruction was needed
+8. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
+9. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
+
+INGREDIENT FORMAT:
+Each ingredient must include:
+- "name": the ingredient name
+- "amount": quantity as a string (e.g., "1", "1/2")
+- "unit": measurement unit (e.g., "cup", "tbsp", "piece", or "" for unitless items)
+- "aisle": Assign a grocery store aisle category to each ingredient. Must be one of: "produce", "meat", "seafood", "dairy", "bakery", "frozen", "pantry", "spices", "beverages", "other"
+  - produce: fresh fruits, vegetables, herbs, salad greens
+  - meat: beef, chicken, pork, turkey, lamb, sausage, bacon
+  - seafood: fish, shrimp, crab, shellfish
+  - dairy: milk, cheese, butter, yogurt, eggs, cream
+  - bakery: bread, tortillas, pita, rolls, pastry dough
+  - frozen: frozen vegetables, frozen fruits, ice cream
+  - pantry: flour, sugar, rice, pasta, canned goods, oils, vinegar, soy sauce, broth, nuts, honey, chocolate
+  - spices: salt, pepper, cumin, paprika, cinnamon, dried herbs, spice blends
+  - beverages: coffee, tea, juice, wine, beer, spirits (used for cooking)
+  - other: anything that doesn't fit the above categories
+- "isEstimated": true if this specific ingredient's amount/unit was inferred rather than explicitly stated in the source; false if stated explicitly
 
 Respond ONLY with a valid JSON object:
 {
@@ -1259,10 +1304,12 @@ Respond ONLY with a valid JSON object:
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
   "isEstimated": true,
+  "isEstimatedInstructions": false,
+  "confidence": "medium",
   "authoritativeReference": null,
   "sourceNote": "Full recipe extracted from video transcript with explicit measurements",
   "ingredients": [
-    {"name": "ingredient name", "amount": "1", "unit": "cup"}
+    {"name": "ingredient name", "amount": "1", "unit": "cup", "aisle": "pantry", "isEstimated": false}
   ],
   "instructions": [
     "Step 1 instruction",
@@ -1396,8 +1443,10 @@ Include:
 - Appropriate dish type category
 - 2-4 relevant tags
 - Creator info
-- COMPLETE ingredient list with exact measurements from the website
+- COMPLETE ingredient list with exact measurements from the website. Each ingredient must have name, amount, unit, aisle (grocery store category), and isEstimated (false if from website)
 - DETAILED step-by-step instructions from the website
+- confidence: "high" since we have the full recipe from the creator's website
+- isEstimatedInstructions: false since instructions come from the website
 
 Since we have the full recipe from the creator's website, set isEstimated to false if all measurements are explicit.`;
 
@@ -1495,6 +1544,18 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         }
       }
 
+      const validAisles = ["produce", "meat", "seafood", "dairy", "bakery", "frozen", "pantry", "spices", "beverages", "other"];
+      const normalizedIngredients = (recipeData.ingredients || []).map((ing: any) => ({
+        name: ing.name,
+        amount: ing.amount || "",
+        unit: ing.unit || "",
+        aisle: validAisles.includes(ing.aisle) ? ing.aisle : "other",
+        isEstimated: ing.isEstimated ?? recipeData.isEstimated ?? true,
+      }));
+
+      const aiConfidence = recipeData.confidence;
+      const finalConfidence = (aiConfidence === "high" || aiConfidence === "medium" || aiConfidence === "low") ? aiConfidence : confidence;
+
       const recipe = {
         id: randomUUID(),
         title: recipeData.title,
@@ -1511,15 +1572,15 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         creatorName: recipeData.creatorName || null,
         creatorAvatar: pageData.profileImageUrl || null,
         creatorRecipeUrl,
-        // If no recipe URL found, provide a manual search query for the user
         manualSearchQuery: !creatorRecipeUrl 
           ? `"${recipeData.creatorHandle || creatorHandle || ''}" "${recipeData.title}" recipe`.trim()
           : null,
-        ingredients: recipeData.ingredients || [],
+        ingredients: normalizedIngredients,
         instructions: recipeData.instructions || [],
         originalTranscript: videoTranscript || null,
         isEstimated: recipeData.isEstimated ?? true,
-        confidence,
+        isEstimatedInstructions: recipeData.isEstimatedInstructions ?? recipeData.isEstimated ?? true,
+        confidence: finalConfidence,
         recipeSource: {
           type: sourceType,
           name: sourceName,
