@@ -30,6 +30,27 @@ import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/co
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
+type LinkInfo = { type: "youtube" | "instagram" | "tiktok" | "x" | "linkedin" | "website"; label: string; icon: string; url: string };
+
+function detectLinkType(url: string): LinkInfo["type"] {
+  const lower = url.toLowerCase();
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
+  if (lower.includes("instagram.com")) return "instagram";
+  if (lower.includes("tiktok.com")) return "tiktok";
+  if (lower.includes("twitter.com") || lower.includes("x.com")) return "x";
+  if (lower.includes("linkedin.com")) return "linkedin";
+  return "website";
+}
+
+const LINK_CONFIG: Record<LinkInfo["type"], { label: string; icon: string }> = {
+  youtube: { label: "YouTube", icon: "youtube" },
+  instagram: { label: "Instagram", icon: "instagram" },
+  tiktok: { label: "TikTok", icon: "video" },
+  x: { label: "X", icon: "twitter" },
+  linkedin: { label: "LinkedIn", icon: "linkedin" },
+  website: { label: "Website", icon: "globe" },
+};
+
 const INGREDIENT_ICONS: Record<string, string> = {
   tomato: "sun",
   chicken: "feather",
@@ -239,13 +260,6 @@ export default function RecipeDetailScreen() {
     setShowLinkCorrectionModal(false);
     setShowManualInput(false);
     setManualLinkInput("");
-  };
-
-  const handleOpenCreatorRecipe = async () => {
-    if (recipe?.creatorRecipeUrl) {
-      Haptics.selectionAsync();
-      await WebBrowser.openBrowserAsync(recipe.creatorRecipeUrl);
-    }
   };
 
   const toggleTranscript = () => {
@@ -592,41 +606,44 @@ export default function RecipeDetailScreen() {
                 </View>
 
                 {/* Creator Links */}
-                <View style={styles.creatorLinksContainer}>
-                  {recipe.sourceUrl ? (
-                    <Pressable
-                      onPress={handleOpenSource}
-                      style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
-                      testID="button-view-original"
-                    >
-                      <Feather
-                        name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"}
-                        size={14}
-                        color={theme.primary}
-                      />
-                      <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
-                        Original Post
+                {(() => {
+                  const links: LinkInfo[] = [];
+                  if (recipe.sourceUrl) {
+                    const sourceType = detectLinkType(recipe.sourceUrl);
+                    const config = LINK_CONFIG[sourceType];
+                    links.push({ type: sourceType, label: config.label, icon: config.icon, url: recipe.sourceUrl });
+                  }
+                  if (recipe.creatorRecipeUrl) {
+                    const recipeUrlType = detectLinkType(recipe.creatorRecipeUrl);
+                    const sourceType = recipe.sourceUrl ? detectLinkType(recipe.sourceUrl) : null;
+                    if (recipeUrlType !== sourceType) {
+                      const config = LINK_CONFIG[recipeUrlType];
+                      links.push({ type: recipeUrlType, label: config.label, icon: config.icon, url: recipe.creatorRecipeUrl });
+                    }
+                  }
+                  return links.length > 0 ? (
+                    <>
+                      <View style={styles.creatorLinksContainer}>
+                        {links.map((link, idx) => (
+                          <Pressable
+                            key={idx}
+                            onPress={() => WebBrowser.openBrowserAsync(link.url)}
+                            style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
+                            testID={`button-creator-${link.type}`}
+                          >
+                            <Feather name={link.icon as any} size={14} color={theme.primary} />
+                            <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
+                              {link.label}
+                            </ThemedText>
+                          </Pressable>
+                        ))}
+                      </View>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, fontStyle: "italic" }}>
+                        Find more on their other channels!
                       </ThemedText>
-                    </Pressable>
-                  ) : null}
-
-                  {recipe.creatorRecipeUrl ? (
-                    <Pressable
-                      onPress={handleOpenCreatorRecipe}
-                      style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
-                      testID="button-creator-recipe"
-                    >
-                      <Feather name="book-open" size={14} color={theme.primary} />
-                      <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
-                        Website
-                      </ThemedText>
-                    </Pressable>
-                  ) : null}
-                </View>
-
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, fontStyle: "italic" }}>
-                  Find more on their other channels!
-                </ThemedText>
+                    </>
+                  ) : null;
+                })()}
               </View>
             ) : null}
           </Animated.View>
