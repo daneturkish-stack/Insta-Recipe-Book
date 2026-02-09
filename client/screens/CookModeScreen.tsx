@@ -546,9 +546,31 @@ export default function CookModeScreen() {
           entering={SlideInRight.duration(300)}
           style={styles.stepContainer}
         >
-          <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
-            Step {currentStep + 1}
-          </ThemedText>
+          <View style={styles.stepHeader}>
+            <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
+              Step {currentStep + 1}
+            </ThemedText>
+            <View style={styles.remiInlineContainer}>
+              {isVoiceActive ? (
+                <Animated.View style={[styles.remiInlinePulse, pulseAnimatedStyle]} />
+              ) : null}
+              <Pressable
+                onPress={voiceState === "listening" ? handleTapWhileListening : toggleVoice}
+                onLongPress={isVoiceActive ? toggleVoice : undefined}
+                style={[
+                  styles.remiInlineButton,
+                  isVoiceActive ? styles.remiInlineButtonActive : null,
+                ]}
+                testID="remi-voice-toggle"
+              >
+                <Feather
+                  name={micIconName}
+                  size={18}
+                  color={isVoiceActive ? "#FFFFFF" : CookModeColors.textSecondary}
+                />
+              </Pressable>
+            </View>
+          </View>
           <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text, marginTop: Spacing.lg }]}>
             {currentInstructionText}
           </ThemedText>
@@ -677,30 +699,6 @@ export default function CookModeScreen() {
         onPress={handleNext}
       />
 
-      {/* Remi Voice Toggle - Floating Mic Button */}
-      <View style={[styles.remiFabContainer, { bottom: insets.bottom + Spacing.xl + 80 }]}>
-        {isVoiceActive ? (
-          <Animated.View style={[styles.remiFabPulse, pulseAnimatedStyle]} />
-        ) : null}
-        <Pressable
-          onPress={voiceState === "listening" ? handleTapWhileListening : toggleVoice}
-          onLongPress={isVoiceActive ? toggleVoice : undefined}
-          style={[
-            styles.remiFab,
-            isVoiceActive ? styles.remiFabActive : null,
-          ]}
-          testID="remi-voice-toggle"
-        >
-          <Feather
-            name={micIconName}
-            size={26}
-            color={isVoiceActive ? "#FFFFFF" : CookModeColors.text}
-          />
-        </Pressable>
-        {!isVoiceActive ? (
-          <ThemedText style={styles.remiFabLabel}>Ask Remi</ThemedText>
-        ) : null}
-      </View>
     </View>
   );
 }
@@ -888,42 +886,41 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
   },
-  remiFabContainer: {
-    position: "absolute",
-    right: Spacing.xl,
+  stepHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
   },
-  remiFab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(255,255,255,0.1)",
+  remiInlineContainer: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.15)",
   },
-  remiFabActive: {
+  remiInlineButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  remiInlineButtonActive: {
     backgroundColor: CookModeColors.primary,
     borderColor: CookModeColors.primary,
     shadowColor: CookModeColors.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  remiFabPulse: {
+  remiInlinePulse: {
     position: "absolute",
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: CookModeColors.primary,
-  },
-  remiFabLabel: {
-    marginTop: 4,
-    fontSize: 10,
-    color: "rgba(255,255,255,0.5)",
-    fontWeight: "600",
   },
   navLabel: {
     fontSize: 11,
