@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -42,3 +42,34 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+
+export const shoppingListItems = pgTable("shopping_list_items", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  amount: text("amount").notNull().default(""),
+  unit: text("unit").notNull().default(""),
+  aisle: text("aisle").notNull().default("other"),
+  inPantry: boolean("in_pantry").notNull().default(false),
+  isChecked: boolean("is_checked").notNull().default(false),
+  recipeTitle: text("recipe_title"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertShoppingListItemSchema = createInsertSchema(shoppingListItems).pick({
+  userId: true,
+  name: true,
+  amount: true,
+  unit: true,
+  aisle: true,
+  inPantry: true,
+  isChecked: true,
+  recipeTitle: true,
+});
+
+export type InsertShoppingListItem = z.infer<typeof insertShoppingListItemSchema>;
+export type ShoppingListItem = typeof shoppingListItems.$inferSelect;
