@@ -324,33 +324,11 @@ export default function RecipeDetailScreen() {
               {recipe.title}
             </ThemedText>
 
-            {/* Creator Row */}
+            {/* Creator handle - subtle line under title */}
             {recipe.creatorHandle ? (
-              <Pressable onPress={handleOpenSource} style={styles.creatorRow}>
-                {recipe.creatorAvatar ? (
-                  <Image
-                    source={{ uri: recipe.creatorAvatar }}
-                    style={styles.creatorAvatarImage}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={[styles.creatorAvatar, { backgroundColor: theme.primary }]}>
-                    <Feather name="user" size={14} color="#FFF" />
-                  </View>
-                )}
-                <ThemedText type="bodyMedium" style={{ color: theme.textSecondary }}>
-                  {recipe.creatorHandle}
-                </ThemedText>
-                {recipe.platform ? (
-                  <View style={[styles.platformBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                    <Feather 
-                      name={recipe.platform === "instagram" ? "instagram" : "video"} 
-                      size={12} 
-                      color={theme.textSecondary} 
-                    />
-                  </View>
-                ) : null}
-              </Pressable>
+              <ThemedText type="bodyMedium" style={{ color: theme.textSecondary, marginBottom: Spacing.xl }}>
+                by {recipe.creatorHandle}
+              </ThemedText>
             ) : null}
 
             {/* Horizontal Stats Bar - Premium Light Design */}
@@ -463,50 +441,7 @@ export default function RecipeDetailScreen() {
                   Pinch to scale servings
                 </ThemedText>
 
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.ingredientCardsContainer}
-                >
-                  {recipe.ingredients.slice(0, 8).map((ingredient, index) => (
-                    <Pressable
-                      key={index}
-                      onPress={() => toggleIngredient(index)}
-                      style={[
-                        styles.ingredientCard,
-                        { backgroundColor: theme.backgroundDefault },
-                        checkedIngredients.has(index) && { backgroundColor: theme.primary + "10" },
-                        Shadows.cardLight,
-                      ]}
-                    >
-                      <View style={[
-                        styles.ingredientIconWrapper,
-                        { backgroundColor: checkedIngredients.has(index) ? theme.primary + "20" : theme.backgroundSecondary }
-                      ]}>
-                        <Feather 
-                          name={getIngredientIcon(ingredient.name)} 
-                          size={24} 
-                          color={checkedIngredients.has(index) ? theme.primary : theme.textSecondary} 
-                        />
-                      </View>
-                      <ThemedText 
-                        type="caption" 
-                        style={[
-                          styles.ingredientCardName,
-                          checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 }
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {ingredient.name}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, fontWeight: "500" }}>
-                        {scaleIngredientAmount(ingredient.amount)} {ingredient.unit}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              
-                {/* Full ingredients list */}
+                {/* Ingredients list */}
                 <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
                   {recipe.ingredients.map((ingredient, index) => (
                     <Pressable
@@ -614,30 +549,9 @@ export default function RecipeDetailScreen() {
               </View>
             ) : null}
 
-            {/* Utility Icon Bar */}
+            {/* Actions Row */}
             <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
             <View style={styles.utilityBar}>
-              <Pressable onPress={handleOpenSource} style={styles.utilityButton} testID="button-view-original">
-                <Feather name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"} size={16} color={theme.textSecondary} />
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Original</ThemedText>
-              </Pressable>
-
-              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
-
-              {recipe.creatorRecipeUrl ? (
-                <Pressable onPress={handleOpenCreatorRecipe} style={styles.utilityButton} testID="button-creator-recipe">
-                  <Feather name="book-open" size={16} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Recipe</ThemedText>
-                </Pressable>
-              ) : (
-                <Pressable onPress={handleSearchFullRecipe} style={styles.utilityButton} testID="button-search-recipe">
-                  <Feather name="search" size={16} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Find</ThemedText>
-                </Pressable>
-              )}
-
-              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
-
               <Pressable onPress={handleWrongLink} style={styles.utilityButton} testID="button-wrong-link">
                 <Feather name="alert-circle" size={16} color={theme.textSecondary} />
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Report</ThemedText>
@@ -652,7 +566,7 @@ export default function RecipeDetailScreen() {
             </View>
             <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
 
-            {/* Creator Credits - Compact */}
+            {/* Creator Section */}
             {(recipe.creatorName || recipe.creatorHandle) ? (
               <View style={[styles.creatorCardCompact, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
                 <View style={styles.creatorCardRow}>
@@ -669,33 +583,50 @@ export default function RecipeDetailScreen() {
                         {recipe.creatorName}
                       </ThemedText>
                     ) : null}
-                    <View style={styles.creatorCardHandleRow}>
-                      {recipe.creatorHandle ? (
-                        <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
-                          {recipe.creatorHandle}
-                        </ThemedText>
-                      ) : null}
-                      {recipe.platform ? (
-                        <View style={[styles.creatorCardPlatformBadge, { backgroundColor: theme.backgroundSecondary }]}>
-                          <Feather
-                            name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"}
-                            size={10}
-                            color={theme.textSecondary}
-                          />
-                          <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 3, fontSize: 10, textTransform: "capitalize" }}>
-                            {recipe.platform}
-                          </ThemedText>
-                        </View>
-                      ) : null}
-                    </View>
+                    {recipe.creatorHandle ? (
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
+                        {recipe.creatorHandle}
+                      </ThemedText>
+                    ) : null}
                   </View>
+                </View>
+
+                {/* Creator Links */}
+                <View style={styles.creatorLinksContainer}>
                   {recipe.sourceUrl ? (
-                    <Pressable onPress={handleOpenSource} style={styles.creatorCardLink} testID="button-creator-source">
-                      <ThemedText type="caption" style={{ color: theme.primary, marginRight: 4 }}>View Post</ThemedText>
-                      <Feather name="external-link" size={12} color={theme.primary} />
+                    <Pressable
+                      onPress={handleOpenSource}
+                      style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
+                      testID="button-view-original"
+                    >
+                      <Feather
+                        name={recipe.platform === "tiktok" ? "video" : recipe.platform === "youtube" ? "youtube" : "instagram"}
+                        size={14}
+                        color={theme.primary}
+                      />
+                      <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
+                        Original Post
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+
+                  {recipe.creatorRecipeUrl ? (
+                    <Pressable
+                      onPress={handleOpenCreatorRecipe}
+                      style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
+                      testID="button-creator-recipe"
+                    >
+                      <Feather name="book-open" size={14} color={theme.primary} />
+                      <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
+                        Website
+                      </ThemedText>
                     </Pressable>
                   ) : null}
                 </View>
+
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, fontStyle: "italic" }}>
+                  Find more on their other channels!
+                </ThemedText>
               </View>
             ) : null}
           </Animated.View>
@@ -1242,5 +1173,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.xs,
     paddingLeft: Spacing.sm,
+  },
+  creatorLinksContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  creatorLinkPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
   },
 });
