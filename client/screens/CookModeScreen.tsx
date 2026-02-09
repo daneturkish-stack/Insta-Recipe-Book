@@ -190,8 +190,8 @@ export default function CookModeScreen() {
       setVoiceState("speaking");
       setVoiceStatusText("Remi is speaking...");
       Speech.speak(text, {
-        rate: 0.95,
-        pitch: 1.05,
+        rate: 0.88,
+        pitch: 1.1,
         language: "en-GB",
         onDone: () => resolve(),
         onStopped: () => resolve(),
@@ -402,13 +402,6 @@ export default function CookModeScreen() {
     }
   }, [startRecording]);
 
-  const handleTapWhileListening = useCallback(() => {
-    if (voiceState === "listening" && recordingRef.current) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      processRecording();
-    }
-  }, [voiceState, processRecording]);
-
   useEffect(() => {
     return () => {
       voiceActiveRef.current = false;
@@ -555,8 +548,8 @@ export default function CookModeScreen() {
                 <Animated.View style={[styles.remiInlinePulse, pulseAnimatedStyle]} />
               ) : null}
               <Pressable
-                onPress={voiceState === "listening" ? handleTapWhileListening : toggleVoice}
-                onLongPress={isVoiceActive ? toggleVoice : undefined}
+                onPress={toggleVoice}
+                onLongPress={undefined}
                 style={[
                   styles.remiInlineButton,
                   isVoiceActive ? styles.remiInlineButtonActive : null,
@@ -642,11 +635,6 @@ export default function CookModeScreen() {
           <ThemedText style={styles.voiceStatusText}>
             {voiceStatusText}
           </ThemedText>
-          {voiceState === "listening" ? (
-            <Pressable onPress={handleTapWhileListening} style={styles.voiceSendHint}>
-              <ThemedText style={styles.voiceSendHintText}>Tap mic to send</ThemedText>
-            </Pressable>
-          ) : null}
         </Animated.View>
       ) : null}
 
@@ -853,16 +841,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "rgba(255,255,255,0.7)",
     flex: 1,
-  },
-  voiceSendHint: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  voiceSendHintText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
   },
   controls: {
     flexDirection: "row",
