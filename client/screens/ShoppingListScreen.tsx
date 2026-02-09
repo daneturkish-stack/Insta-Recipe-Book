@@ -168,7 +168,7 @@ export default function ShoppingListScreen() {
         subtitle="Select recipes from your collection and tap 'Add to List' to create your shopping list"
       />
       <Pressable
-        onPress={() => navigation.navigate("Collection")}
+        onPress={() => navigation.navigate("CollectionTab")}
         style={[styles.goToCollectionButton, { backgroundColor: theme.primary }]}
       >
         <Feather name="book-open" size={18} color="#FFF" />
