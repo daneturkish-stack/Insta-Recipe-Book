@@ -1,13 +1,16 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { Pool } from "@neondatabase/serverless";
 import { randomUUID, scryptSync, randomBytes } from "crypto";
 import {
   type User,
   type InsertUser,
   type Session,
+  type InsertShoppingListItem,
+  type ShoppingListItem,
   users,
   sessions,
+  shoppingListItems,
 } from "@shared/schema";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -44,6 +47,12 @@ export interface IStorage {
   getUserFromToken(token: string): Promise<User | undefined>;
   updateSubscriptionStatus(userId: string, status: string): Promise<void>;
   updateProfileImage(userId: string, profileImage: string): Promise<User | undefined>;
+  getShoppingList(userId: string): Promise<ShoppingListItem[]>;
+  addShoppingListItems(items: InsertShoppingListItem[]): Promise<ShoppingListItem[]>;
+  toggleShoppingListItem(id: string, userId: string): Promise<ShoppingListItem | undefined>;
+  deleteShoppingListItem(id: string, userId: string): Promise<void>;
+  clearShoppingList(userId: string): Promise<void>;
+  clearCheckedItems(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -206,6 +215,65 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async getShoppingList(userId: string): Promise<ShoppingListItem[]> {
+    return db
+      .select()
+      .from(shoppingListItems)
+      .where(eq(shoppingListItems.userId, userId))
+      .orderBy(desc(shoppingListItems.createdAt));
+  }
+
+  async addShoppingListItems(items: InsertShoppingListItem[]): Promise<ShoppingListItem[]> {
+    if (items.length === 0) return [];
+    const sanitized = items.map((item) => ({
+      ...item,
+      aisle: item.aisle || "other",
+      inPantry: item.inPantry ?? false,
+      isChecked: item.isChecked ?? false,
+    }));
+    return db
+      .insert(shoppingListItems)
+      .values(sanitized)
+      .returning();
+  }
+
+  async toggleShoppingListItem(id: string, userId: string): Promise<ShoppingListItem | undefined> {
+    const [existing] = await db
+      .select()
+      .from(shoppingListItems)
+      .where(and(eq(shoppingListItems.id, id), eq(shoppingListItems.userId, userId)));
+    if (!existing) return undefined;
+    const [updated] = await db
+      .update(shoppingListItems)
+      .set({ isChecked: !existing.isChecked })
+      .where(eq(shoppingListItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteShoppingListItem(id: string, userId: string): Promise<void> {
+    await db
+      .delete(shoppingListItems)
+      .where(and(eq(shoppingListItems.id, id), eq(shoppingListItems.userId, userId)));
+  }
+
+  async clearShoppingList(userId: string): Promise<void> {
+    await db
+      .delete(shoppingListItems)
+      .where(eq(shoppingListItems.userId, userId));
+  }
+
+  async clearCheckedItems(userId: string): Promise<void> {
+    await db
+      .delete(shoppingListItems)
+      .where(
+        and(
+          eq(shoppingListItems.userId, userId),
+          eq(shoppingListItems.isChecked, true),
+        ),
+      );
   }
 }
 

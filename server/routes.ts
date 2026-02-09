@@ -2192,6 +2192,114 @@ Rules:
     }
   });
 
+  // Shopping List CRUD Routes
+
+  app.get("/api/shopping-list", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const items = await storage.getShoppingList(user.id);
+      res.json({ items });
+    } catch (error: any) {
+      console.error("Error fetching shopping list:", error);
+      res.status(500).json({ error: "Failed to fetch shopping list" });
+    }
+  });
+
+  app.post("/api/shopping-list/bulk", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { items } = req.body;
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items array is required" });
+      }
+
+      const validAisles = ["produce", "meat", "seafood", "dairy", "bakery", "frozen", "pantry", "spices", "beverages", "other"];
+
+      const preparedItems = items.map((item: any) => ({
+        userId: user.id,
+        name: item.name || "",
+        amount: item.amount || "",
+        unit: item.unit || "",
+        aisle: validAisles.includes(item.aisle) ? item.aisle : "other",
+        inPantry: item.inPantry ?? false,
+        isChecked: item.isChecked ?? false,
+        recipeTitle: item.recipeTitle || null,
+      }));
+
+      const savedItems = await storage.addShoppingListItems(preparedItems);
+      res.json({ items: savedItems });
+    } catch (error: any) {
+      console.error("Error bulk adding shopping list items:", error);
+      res.status(500).json({ error: "Failed to add shopping list items" });
+    }
+  });
+
+  app.patch("/api/shopping-list/:id/toggle", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const item = await storage.toggleShoppingListItem(req.params.id, user.id);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      res.json({ item });
+    } catch (error: any) {
+      console.error("Error toggling shopping list item:", error);
+      res.status(500).json({ error: "Failed to toggle item" });
+    }
+  });
+
+  app.delete("/api/shopping-list/:id", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      await storage.deleteShoppingListItem(req.params.id, user.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting shopping list item:", error);
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
+  app.delete("/api/shopping-list", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      await storage.clearShoppingList(user.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error clearing shopping list:", error);
+      res.status(500).json({ error: "Failed to clear shopping list" });
+    }
+  });
+
+  app.post("/api/shopping-list/clear-checked", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      await storage.clearCheckedItems(user.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error clearing checked items:", error);
+      res.status(500).json({ error: "Failed to clear checked items" });
+    }
+  });
+
   // Categorize shopping list ingredients by aisle
   app.post("/api/shopping-list/categorize", async (req: Request, res: Response) => {
     try {
