@@ -260,21 +260,28 @@ export default function RecipeDetailScreen() {
                       : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(recipe.creatorHandle || 'K')}&background=0D9488&color=fff&size=96` }
                 } 
                 style={styles.creatorAvatar} 
-                contentFit="cover"
+                contentFit={recipe.creatorAvatar ? "cover" : "contain"}
               />
               <View style={styles.creatorTextContent}>
                 <View style={styles.creatorTitleRow}>
-                  <ThemedText style={styles.creatorName}>{recipe.creatorName || "Creator"}</ThemedText>
+                  <ThemedText style={styles.creatorName}>{recipe.creatorName || recipe.creatorHandle || "Creator"}</ThemedText>
                   <View style={styles.platformBadge}>
                     <Feather name={PLATFORM_ICONS[recipe.platform || 'manual'] as any} size={10} color={theme.textSecondary} />
                     <ThemedText style={styles.platformText}>{recipe.platform}</ThemedText>
                   </View>
                 </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>@{recipe.creatorHandle || "kitch_user"}</ThemedText>
+                {(() => {
+                  const name = (recipe.creatorName || '').replace(/^@/, '').toLowerCase();
+                  const handle = (recipe.creatorHandle || '').replace(/^@/, '').toLowerCase();
+                  const isDuplicate = name && handle && name === handle;
+                  return !isDuplicate && recipe.creatorHandle ? (
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>@{recipe.creatorHandle.replace(/^@/, '')}</ThemedText>
+                  ) : null;
+                })()}
               </View>
             </View>
-            <Button variant="outline" size="small" onPress={() => handleOpenLink(recipe.sourceUrl)} style={{ marginTop: 12 }}>
-              Support {recipe.creatorName || recipe.creatorHandle || "Creator"}
+            <Button variant="outline" size="small" onPress={() => handleOpenLink(recipe.sourceUrl)} style={{ marginTop: 8 }}>
+              Support on {recipe.platform || "their channel"}
             </Button>
           </View>
         </View>
