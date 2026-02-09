@@ -218,14 +218,21 @@ const TIPS: { section: string; items: TipItem[] }[] = [
         iconFamily: "feather",
         title: "Cook Mode",
         description:
-          "Tap 'Start Cooking' on any recipe to enter full-screen Cook Mode. It reads each step aloud so you can keep your hands free.",
+          "Tap 'Start Cooking' on any recipe to enter full-screen Cook Mode with step-by-step guidance, timers, and ingredient highlights.",
+      },
+      {
+        icon: "gesture-swipe-right",
+        iconFamily: "mci",
+        title: "Swipe Through Steps",
+        description:
+          "In Cook Mode, swipe left to go to the next step or swipe right to go back. You can also use the arrow buttons at the bottom.",
       },
       {
         icon: "message-circle",
         iconFamily: "feather",
         title: "Ask Remi",
         description:
-          "That's me! Ask me for recipe suggestions, substitutions, technique tips, or just have a chat about food. I know about all your saved recipes too.",
+          "That's me! Ask me for recipe suggestions, substitutions, technique tips, or just have a chat about food. I know about all your saved recipes too. You can also ask me how to use the app!",
       },
     ],
   },
