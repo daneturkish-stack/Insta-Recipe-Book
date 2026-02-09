@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useShoppingList, useToggleShoppingItem, useClearCheckedItems, useClearShoppingList } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
