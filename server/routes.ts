@@ -1230,7 +1230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
           const oembedRes = await fetch(oembedUrl);
           if (oembedRes.ok) {
-            const oembedData = await oembedRes.json() as { title?: string; author_name?: string; thumbnail_url?: string };
+            const oembedData = await oembedRes.json() as { title?: string; author_name?: string; author_url?: string; thumbnail_url?: string };
             const parts: string[] = [];
             if (oembedData.title) parts.push(`Video Title: ${oembedData.title}`);
             if (oembedData.author_name) {
@@ -1243,6 +1243,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             if (oembedData.thumbnail_url && !pageData.imageUrl) {
               pageData.imageUrl = oembedData.thumbnail_url;
+            }
+            // Try to get channel avatar from the channel page
+            if (oembedData.author_url && !pageData.profileImageUrl) {
+              try {
+                const channelRes = await fetch(oembedData.author_url, {
+                  headers: {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                    "Accept": "text/html",
+                  },
+                  redirect: "follow",
+                });
+                if (channelRes.ok) {
+                  const channelHtml = await channelRes.text();
+                  const channelOgImage = channelHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                                         channelHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                  if (channelOgImage) {
+                    pageData.profileImageUrl = channelOgImage[1];
+                    console.log(`Got YouTube channel avatar from og:image`);
+                  }
+                }
+              } catch (channelErr) {
+                console.log(`Could not fetch YouTube channel avatar`);
+              }
             }
           }
         } catch (oembedErr) {
