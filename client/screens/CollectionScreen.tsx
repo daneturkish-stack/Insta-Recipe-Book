@@ -581,198 +581,134 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FA', // Premium Light off-white base
   },
   list: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
+    paddingTop: 60, // Editorial top spacing
+    paddingBottom: 100,
   },
   headerSection: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
+  // Refined Editorial Search/Action Bar
   quickActionsContainer: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xl,
     marginHorizontal: -Spacing.lg,
   },
   quickActionsContent: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
+    gap: Spacing.md,
   },
   quickActionChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    marginRight: Spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 9999, // Pill shape
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    // Subtle lift for interactive elements
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
   },
+  // AI/Remy interaction: More cohesive and less like a separate block
   remyResponseBubble: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    marginBottom: Spacing.md,
-  },
-  responseHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  remyAvatarSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.sm,
-  },
-  remyEmojiSmall: {
-    fontSize: 14,
-  },
-  thinkingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  thinkingText: {
-    marginLeft: Spacing.sm,
-  },
-  showAllLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: Spacing.md,
-    alignSelf: "flex-end",
+    borderRadius: 24, // Consistent card radius
+    borderWidth: 0,
+    backgroundColor: '#FFFFFF',
+    marginBottom: Spacing.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   resultsHeader: {
     marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   viewToggleButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     alignItems: "center",
     justifyContent: "center",
   },
-  row: {
-    justifyContent: "space-between",
-    marginBottom: Spacing.xl,
-  },
-  cardWrapper: {
-    width: "48%",
-  },
-  largeCardWrapper: {
-    width: "100%",
-  },
-  listCardWrapper: {
-    width: "100%",
-  },
+  // Bento Grid Logic
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  cardWrapper: {
+    width: "48%", // Two-column bento style
+    marginBottom: Spacing.lg,
   },
+  largeCardWrapper: {
+    width: "100%", // Hero item
+    marginBottom: Spacing.xl,
+  },
+  // Selection/Shopping list bar: Frosted glass effect
   selectionBar: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: Spacing.md,
+    bottom: 20,
+    left: 20,
+    right: 20,
+    borderRadius: 9999,
+    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(10px)',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
   },
   selectionBarContent: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  selectionCancelButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   shoppingListButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 9999,
+    backgroundColor: '#10B981', // Brand Emerald
   },
-  rouletteOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 100,
-  },
-  rouletteBackdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
+  // Roulette: Modern "Surprise Me" overlay
   rouletteCard: {
-    width: "85%",
-    maxWidth: 340,
-    borderRadius: BorderRadius.lg,
+    width: "90%",
+    maxWidth: 360,
+    borderRadius: 32, // Extra rounded for special components
+    backgroundColor: '#FFFFFF',
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  rouletteHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  rouletteTitle: {
-    color: "#FFF",
-    fontWeight: "700",
-  },
-  rouletteContent: {
-    padding: Spacing.xl,
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  rouletteMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: Spacing.xs,
-  },
-  rouletteActions: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    marginTop: Spacing.lg,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 30,
+    elevation: 20,
   },
   rouletteButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  rouletteDismiss: {
-    paddingVertical: Spacing.md,
-    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 9999,
+    backgroundColor: '#FBBF24', // Brand Amber
   },
 });

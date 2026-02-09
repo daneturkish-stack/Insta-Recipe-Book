@@ -299,50 +299,148 @@ export default function RecipeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  heroContainer: { height: 320, width: '100%', position: 'relative' },
-  heroImage: { width: '100%', height: '100%', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  playButton: { position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -30 }, { translateY: -30 }] },
-  playButtonInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  content: { padding: Spacing.xl, paddingTop: 40 },
-  confidenceBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginBottom: 12 },
-  confidenceText: { fontSize: 10, fontWeight: '800', marginLeft: 4, letterSpacing: 0.5 },
-  title: { marginBottom: 24 },
-  statsBar: { flexDirection: 'row', justifyContent: 'space-around', padding: 16, borderRadius: 16, marginBottom: 32 },
-  statItem: { alignItems: 'center', gap: 4 },
-  statDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.1)' },
-  section: { marginBottom: 32 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 },
-  card: { borderRadius: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  borderBottom: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1, marginRight: 12, alignItems: 'center', justifyContent: 'center' },
-  ingredientText: { flex: 1, fontSize: 15 },
-  checkedText: { textDecorationLine: 'line-through', opacity: 0.4 },
-  instructionRow: { flexDirection: 'row', marginBottom: 20 },
-  stepCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16, marginTop: 2 },
-  stepCircleText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
-  instructionText: { flex: 1, fontSize: 16, lineHeight: 24 },
-  aiBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 6, opacity: 0.6 },
-  utilityBar: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 24 },
-  utilityItem: { alignItems: 'center', gap: 6 },
-  creatorCard: { padding: 16, borderRadius: 16, marginTop: 16, marginBottom: 16 },
-  creatorInfoRow: { flexDirection: 'row', alignItems: 'center' },
-  creatorAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#333' },
-  creatorTextContent: { marginLeft: 12, flex: 1 },
-  creatorTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  creatorName: { fontWeight: '700', fontSize: 15 },
-  platformBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  platformText: { fontSize: 10, color: '#999', textTransform: 'capitalize' },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  cookButton: { height: 56, borderRadius: 28 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
-  modalContent: { width: "100%", maxWidth: 400, borderRadius: 16, padding: 24 },
-  modalHeader: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
-  modalOptions: { gap: 16 },
-  modalOptionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 28 },
-  linkInput: { borderRadius: 12, padding: 16, fontSize: 14, marginBottom: 16 },
-  manualInputButtons: { flexDirection: "row", gap: 12 },
-  cancelButton: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 24 },
-  saveButton: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 24 },
-});
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8F9FA' // Soft canvas background
+  },
+  heroContainer: { 
+    height: 360, // Slightly taller for a more dramatic hero feel
+    width: '100%', 
+    position: 'relative' 
+  },
+  heroImage: { 
+    width: '100%', 
+    height: '100%', 
+    borderBottomLeftRadius: 32, 
+    borderBottomRightRadius: 32 
+  },
+  playButton: { 
+    position: 'absolute', 
+    top: '50%', 
+    left: '50%', 
+    transform: [{ translateX: -32 }, { translateY: -32 }] 
+  },
+  playButtonInner: { 
+    width: 64, 
+    height: 64, 
+    borderRadius: 32, 
+    backgroundColor: 'rgba(255,255,255,0.3)', // Frosted glass effect
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backdropFilter: 'blur(10px)'
+  },
+  content: { 
+    padding: Spacing.xl, 
+    paddingTop: 32 
+  },
+  confidenceBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 9999, // Pill shape
+    marginBottom: 16 
+  },
+  confidenceText: { 
+    fontSize: 10, 
+    fontWeight: '800', 
+    marginLeft: 4, 
+    letterSpacing: 1 // Editorial spacing
+  },
+  title: { 
+    marginBottom: 24,
+    lineHeight: 38 // Increased for better readability
+  },
+  // Floating Stats Bar
+  statsBar: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-around', 
+    padding: 20, 
+    borderRadius: 24, 
+    marginBottom: 40,
+    backgroundColor: '#FFFFFF',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4
+  },
+  statItem: { 
+    alignItems: 'center', 
+    gap: 6 
+  },
+  statDivider: { 
+    width: 1, 
+    height: 32, 
+    backgroundColor: '#F3F4F6' 
+  },
+  section: { 
+    marginBottom: 40 
+  },
+  sectionHeaderRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  card: { 
+    borderRadius: 24, // Consistent card radius
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6'
+  },
+  row: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 18 
+  },
+  borderBottom: { 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6' 
+  },
+  checkbox: { 
+    width: 22, 
+    height: 22, 
+    borderRadius: 8, 
+    borderWidth: 1.5, 
+    marginRight: 14, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  ingredientText: { 
+    flex: 1, 
+    fontSize: 16,
+    color: '#1F2937' 
+  },
+  checkedText: { 
+    textDecorationLine: 'line-through', 
+    opacity: 0.3 
+  },
+  instructionRow: { 
+    flexDirection: 'row', 
+    marginBottom: 28 
+  },
+  stepCircle: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 16, 
+    marginTop: 0 
+  },
+  stepCircleText: { 
+    color: '#FFF', 
+    fontWeight: '700', 
+    fontSize: 14 
+  },
+  instructionText: { 
+    flex: 1, 
+    fontSize: 16, 
+    lineHeight: 26, // Airy, readable steps
+    color: '#374151'
+  },
+  utilityBar: { 
+    flexDirection: '

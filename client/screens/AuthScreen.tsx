@@ -269,26 +269,132 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  contentContainer: { paddingHorizontal: Spacing.xl, flexGrow: 1 },
-  heroSection: { alignItems: "center", marginBottom: Spacing["3xl"] },
-  appIcon: { width: 88, height: 88, borderRadius: 22, marginBottom: Spacing.lg },
-  heroTitle: { marginBottom: Spacing.sm, textAlign: "center" },
-  featureList: { marginBottom: Spacing["2xl"], gap: Spacing.lg },
-  featureRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
-  featureIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  buttonGroup: { gap: Spacing.md, marginTop: "auto" },
-  primaryButton: { height: 52, borderRadius: BorderRadius.full, justifyContent: "center", alignItems: "center" },
-  secondaryButton: { height: 52, borderRadius: BorderRadius.full, justifyContent: "center", alignItems: "center", borderWidth: 1 },
-  backButton: { width: 40, height: 40, justifyContent: "center", marginBottom: Spacing.lg },
-  formHeader: { marginBottom: Spacing["2xl"] },
-  socialSection: { gap: Spacing.md, marginBottom: Spacing.xl },
-  socialButton: { height: 52, borderRadius: BorderRadius.full, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: Spacing.md },
-  socialButtonText: { fontSize: 16 },
-  googleIcon: { width: 24, height: 24, justifyContent: "center", alignItems: "center" },
-  dividerRow: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.xl },
-  dividerLine: { flex: 1, height: 1 },
-  errorBanner: { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.sm, marginBottom: Spacing.lg },
-  formFields: { gap: Spacing.lg },
-  input: { height: 52, borderRadius: BorderRadius.md, borderWidth: 1, paddingHorizontal: Spacing.lg, fontSize: 16 },
-});
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8F9FA' // Soft off-white background per brief
+  },
+  // New: Masonry Collage Header Logic
+  heroSection: { 
+    height: '45%', 
+    width: '100%',
+    flexDirection: 'row',
+    padding: 4,
+    backgroundColor: '#E5E7EB'
+  },
+  collageColumn: {
+    flex: 1,
+    gap: 4,
+    padding: 2
+  },
+  collageImage: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: '#D1D5DB'
+  },
+  // The Login Card that overlaps the collage
+  contentContainer: { 
+    flex: 1,
+    marginTop: -40, // Creating that premium overlap effect
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 40, 
+    borderTopRightRadius: 40, 
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['2xl'],
+    // Adding the soft shadow from your design system
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 10
+  },
+  appIcon: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 24, // Matches 24px card radius brief
+    marginBottom: Spacing.lg,
+    alignSelf: 'center',
+    // Elevated floating effect
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5
+  },
+  heroTitle: { 
+    marginBottom: Spacing.sm, 
+    textAlign: "center",
+    letterSpacing: -0.5 // Editorial feel
+  },
+  featureList: { 
+    marginBottom: Spacing["2xl"], 
+    gap: Spacing.md 
+  },
+  featureRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: Spacing.md,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 16
+  },
+  featureIconWrap: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    justifyContent: "center", 
+    alignItems: "center",
+    backgroundColor: '#10B98115' // Light Emerald tint
+  },
+  buttonGroup: { 
+    gap: Spacing.md, 
+    marginTop: 'auto',
+    paddingBottom: Spacing.xl 
+  },
+  primaryButton: { 
+    height: 56, // Increased for better touch target
+    borderRadius: 9999, // Perfect pill shape per brief
+    backgroundColor: '#10B981', // Emerald Green
+    justifyContent: "center", 
+    alignItems: "center",
+    shadowColor: "#10B981",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  secondaryButton: { 
+    height: 56, 
+    borderRadius: 9999, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB'
+  },
+  socialSection: { 
+    gap: Spacing.md, 
+    marginBottom: Spacing.xl 
+  },
+  socialButton: { 
+    height: 52, 
+    borderRadius: 9999, 
+    flexDirection: "row", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF'
+  },
+  socialButtonText: { 
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937'
+  },
+  dividerRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: Spacing.xl,
+    opacity: 0.5
+  },
+  dividerLine: { 
+    flex: 1, 
+    height: 1,
+    backgroundColor: '#E5E7EB'
