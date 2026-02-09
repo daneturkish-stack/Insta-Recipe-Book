@@ -1,54 +1,43 @@
 import React from "react";
-import { View, Pressable } from "react-native";
+import { View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { HeaderButton } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 
 import CollectionScreen from "../screens/CollectionScreen";
 import RecipeDetailScreen from "../screens/RecipeDetailScreen";
 import CreateShoppingListScreen from "../screens/CreateShoppingListScreen";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import { HeaderTitle, ScreenHeaderTitle } from "@/components/HeaderTitle";
-import { ThemedText } from "@/components/ThemedText";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
-import { useShoppingList } from "@/hooks/useRecipes";
+import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import type { Recipe } from "@/types/recipe";
 
-function ShoppingListHeaderButton() {
+const avatarImage = require("../../assets/images/avatar-preset.png");
+
+function ProfileHeaderButton() {
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
   const { theme } = useTheme();
-  const { data: shoppingList } = useShoppingList();
-  
-  const uncheckedCount = shoppingList?.filter(i => !i.isChecked).length || 0;
 
   return (
     <HeaderButton
-      onPress={() => navigation.navigate("ShoppingList")}
-      accessibilityLabel="Shopping List"
+      onPress={() => navigation.navigate("Profile")}
+      accessibilityLabel="Profile"
     >
-      <View style={{ position: "relative" }}>
-        <Feather name="shopping-cart" size={22} color={theme.text} />
-        {uncheckedCount > 0 ? (
-          <View style={{
-            position: "absolute",
-            top: -6,
-            right: -8,
-            backgroundColor: theme.primary,
-            borderRadius: 8,
-            minWidth: 16,
-            height: 16,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 4,
-          }}>
-            <ThemedText style={{ color: "#FFF", fontSize: 10, fontWeight: "700" }}>
-              {uncheckedCount > 99 ? "99+" : uncheckedCount}
-            </ThemedText>
-          </View>
-        ) : null}
-      </View>
+      <Image
+        source={user?.profileImage ? { uri: user.profileImage } : avatarImage}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: theme.backgroundSecondary,
+        }}
+        contentFit="cover"
+      />
     </HeaderButton>
   );
 }
@@ -58,6 +47,7 @@ export type CollectionStackParamList = {
   RecipeDetail: { recipeId: string };
   CreateShoppingList: { recipes: Recipe[] };
   ShoppingList: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<CollectionStackParamList>();
@@ -72,7 +62,7 @@ export default function CollectionStackNavigator() {
         component={CollectionScreen}
         options={{
           headerTitle: () => <HeaderTitle />,
-          headerRight: () => <ShoppingListHeaderButton />,
+          headerRight: () => <ProfileHeaderButton />,
         }}
       />
       <Stack.Screen
@@ -97,6 +87,14 @@ export default function CollectionStackNavigator() {
         component={ShoppingListScreen}
         options={{
           headerTitle: () => <ScreenHeaderTitle title="Shopping List" />,
+          headerTransparent: false,
+        }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          headerTitle: () => <ScreenHeaderTitle title="Profile" />,
           headerTransparent: false,
         }}
       />

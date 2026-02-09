@@ -2,18 +2,18 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Image, Platform, StyleSheet, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
 
 import CollectionStackNavigator from "@/navigation/CollectionStackNavigator";
 import AddRecipeStackNavigator from "@/navigation/AddRecipeStackNavigator";
 import PantryStackNavigator from "@/navigation/PantryStackNavigator";
-import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import ShoppingStackNavigator from "@/navigation/ShoppingStackNavigator";
 import RemiScreen from "@/screens/RemiScreen";
 import { useTheme } from "@/hooks/useTheme";
+import { useShoppingList } from "@/hooks/useRecipes";
 import { KitchColors } from "@/constants/theme";
 
 import foodTrayIcon from "../assets/images/food-tray.png";
-import cookingIcon from "../assets/images/cooking.png";
 import healthyFoodIcon from "../assets/images/healthy-food.png";
 import chefsHatIcon from "../assets/images/chefs-hat.png";
 
@@ -22,8 +22,37 @@ export type MainTabParamList = {
   AddRecipeTab: undefined;
   RemiTab: undefined;
   PantryTab: undefined;
-  ProfileTab: undefined;
+  ShoppingTab: undefined;
 };
+
+function ShoppingTabIcon({ color }: { color: string }) {
+  const { data: shoppingList } = useShoppingList();
+  const uncheckedCount = shoppingList?.filter(i => !i.isChecked).length || 0;
+
+  return (
+    <View style={{ position: "relative" }}>
+      <Feather name="shopping-cart" size={22} color={color} />
+      {uncheckedCount > 0 ? (
+        <View style={{
+          position: "absolute",
+          top: -6,
+          right: -8,
+          backgroundColor: KitchColors.primary,
+          borderRadius: 8,
+          minWidth: 16,
+          height: 16,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 4,
+        }}>
+          <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "700" }}>
+            {uncheckedCount > 99 ? "99+" : uncheckedCount}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -90,7 +119,7 @@ export default function MainTabNavigator() {
           title: "Remi",
           headerShown: false,
           tabBarIcon: ({ color }) => (
-            <Image source={cookingIcon} style={[styles.tabIcon, { tintColor: color }]} />
+            <Image source={chefsHatIcon} style={[styles.tabIcon, { tintColor: color }]} />
           ),
         }}
       />
@@ -105,13 +134,11 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
+        name="ShoppingTab"
+        component={ShoppingStackNavigator}
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <Image source={chefsHatIcon} style={[styles.tabIcon, { tintColor: color }]} />
-          ),
+          title: "Shop",
+          tabBarIcon: ({ color }) => <ShoppingTabIcon color={color} />,
         }}
       />
     </Tab.Navigator>

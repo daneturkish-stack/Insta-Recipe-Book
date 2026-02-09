@@ -2,7 +2,6 @@ import React from "react";
 import { StyleSheet, View, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -24,7 +23,6 @@ const avatarImage = require("../../assets/images/avatar-preset.png");
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { data: recipes } = useRecipes();
   const { user, trial, logout } = useAuth();
@@ -127,7 +125,7 @@ export default function ProfileScreen() {
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
       contentContainerStyle={{
         paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
+        paddingBottom: insets.bottom + Spacing.xl,
         paddingHorizontal: Spacing.lg,
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
