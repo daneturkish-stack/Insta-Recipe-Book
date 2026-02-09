@@ -161,7 +161,7 @@ export default function ShoppingListScreen() {
   }, [theme]);
 
   const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
+    <View style={[styles.emptyContainer, { paddingBottom: insets.bottom + (Platform.OS === "ios" ? 88 : 64) + Spacing.xl }]}>
       <EmptyState
         image={emptyImage}
         title="Shopping list is empty"
