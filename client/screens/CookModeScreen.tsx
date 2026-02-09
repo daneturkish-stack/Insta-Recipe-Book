@@ -246,12 +246,30 @@ export default function CookModeScreen() {
     return reply;
   }, [recipe, currentStep, currentInstructionText]);
 
+  const getBase64FromRecording = useCallback(async (uri: string): Promise<string> => {
+    if (Platform.OS === "web") {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.split(",")[1] || "";
+          resolve(base64);
+        };
+        reader.onerror = () => reject(new Error("Failed to read audio blob"));
+        reader.readAsDataURL(blob);
+      });
+    }
+    const audioFile = new File(uri);
+    return await audioFile.base64();
+  }, []);
+
   const transcribeAudio = useCallback(async (recordingUri: string): Promise<string> => {
     const baseUrl = getApiUrl();
     const url = new URL("/api/remy/transcribe", baseUrl);
 
-    const audioFile = new File(recordingUri);
-    const base64Audio = await audioFile.base64();
+    const base64Audio = await getBase64FromRecording(recordingUri);
 
     if (!base64Audio || base64Audio.length === 0) {
       return "";
@@ -269,7 +287,26 @@ export default function CookModeScreen() {
 
     const data = await res.json();
     return data.text || "";
-  }, []);
+  }, [getBase64FromRecording]);
+
+  const transcribeAudioRef = useRef(transcribeAudio);
+  const sendToRemiRef = useRef(sendToRemi);
+  const speakRemiResponseRef = useRef(speakRemiResponse);
+
+  useEffect(() => {
+    transcribeAudioRef.current = transcribeAudio;
+  }, [transcribeAudio]);
+
+  useEffect(() => {
+    sendToRemiRef.current = sendToRemi;
+  }, [sendToRemi]);
+
+  useEffect(() => {
+    speakRemiResponseRef.current = speakRemiResponse;
+  }, [speakRemiResponse]);
+
+  const processRecordingRef = useRef<() => Promise<void>>();
+  const startRecordingRef = useRef<() => Promise<void>>();
 
   const startRecording = useCallback(async () => {
     if (!voiceActiveRef.current) return;
@@ -299,14 +336,14 @@ export default function CookModeScreen() {
 
       maxRecordingTimeoutRef.current = setTimeout(() => {
         if (voiceActiveRef.current && recordingRef.current) {
-          processRecording();
+          processRecordingRef.current?.();
         }
-      }, 5000);
+      }, 12000);
 
     } catch (error) {
       console.error("Failed to start recording:", error);
       if (voiceActiveRef.current) {
-        setTimeout(() => startRecording(), 1000);
+        setTimeout(() => startRecordingRef.current?.(), 1000);
       }
     }
   }, []);
@@ -319,7 +356,7 @@ export default function CookModeScreen() {
 
     const currentRecording = recordingRef.current;
     if (!currentRecording) {
-      if (voiceActiveRef.current) startRecording();
+      if (voiceActiveRef.current) startRecordingRef.current?.();
       return;
     }
 
@@ -334,41 +371,46 @@ export default function CookModeScreen() {
       const uri = currentRecording.getURI();
 
       if (!uri) {
-        if (voiceActiveRef.current) startRecording();
+        if (voiceActiveRef.current) startRecordingRef.current?.();
         return;
       }
 
-      const transcription = await transcribeAudio(uri);
+      const transcription = await transcribeAudioRef.current(uri);
       console.log("[CookMode Voice] Transcribed:", transcription);
 
       if (!transcription || transcription.trim().length < 2) {
         if (voiceActiveRef.current) {
           setVoiceState("listening");
           setVoiceStatusText("Listening... speak to Remi");
-          startRecording();
+          startRecordingRef.current?.();
         }
         return;
       }
 
       setVoiceStatusText("Remi is thinking...");
-      const remiReply = await sendToRemi(transcription);
+      const remiReply = await sendToRemiRef.current(transcription);
       console.log("[CookMode Voice] Remi says:", remiReply.substring(0, 100));
 
       if (!voiceActiveRef.current) return;
 
-      await speakRemiResponse(remiReply);
+      await speakRemiResponseRef.current(remiReply);
 
       if (voiceActiveRef.current) {
-        startRecording();
+        startRecordingRef.current?.();
       }
     } catch (error) {
       console.error("[CookMode Voice] Error:", error);
       if (voiceActiveRef.current) {
         setVoiceStatusText("Listening... speak to Remi");
-        startRecording();
+        startRecordingRef.current?.();
       }
     }
-  }, [transcribeAudio, sendToRemi, speakRemiResponse, startRecording]);
+  }, []);
+
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+    processRecordingRef.current = processRecording;
+  }, [startRecording, processRecording]);
 
   const toggleVoice = useCallback(async () => {
     if (voiceActiveRef.current) {
@@ -398,9 +440,9 @@ export default function CookModeScreen() {
     } else {
       voiceActiveRef.current = true;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      startRecording();
+      startRecordingRef.current?.();
     }
-  }, [startRecording]);
+  }, []);
 
   useEffect(() => {
     return () => {

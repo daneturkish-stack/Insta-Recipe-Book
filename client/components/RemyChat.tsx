@@ -200,8 +200,23 @@ export function RemyChat({
         throw new Error("No recording URI");
       }
 
-      const audioFile = new File(uri);
-      const base64Audio = await audioFile.base64();
+      let base64Audio: string;
+      if (Platform.OS === "web") {
+        const blobResponse = await fetch(uri);
+        const blob = await blobResponse.blob();
+        base64Audio = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            resolve(dataUrl.split(",")[1] || "");
+          };
+          reader.onerror = () => reject(new Error("Failed to read audio blob"));
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const audioFile = new File(uri);
+        base64Audio = await audioFile.base64();
+      }
 
       const response = await fetch(
         new URL("/api/remy/transcribe", getApiUrl()).toString(),

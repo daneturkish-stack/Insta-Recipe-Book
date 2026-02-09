@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { StyleSheet, View, FlatList, Pressable, TextInput, Alert, ActivityIndicator } from "react-native";
+import { StyleSheet, View, FlatList, Pressable, TextInput, Alert, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -172,8 +172,23 @@ export default function PantryScreen() {
 
       console.log("[Voice] Recording URI:", uri);
       
-      const audioFile = new File(uri);
-      const base64Audio = await audioFile.base64();
+      let base64Audio: string;
+      if (Platform.OS === "web") {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        base64Audio = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            resolve(dataUrl.split(",")[1] || "");
+          };
+          reader.onerror = () => reject(new Error("Failed to read audio blob"));
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const audioFile = new File(uri);
+        base64Audio = await audioFile.base64();
+      }
       
       console.log("[Voice] Base64 length:", base64Audio?.length || 0);
 
