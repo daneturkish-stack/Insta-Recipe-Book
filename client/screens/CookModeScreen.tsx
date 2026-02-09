@@ -5,13 +5,16 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-import Animated, { FadeIn, SlideInRight } from "react-native-reanimated";
+import { Audio } from "expo-av";
+import Animated, { FadeIn, SlideInRight, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, cancelAnimation } from "react-native-reanimated";
 import YoutubePlayer from "react-native-youtube-iframe";
+import { File } from "expo-file-system";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useRecipe } from "@/hooks/useRecipes";
-import { CookModeColors, CookModeTypography, Spacing, BorderRadius } from "@/constants/theme";
+import { CookModeColors, CookModeTypography, Spacing } from "@/constants/theme";
 import { Ingredient, InstructionStep } from "@/types/recipe";
+import { getApiUrl } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -70,12 +73,7 @@ function parseTimeMentions(text: string): { amount: number; unit: string; totalS
   return results;
 }
 
-const REMI_KEYWORDS = [
-  { patterns: ["how much", "how many", "what amount"], type: "ingredients" as const },
-  { patterns: ["what ingredients", "which ingredients", "ingredients for"], type: "ingredients" as const },
-  { patterns: ["what temperature", "how hot", "what temp"], type: "temperature" as const },
-  { patterns: ["how long", "what time", "how many minutes"], type: "time" as const },
-];
+type VoiceState = "off" | "listening" | "processing" | "speaking";
 
 export default function CookModeScreen() {
   const insets = useSafeAreaInsets();
@@ -85,11 +83,19 @@ export default function CookModeScreen() {
 
   const recipe = useRecipe(recipeId);
   const [currentStep, setCurrentStep] = useState(0);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [autoRead, setAutoRead] = useState(false);
   const [activeTimers, setActiveTimers] = useState<Record<string, number>>({});
   const playerRef = useRef<any>(null);
   const timerIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+
+  const [voiceState, setVoiceState] = useState<VoiceState>("off");
+  const [voiceStatusText, setVoiceStatusText] = useState("");
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const voiceActiveRef = useRef(false);
+  const conversationHistoryRef = useRef<{ role: string; content: string }[]>([]);
+  const maxRecordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pulseScale = useSharedValue(1);
+  const pulseOpacity = useSharedValue(0.4);
 
   const totalSteps = recipe?.instructions?.length || 0;
 
@@ -128,43 +134,294 @@ export default function CookModeScreen() {
     }
   }, [currentStep, hasYouTubeVideo, recipe]);
 
-  const speakInstruction = useCallback(async (text: string) => {
-    try {
-      await Speech.stop();
-      const isAvailable = await Speech.isSpeakingAsync().then(() => true).catch(() => false);
-      setIsSpeaking(true);
+  useEffect(() => {
+    if (voiceState === "listening") {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.25, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      pulseOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: 800 }),
+          withTiming(0.3, { duration: 800 })
+        ),
+        -1,
+        true
+      );
+    } else if (voiceState === "processing") {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.1, { duration: 400 }),
+          withTiming(1, { duration: 400 })
+        ),
+        -1,
+        true
+      );
+      pulseOpacity.value = withTiming(0.6, { duration: 200 });
+    } else if (voiceState === "speaking") {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 500 }),
+          withTiming(1.05, { duration: 500 })
+        ),
+        -1,
+        true
+      );
+      pulseOpacity.value = withTiming(0.7, { duration: 200 });
+    } else {
+      cancelAnimation(pulseScale);
+      cancelAnimation(pulseOpacity);
+      pulseScale.value = withTiming(1, { duration: 200 });
+      pulseOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [voiceState]);
+
+  const pulseAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity: pulseOpacity.value,
+  }));
+
+  const speakRemiResponse = useCallback((text: string): Promise<void> => {
+    return new Promise((resolve) => {
+      setVoiceState("speaking");
+      setVoiceStatusText("Remi is speaking...");
       Speech.speak(text, {
-        rate: 0.9,
-        pitch: 1.0,
-        language: "en-US",
-        onDone: () => setIsSpeaking(false),
-        onStopped: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
+        rate: 0.95,
+        pitch: 1.05,
+        language: "en-GB",
+        onDone: () => resolve(),
+        onStopped: () => resolve(),
+        onError: () => resolve(),
       });
-    } catch (err) {
-      console.warn("Speech not available:", err);
-      setIsSpeaking(false);
+    });
+  }, []);
+
+  const sendToRemi = useCallback(async (userMessage: string): Promise<string> => {
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/remy/chat", baseUrl);
+
+    const currentRecipeContext = recipe ? {
+      title: recipe.title,
+      description: recipe.description,
+      prepTime: recipe.prepTime,
+      cookTime: recipe.cookTime,
+      servings: recipe.servings,
+      dishType: recipe.dishType,
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions?.map((s: string | InstructionStep) => 
+        typeof s === "string" ? s : s.text
+      ),
+    } : undefined;
+
+    const contextMessage = `I'm currently on Step ${currentStep + 1} of "${recipe?.title || "a recipe"}": "${currentInstructionText}". My question: ${userMessage}`;
+
+    conversationHistoryRef.current.push({ role: "user", content: contextMessage });
+    if (conversationHistoryRef.current.length > 10) {
+      conversationHistoryRef.current = conversationHistoryRef.current.slice(-10);
+    }
+
+    const res = await fetch(url.href, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: contextMessage,
+        conversationHistory: conversationHistoryRef.current.slice(0, -1),
+        currentRecipe: currentRecipeContext,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to get response from Remi");
+    }
+
+    const data = await res.json();
+    const reply = data.reply || "Sorry, I didn't catch that. Could you try again?";
+
+    conversationHistoryRef.current.push({ role: "assistant", content: reply });
+
+    return reply;
+  }, [recipe, currentStep, currentInstructionText]);
+
+  const transcribeAudio = useCallback(async (recordingUri: string): Promise<string> => {
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/remy/transcribe", baseUrl);
+
+    const audioFile = new File(recordingUri);
+    const base64Audio = await audioFile.base64();
+
+    if (!base64Audio || base64Audio.length === 0) {
+      return "";
+    }
+
+    const res = await fetch(url.href, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audio: base64Audio }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Transcription failed");
+    }
+
+    const data = await res.json();
+    return data.text || "";
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (!voiceActiveRef.current) return;
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Microphone access needed", "Please enable microphone access in your settings to talk to Remi.");
+        voiceActiveRef.current = false;
+        setVoiceState("off");
+        setVoiceStatusText("");
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setVoiceState("listening");
+      setVoiceStatusText("Listening... speak to Remi");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      maxRecordingTimeoutRef.current = setTimeout(() => {
+        if (voiceActiveRef.current && recordingRef.current) {
+          processRecording();
+        }
+      }, 12000);
+
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      if (voiceActiveRef.current) {
+        setTimeout(() => startRecording(), 1000);
+      }
     }
   }, []);
 
-  const toggleSpeak = useCallback(() => {
-    if (isSpeaking) {
-      Speech.stop();
-      setIsSpeaking(false);
-    } else if (currentInstructionText) {
-      speakInstruction(currentInstructionText);
+  const processRecording = useCallback(async () => {
+    if (maxRecordingTimeoutRef.current) {
+      clearTimeout(maxRecordingTimeoutRef.current);
+      maxRecordingTimeoutRef.current = null;
     }
-  }, [isSpeaking, currentInstructionText, speakInstruction]);
 
-  useEffect(() => {
-    if (autoRead && currentInstructionText) {
-      speakInstruction(currentInstructionText);
+    const currentRecording = recordingRef.current;
+    if (!currentRecording) {
+      if (voiceActiveRef.current) startRecording();
+      return;
     }
-  }, [currentStep, autoRead, currentInstructionText, speakInstruction]);
+
+    recordingRef.current = null;
+
+    try {
+      setVoiceState("processing");
+      setVoiceStatusText("Thinking...");
+
+      await currentRecording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = currentRecording.getURI();
+
+      if (!uri) {
+        if (voiceActiveRef.current) startRecording();
+        return;
+      }
+
+      const transcription = await transcribeAudio(uri);
+      console.log("[CookMode Voice] Transcribed:", transcription);
+
+      if (!transcription || transcription.trim().length < 2) {
+        if (voiceActiveRef.current) {
+          setVoiceState("listening");
+          setVoiceStatusText("Listening... speak to Remi");
+          startRecording();
+        }
+        return;
+      }
+
+      setVoiceStatusText("Remi is thinking...");
+      const remiReply = await sendToRemi(transcription);
+      console.log("[CookMode Voice] Remi says:", remiReply.substring(0, 100));
+
+      if (!voiceActiveRef.current) return;
+
+      await speakRemiResponse(remiReply);
+
+      if (voiceActiveRef.current) {
+        startRecording();
+      }
+    } catch (error) {
+      console.error("[CookMode Voice] Error:", error);
+      if (voiceActiveRef.current) {
+        setVoiceStatusText("Listening... speak to Remi");
+        startRecording();
+      }
+    }
+  }, [transcribeAudio, sendToRemi, speakRemiResponse, startRecording]);
+
+  const toggleVoice = useCallback(async () => {
+    if (voiceActiveRef.current) {
+      voiceActiveRef.current = false;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      Speech.stop();
+
+      if (maxRecordingTimeoutRef.current) {
+        clearTimeout(maxRecordingTimeoutRef.current);
+        maxRecordingTimeoutRef.current = null;
+      }
+
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          // already stopped
+        }
+        recordingRef.current = null;
+      }
+
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      setVoiceState("off");
+      setVoiceStatusText("");
+      conversationHistoryRef.current = [];
+    } else {
+      voiceActiveRef.current = true;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      startRecording();
+    }
+  }, [startRecording]);
+
+  const handleTapWhileListening = useCallback(() => {
+    if (voiceState === "listening" && recordingRef.current) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      processRecording();
+    }
+  }, [voiceState, processRecording]);
 
   useEffect(() => {
     return () => {
+      voiceActiveRef.current = false;
       Speech.stop();
+      if (maxRecordingTimeoutRef.current) {
+        clearTimeout(maxRecordingTimeoutRef.current);
+      }
+      if (recordingRef.current) {
+        try {
+          recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {}
+        recordingRef.current = null;
+      }
       Object.values(timerIntervalsRef.current).forEach(clearInterval);
     };
   }, []);
@@ -218,28 +475,6 @@ export default function CookModeScreen() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleAskRemi = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-    let response = `Step ${currentStep + 1}: ${currentInstructionText}`;
-
-    if (stepIngredients.length > 0) {
-      const ingredientList = stepIngredients
-        .map((i) => `${i.amount} ${i.unit} ${i.name}`.trim())
-        .join(", ");
-      response += `. You will need: ${ingredientList}`;
-    }
-
-    if (timeMentions.length > 0) {
-      const timeInfo = timeMentions
-        .map((t) => `${t.amount} ${t.unit}`)
-        .join(" and ");
-      response += `. This step takes about ${timeInfo}`;
-    }
-
-    speakInstruction(response);
-  }, [currentStep, currentInstructionText, stepIngredients, timeMentions, speakInstruction]);
-
   if (!recipe) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -248,13 +483,16 @@ export default function CookModeScreen() {
     );
   }
 
+  const micIconName = voiceState === "speaking" ? "volume-2" : "mic";
+  const isVoiceActive = voiceState !== "off";
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-        <Pressable onPress={handleClose} style={styles.closeButton}>
+        <Pressable onPress={handleClose} style={styles.closeButton} testID="cook-mode-close">
           <Feather name="x" size={28} color={CookModeColors.text} />
         </Pressable>
         <View style={styles.headerCenter}>
@@ -262,20 +500,12 @@ export default function CookModeScreen() {
             {recipe.title}
           </ThemedText>
         </View>
-        <View style={styles.headerActions}>
-          <Pressable 
-            onPress={() => setAutoRead(!autoRead)} 
-            style={[styles.headerButton, autoRead ? styles.headerButtonActive : null]}
-            testID="cook-mode-auto-read"
-          >
-            <Feather name={autoRead ? "volume-2" : "volume-x"} size={22} color={autoRead ? CookModeColors.primary : CookModeColors.text} />
-          </Pressable>
-        </View>
+        <View style={{ width: 44 }} />
       </View>
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
-        {recipe.instructions.map((_, index) => (
+        {recipe.instructions.map((_: string | InstructionStep, index: number) => (
           <View
             key={index}
             style={[
@@ -316,23 +546,10 @@ export default function CookModeScreen() {
           entering={SlideInRight.duration(300)}
           style={styles.stepContainer}
         >
-          <View style={styles.stepHeader}>
-            <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
-              Step {currentStep + 1}
-            </ThemedText>
-            <Pressable 
-              onPress={toggleSpeak} 
-              style={[styles.speakButton, isSpeaking ? styles.speakButtonActive : null]}
-              testID="cook-mode-speak"
-            >
-              <Feather 
-                name={isSpeaking ? "volume-2" : "volume-1"} 
-                size={24} 
-                color={isSpeaking ? CookModeColors.primary : CookModeColors.textSecondary} 
-              />
-            </Pressable>
-          </View>
-          <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text }]}>
+          <ThemedText style={[CookModeTypography.stepNumber, { color: CookModeColors.primary }]}>
+            Step {currentStep + 1}
+          </ThemedText>
+          <ThemedText style={[CookModeTypography.stepText, { color: CookModeColors.text, marginTop: Spacing.lg }]}>
             {currentInstructionText}
           </ThemedText>
 
@@ -394,6 +611,23 @@ export default function CookModeScreen() {
         </Animated.View>
       </ScrollView>
 
+      {/* Voice Status Bar */}
+      {isVoiceActive ? (
+        <Animated.View entering={FadeIn.duration(200)} style={styles.voiceStatusBar}>
+          <View style={[styles.voiceStatusDot, {
+            backgroundColor: voiceState === "listening" ? "#10B981" : voiceState === "processing" ? "#F59E0B" : "#6366F1",
+          }]} />
+          <ThemedText style={styles.voiceStatusText}>
+            {voiceStatusText}
+          </ThemedText>
+          {voiceState === "listening" ? (
+            <Pressable onPress={handleTapWhileListening} style={styles.voiceSendHint}>
+              <ThemedText style={styles.voiceSendHintText}>Tap mic to send</ThemedText>
+            </Pressable>
+          ) : null}
+        </Animated.View>
+      ) : null}
+
       {/* Navigation Controls */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + Spacing.xl }]}>
         <Pressable
@@ -403,6 +637,7 @@ export default function CookModeScreen() {
             styles.navButton,
             { opacity: currentStep === 0 ? 0.3 : 1 },
           ]}
+          testID="cook-mode-previous"
         >
           <Feather name="chevron-left" size={40} color={CookModeColors.text} />
           <ThemedText style={[styles.navLabel, { color: CookModeColors.textSecondary }]}>
@@ -423,6 +658,7 @@ export default function CookModeScreen() {
             styles.navButton,
             { opacity: currentStep === totalSteps - 1 ? 0.3 : 1 },
           ]}
+          testID="cook-mode-next"
         >
           <Feather name="chevron-right" size={40} color={CookModeColors.text} />
           <ThemedText style={[styles.navLabel, { color: CookModeColors.textSecondary }]}>
@@ -441,14 +677,30 @@ export default function CookModeScreen() {
         onPress={handleNext}
       />
 
-      {/* Ask Remi Floating Mic Button */}
-      <Pressable
-        onPress={handleAskRemi}
-        style={[styles.askRemiFab, { bottom: insets.bottom + Spacing.xl + 80 }]}
-        testID="ask-remi-mic"
-      >
-        <Feather name="mic" size={24} color={CookModeColors.text} />
-      </Pressable>
+      {/* Remi Voice Toggle - Floating Mic Button */}
+      <View style={[styles.remiFabContainer, { bottom: insets.bottom + Spacing.xl + 80 }]}>
+        {isVoiceActive ? (
+          <Animated.View style={[styles.remiFabPulse, pulseAnimatedStyle]} />
+        ) : null}
+        <Pressable
+          onPress={voiceState === "listening" ? handleTapWhileListening : toggleVoice}
+          onLongPress={isVoiceActive ? toggleVoice : undefined}
+          style={[
+            styles.remiFab,
+            isVoiceActive ? styles.remiFabActive : null,
+          ]}
+          testID="remi-voice-toggle"
+        >
+          <Feather
+            name={micIconName}
+            size={26}
+            color={isVoiceActive ? "#FFFFFF" : CookModeColors.text}
+          />
+        </Pressable>
+        {!isVoiceActive ? (
+          <ThemedText style={styles.remiFabLabel}>Ask Remi</ThemedText>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -456,7 +708,7 @@ export default function CookModeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: CookModeColors.background, // Near-black for focus
+    backgroundColor: CookModeColors.background,
   },
   header: {
     flexDirection: "row",
@@ -467,7 +719,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: Spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 9999,
   },
   headerCenter: {
@@ -475,25 +727,12 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
   },
   recipeTitle: {
-    fontSize: 14, // Smaller, subtle header title to keep focus on the step
+    fontSize: 14,
     textAlign: "center",
     opacity: 0.6,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  headerButton: {
-    padding: Spacing.sm,
-    borderRadius: 12,
-  },
-  headerButtonActive: {
-    backgroundColor: CookModeColors.primary, // Emerald for active states
-  },
-  // Modern linear progress bar
   progressContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -512,41 +751,29 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: Spacing["4xl"], // More horizontal breathability
+    paddingHorizontal: Spacing["4xl"],
     paddingVertical: Spacing.xl,
   },
   youtubeContainer: {
     marginBottom: Spacing["2xl"],
-    borderRadius: 24, // Matches brand radius
+    borderRadius: 24,
     overflow: "hidden",
     alignSelf: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: "rgba(255,255,255,0.1)",
   },
   stepContainer: {
-    alignItems: "flex-start", // Left aligned for easier reading of large text
+    alignItems: "flex-start",
   },
-  stepHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  speakButton: {
-    padding: Spacing.md,
-    borderRadius: 9999,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  // Timer Section: High Visibility
   timerSection: {
     marginTop: Spacing["3xl"],
     width: "100%",
     alignItems: "center",
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: "rgba(255,255,255,0.03)",
     padding: 24,
     borderRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: "rgba(255,255,255,0.05)",
   },
   startTimerButton: {
     flexDirection: "row",
@@ -555,32 +782,31 @@ const styles = StyleSheet.create({
     backgroundColor: CookModeColors.primary,
     paddingHorizontal: 28,
     paddingVertical: 14,
-    borderRadius: 9999, // Pill shape
+    borderRadius: 9999,
   },
   activeTimerBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: 9999,
     borderWidth: 2,
-    borderColor: CookModeColors.accent, // Amber for active timers
+    borderColor: CookModeColors.accent,
   },
   activeTimerText: {
-    fontSize: 48, // Massive text for kitchen visibility
+    fontSize: 48,
     fontWeight: "800",
     color: CookModeColors.accent,
     fontVariant: ["tabular-nums"],
   },
-  // Ingredient Chips: Clean and readable
   ingredientsSection: {
     marginTop: Spacing["4xl"],
     width: "100%",
     paddingTop: Spacing.xl,
     borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: "rgba(255,255,255,0.1)",
   },
   ingredientsSectionTitle: {
     fontSize: 12,
@@ -593,12 +819,12 @@ const styles = StyleSheet.create({
   ingredientChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 16, // Softer chips
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: "rgba(255,255,255,0.1)",
     gap: 8,
   },
   ingredientChipAmount: {
@@ -608,7 +834,37 @@ const styles = StyleSheet.create({
   },
   ingredientChipName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
+  },
+  voiceStatusBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    gap: Spacing.sm,
+  },
+  voiceStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  voiceStatusText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    flex: 1,
+  },
+  voiceSendHint: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  voiceSendHintText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.5)",
   },
   controls: {
     flexDirection: "row",
@@ -623,34 +879,51 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
     alignItems: "center",
     justifyContent: "center",
   },
   stepCount: {
     fontSize: 20,
     fontWeight: "700",
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
-  // Floating Action Button for Remy AI
-  askRemiFab: {
+  remiFabContainer: {
     position: "absolute",
     right: Spacing.xl,
-    bottom: 120,
+    alignItems: "center",
+  },
+  remiFab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  remiFabActive: {
+    backgroundColor: CookModeColors.primary,
+    borderColor: CookModeColors.primary,
+    shadowColor: CookModeColors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  remiFabPulse: {
+    position: "absolute",
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: CookModeColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: CookModeColors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  speakButtonActive: {
-    backgroundColor: CookModeColors.primary + "30",
+  remiFabLabel: {
+    marginTop: 4,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "600",
   },
   navLabel: {
     fontSize: 11,
