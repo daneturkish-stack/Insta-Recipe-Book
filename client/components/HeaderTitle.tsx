@@ -5,19 +5,21 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 
-const logoLight = require("../../assets/images/logo-light.png");
-const logoDark = require("../../assets/images/logo-dark.png");
+const kitchIcon = require("../../assets/images/kitch-icon.png");
 
 export function HeaderTitle() {
-  const { isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <View style={styles.container}>
       <Image
-        source={isDark ? logoDark : logoLight}
-        style={styles.logo}
+        source={kitchIcon}
+        style={styles.icon}
         resizeMode="contain"
       />
+      <ThemedText type="bodyMedium" style={[styles.appName, { color: theme.text }]}>
+        Kitch
+      </ThemedText>
     </View>
   );
 }
@@ -44,10 +46,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
+    gap: Spacing.sm,
   },
-  logo: {
-    width: 100,
-    height: 36,
+  icon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+  },
+  appName: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   screenTitleContainer: {
     alignItems: "center",

@@ -28,7 +28,7 @@ import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const appIcon = require("../../assets/images/icon.png");
+const appIcon = require("../../assets/images/kitch-logo-text.png");
 const foodBg = require("../../assets/images/food-collage-bg.png");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -189,7 +189,6 @@ export default function AuthScreen() {
         <View style={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingBottom: insets.bottom + Spacing["3xl"] }]}>
           <View style={styles.heroContent}>
             <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
-            <ThemedText type="hero" style={styles.heroTitle}>Kitch</ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", lineHeight: 24 }}>
               Turn social media food content into your personal cookbook
             </ThemedText>
@@ -306,19 +305,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   appIcon: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 24,
+    width: 120, 
+    height: 120, 
+    borderRadius: 28,
     marginBottom: Spacing.lg,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-  },
-  heroTitle: { 
-    marginBottom: Spacing.sm, 
-    textAlign: "center",
-    letterSpacing: -0.5,
   },
   featureList: { 
     marginBottom: Spacing["2xl"], 
