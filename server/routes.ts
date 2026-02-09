@@ -2247,7 +2247,7 @@ Rules:
       if (!user) {
         return res.status(401).json({ error: "Not authenticated" });
       }
-      const item = await storage.toggleShoppingListItem(req.params.id, user.id);
+      const item = await storage.toggleShoppingListItem(req.params.id as string, user.id);
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
       }
@@ -2264,7 +2264,7 @@ Rules:
       if (!user) {
         return res.status(401).json({ error: "Not authenticated" });
       }
-      await storage.deleteShoppingListItem(req.params.id, user.id);
+      await storage.deleteShoppingListItem(req.params.id as string, user.id);
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error deleting shopping list item:", error);
