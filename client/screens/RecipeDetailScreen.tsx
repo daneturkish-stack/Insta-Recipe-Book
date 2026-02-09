@@ -17,7 +17,7 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
@@ -30,57 +30,18 @@ import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/co
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const placeholderImage = require("../../assets/images/recipe-placeholder.png");
 
-type LinkInfo = { type: "youtube" | "instagram" | "tiktok" | "x" | "linkedin" | "website"; label: string; icon: string; url: string };
-
-function detectLinkType(url: string): LinkInfo["type"] {
-  const lower = url.toLowerCase();
-  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
-  if (lower.includes("instagram.com")) return "instagram";
-  if (lower.includes("tiktok.com")) return "tiktok";
-  if (lower.includes("twitter.com") || lower.includes("x.com")) return "x";
-  if (lower.includes("linkedin.com")) return "linkedin";
-  return "website";
-}
-
-const LINK_CONFIG: Record<LinkInfo["type"], { label: string; icon: string }> = {
-  youtube: { label: "YouTube", icon: "youtube" },
-  instagram: { label: "Instagram", icon: "instagram" },
-  tiktok: { label: "TikTok", icon: "video" },
-  x: { label: "X", icon: "twitter" },
-  linkedin: { label: "LinkedIn", icon: "linkedin" },
-  website: { label: "Website", icon: "globe" },
+const PLATFORM_ICONS: Record<string, string> = {
+  youtube: "youtube",
+  instagram: "instagram",
+  tiktok: "video",
+  manual: "edit-2"
 };
 
-const INGREDIENT_ICONS: Record<string, string> = {
-  tomato: "sun",
-  chicken: "feather",
-  beef: "square",
-  fish: "anchor",
-  salt: "droplet",
-  pepper: "wind",
-  oil: "droplet",
-  onion: "circle",
-  garlic: "circle",
-  egg: "circle",
-  butter: "square",
-  milk: "coffee",
-  cheese: "square",
-  pasta: "minus",
-  rice: "more-horizontal",
-  potato: "circle",
-  carrot: "minus",
-  default: "circle",
+const PLATFORM_LOGO_URLS: Record<string, string> = {
+  youtube: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
+  instagram: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png",
+  tiktok: "https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/512px-TikTok_logo.svg.png",
 };
-
-function getIngredientIcon(name: string): keyof typeof Feather.glyphMap {
-  const lowerName = name.toLowerCase();
-  for (const [key, icon] of Object.entries(INGREDIENT_ICONS)) {
-    if (lowerName.includes(key)) {
-      return icon as keyof typeof Feather.glyphMap;
-    }
-  }
-  return "circle";
-}
 
 export default function RecipeDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -96,14 +57,13 @@ export default function RecipeDetailScreen() {
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [showTranscript, setShowTranscript] = useState(false);
-
-  const [confidenceExpanded, setConfidenceExpanded] = useState(false);
   const [showLinkCorrectionModal, setShowLinkCorrectionModal] = useState(false);
   const [manualLinkInput, setManualLinkInput] = useState("");
   const [isSearchingAgain, setIsSearchingAgain] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [servingMultiplier, setServingMultiplier] = useState(1);
 
+  // Gesture Values
   const pinchScale = useSharedValue(1);
   const baseMultiplier = useSharedValue(1);
   const showScaleIndicator = useSharedValue(0);
@@ -132,1076 +92,250 @@ export default function RecipeDetailScreen() {
       showScaleIndicator.value = withTiming(0, { duration: 300 });
     });
 
-  const scaleIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: showScaleIndicator.value,
-    transform: [
-      { scale: interpolate(showScaleIndicator.value, [0, 1], [0.8, 1], Extrapolation.CLAMP) },
-    ],
-  }));
-
   const ingredientListStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(pinchScale.value, [0.5, 1, 2], [0.98, 1, 1.02], Extrapolation.CLAMP) },
-    ],
+    transform: [{ scale: interpolate(pinchScale.value, [0.5, 1, 2], [0.98, 1, 1.02], Extrapolation.CLAMP) }],
   }));
 
   const scaleIngredientAmount = useCallback((amount: string | number | undefined): string => {
     if (!amount) return "";
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
     if (isNaN(numAmount)) return String(amount);
-    
     const scaled = numAmount * servingMultiplier;
-    if (scaled === Math.floor(scaled)) {
-      return String(scaled);
-    }
-    return scaled.toFixed(scaled < 10 ? 2 : 1).replace(/\.?0+$/, "");
+    return scaled === Math.floor(scaled) ? String(scaled) : scaled.toFixed(scaled < 10 ? 2 : 1).replace(/\.?0+$/, "");
   }, [servingMultiplier]);
 
   const scaledServings = useMemo(() => {
     if (!recipe?.servings) return null;
     const numServings = parseInt(String(recipe.servings));
-    if (isNaN(numServings)) return recipe.servings;
-    return Math.round(numServings * servingMultiplier);
+    return isNaN(numServings) ? recipe.servings : Math.round(numServings * servingMultiplier);
   }, [recipe?.servings, servingMultiplier]);
 
   const toggleIngredient = (index: number) => {
     Haptics.selectionAsync();
     setCheckedIngredients((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
+      prev.has(index) ? newSet.delete(index) : newSet.add(index);
       return newSet;
     });
   };
 
-  const handleOpenSource = async () => {
-    if (recipe?.sourceUrl) {
-      await WebBrowser.openBrowserAsync(recipe.sourceUrl);
-    }
-  };
-
-  const handleSearchFullRecipe = async () => {
-    if (recipe) {
-      Haptics.selectionAsync();
-      const searchQuery = recipe.manualSearchQuery 
-        ? encodeURIComponent(recipe.manualSearchQuery)
-        : encodeURIComponent(`${recipe.creatorHandle || ''} ${recipe.title} recipe`);
-      await WebBrowser.openBrowserAsync(`https://www.google.com/search?q=${searchQuery}`);
-    }
-  };
-
-  const handleWrongLink = () => {
-    Haptics.selectionAsync();
-    setShowLinkCorrectionModal(true);
-    setShowManualInput(false);
-    setManualLinkInput("");
-  };
-
-  const handleSearchAgain = async () => {
-    if (!recipe) return;
-    setIsSearchingAgain(true);
-    try {
-      const response = await apiRequest("POST", "/api/recipes/search-recipe-url", {
-        recipeTitle: recipe.title,
-        creatorHandle: recipe.creatorHandle,
-      });
-      const data = await response.json();
-      
-      if (data.creatorRecipeUrl) {
-        await updateRecipe.mutateAsync({
-          id: recipe.id,
-          creatorRecipeUrl: data.creatorRecipeUrl,
-          recipeSource: data.recipeSource,
-        });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Found it!", "I found a recipe link and updated it.");
-      } else {
-        Alert.alert("No luck", "I couldn't find a different recipe link. Try adding it manually.");
-        setShowManualInput(true);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Something went wrong while searching. Try adding the link manually.");
-      setShowManualInput(true);
-    } finally {
-      setIsSearchingAgain(false);
-    }
-  };
-
-  const handleSaveManualLink = async () => {
-    if (!recipe || !manualLinkInput.trim()) return;
-    
-    const urlPattern = /^https?:\/\/.+/i;
-    if (!urlPattern.test(manualLinkInput.trim())) {
-      Alert.alert("Invalid URL", "Please enter a valid URL starting with http:// or https://");
-      return;
-    }
-    
-    await updateRecipe.mutateAsync({
-      id: recipe.id,
-      creatorRecipeUrl: manualLinkInput.trim(),
-      recipeSource: {
-        type: "creator_website",
-        name: "User-provided link",
-        url: manualLinkInput.trim(),
-        isVerified: false,
-        verificationMethod: "user_manual",
-      },
-    });
-    
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowLinkCorrectionModal(false);
-    setManualLinkInput("");
-  };
-
-  const closeLinkCorrectionModal = () => {
-    setShowLinkCorrectionModal(false);
-    setShowManualInput(false);
-    setManualLinkInput("");
-  };
-
-  const toggleTranscript = () => {
-    Haptics.selectionAsync();
-    setShowTranscript(!showTranscript);
-  };
-
-  const handleStartCookMode = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("CookMode", { recipeId });
+  const handleOpenLink = async (url: string | undefined) => {
+    if (url) await WebBrowser.openBrowserAsync(url);
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Recipe",
-      "Are you sure you want to delete this recipe from your collection?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteRecipe.mutateAsync(recipeId);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    Alert.alert("Delete Recipe", "Are you sure you want to delete this recipe?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+          await deleteRecipe.mutateAsync(recipeId);
+          navigation.goBack();
+      }},
+    ]);
   };
 
-  if (!recipe) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <ThemedText>Recipe not found</ThemedText>
-      </View>
-    );
-  }
+  if (!recipe) return null;
 
-  const isVideo = recipe.platform === "instagram" || recipe.platform === "tiktok";
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
-  const stepsCount = recipe.instructions?.length || 0;
-
   const confidenceLevel = recipe.confidence || (recipe.isEstimated ? "medium" : "high");
-  const confidenceLabel = confidenceLevel === "high" ? "High" : confidenceLevel === "medium" ? "Medium" : "Low";
   const confidenceColor = confidenceLevel === "high" ? "#059669" : confidenceLevel === "medium" ? "#E8A838" : "#DC2626";
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero Image Section - Large rounded corners */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 160 }}>
+
+        {/* Hero Image */}
         <View style={styles.heroContainer}>
-          <Image
-            source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage}
-            style={styles.heroImage}
-            contentFit="cover"
-            transition={200}
+          <Image 
+            source={recipe.imageUrl ? { uri: recipe.imageUrl } : placeholderImage} 
+            style={styles.heroImage} 
+            contentFit="cover" 
           />
-          {isVideo ? (
-            <Pressable onPress={handleOpenSource} style={styles.playButton}>
-              <View style={styles.playButtonInner}>
-                <Feather name="play" size={28} color="#FFF" style={{ marginLeft: 3 }} />
-              </View>
+          {(recipe.platform === 'instagram' || recipe.platform === 'tiktok' || recipe.platform === 'youtube') && (
+            <Pressable onPress={() => handleOpenLink(recipe.sourceUrl)} style={styles.playButton}>
+              <View style={styles.playButtonInner}><Feather name="play" size={28} color="#FFF" /></View>
             </Pressable>
-          ) : null}
+          )}
         </View>
 
         <View style={styles.content}>
-          <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-            {/* Recipe Title */}
-            <ThemedText type="h2" style={styles.title}>
-              {recipe.title}
-            </ThemedText>
-
-            {/* Creator handle - subtle line under title */}
-            {recipe.creatorHandle ? (
-              <ThemedText type="bodyMedium" style={{ color: theme.textSecondary, marginBottom: Spacing.xl }}>
-                by {recipe.creatorHandle}
+          <Animated.View entering={FadeInDown.delay(100)}>
+            {/* Confidence Badge - Moved to top */}
+            <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor + "15" }]}>
+              <Feather name="shield" size={12} color={confidenceColor} />
+              <ThemedText style={[styles.confidenceText, { color: confidenceColor }]}>
+                {confidenceLevel.toUpperCase()} ACCURACY
               </ThemedText>
-            ) : null}
+            </View>
 
-            {/* Horizontal Stats Bar - Premium Light Design */}
+            <ThemedText type="h2" style={styles.title}>{recipe.title}</ThemedText>
+
+            {/* Stats Bar */}
             <View style={[styles.statsBar, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
               <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: theme.primary + "15" }]}>
-                  <Feather name="clock" size={18} color={theme.primary} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Time</ThemedText>
-                <ThemedText type="bodyMedium">{totalTime > 0 ? `${totalTime} min` : "N/A"}</ThemedText>
+                <Feather name="clock" size={18} color={theme.primary} />
+                <ThemedText type="bodyMedium">{totalTime > 0 ? `${totalTime} min` : "—"}</ThemedText>
               </View>
-              
-              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
-              
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: theme.accent + "20" }]}>
-                  <Feather name="list" size={18} color={KitchColors.accent} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Steps</ThemedText>
-                <ThemedText type="bodyMedium">{stepsCount}</ThemedText>
+                <Feather name="list" size={18} color={KitchColors.accent} />
+                <ThemedText type="bodyMedium">{recipe.instructions?.length || 0} steps</ThemedText>
               </View>
-              
-              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
-              
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: theme.difficultyBg }]}>
-                  <Feather name="award" size={18} color={theme.difficultyText} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Difficulty</ThemedText>
-                <ThemedText type="bodyMedium">
-                  {stepsCount <= 5 ? "Easy" : stepsCount <= 10 ? "Medium" : "Hard"}
-                </ThemedText>
-              </View>
-              
-              <View style={[styles.statDivider, { backgroundColor: theme.statDivider }]} />
-              
-              <View style={styles.statItem}>
-                <View style={[styles.statIcon, { backgroundColor: confidenceColor + "15" }]}>
-                  <Feather name="shield" size={18} color={confidenceColor} />
-                </View>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>Accuracy</ThemedText>
-                <ThemedText type="bodyMedium" style={{ color: confidenceColor }}>
-                  {confidenceLabel}
-                </ThemedText>
+                <Feather name="users" size={18} color={theme.textSecondary} />
+                <ThemedText type="bodyMedium">{scaledServings || "—"}</ThemedText>
               </View>
             </View>
+          </Animated.View>
 
-            {/* Tags */}
-            {(recipe.dishType || (recipe.vibeTags && recipe.vibeTags.length > 0)) ? (
-              <View style={styles.tagsRow}>
-                {recipe.dishType ? (
-                  <View style={[styles.tag, { backgroundColor: theme.primary + "15" }]}>
-                    <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600" }}>
-                      {recipe.dishType}
+          {/* Ingredients Section */}
+          <GestureDetector gesture={pinchGesture}>
+            <Animated.View style={[styles.section, ingredientListStyle]}>
+              <View style={styles.sectionHeaderRow}>
+                <ThemedText type="h4">Ingredients</ThemedText>
+                <ThemedText type="caption" style={{ fontStyle: 'italic' }}>Pinch to scale</ThemedText>
+              </View>
+              <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+                {recipe.ingredients.map((ing, i) => (
+                  <Pressable key={i} onPress={() => toggleIngredient(i)} style={[styles.row, i < recipe.ingredients.length - 1 && styles.borderBottom]}>
+                    <View style={[styles.checkbox, { backgroundColor: checkedIngredients.has(i) ? theme.primary : 'transparent', borderColor: theme.border }]}>
+                      {checkedIngredients.has(i) && <Feather name="check" size={12} color="#FFF" />}
+                    </View>
+                    <ThemedText style={[styles.ingredientText, checkedIngredients.has(i) && styles.checkedText]}>
+                      <ThemedText style={{ fontWeight: '700' }}>{scaleIngredientAmount(ing.amount)} {ing.unit}</ThemedText> {ing.name}
                     </ThemedText>
-                  </View>
-                ) : null}
-                {recipe.vibeTags?.map((tag) => (
-                  <View key={tag} style={[styles.tag, { backgroundColor: theme.accent + "20" }]}>
-                    <ThemedText type="caption" style={{ color: isDark ? VibeTagColors.dark.text : VibeTagColors.light.text, fontWeight: "500" }}>
-                      {tag}
-                    </ThemedText>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
-            ) : null}
-
-            {recipe.description ? (
-              <ThemedText type="body" style={[styles.description, { color: theme.textSecondary }]}>
-                {recipe.description}
-              </ThemedText>
-            ) : null}
-          </Animated.View>
-
-          {/* Visual Ingredient Cards with Pinch-to-Scale */}
-          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-            <GestureDetector gesture={pinchGesture}>
-              <Animated.View style={[styles.section, ingredientListStyle]}>
-                <View style={styles.ingredientHeader}>
-                  <ThemedText type="h4" style={styles.sectionTitle}>
-                    Ingredients
-                  </ThemedText>
-                  <View style={styles.servingScaleRow}>
-                    <Pressable 
-                      onPress={() => updateServingMultiplier(servingMultiplier - 0.5)}
-                      style={[styles.scaleButton, { backgroundColor: theme.backgroundSecondary }]}
-                    >
-                      <Feather name="minus" size={16} color={theme.text} />
-                    </Pressable>
-                    <View style={[styles.servingBadge, { backgroundColor: servingMultiplier !== 1 ? KitchColors.primary : theme.backgroundSecondary }]}>
-                      <ThemedText type="bodyMedium" style={{ color: servingMultiplier !== 1 ? "#FFF" : theme.text }}>
-                        {scaledServings ? `${scaledServings} servings` : "—"}
-                      </ThemedText>
-                      {servingMultiplier !== 1 ? (
-                        <ThemedText type="caption" style={{ color: "#FFF", opacity: 0.8 }}>
-                          {" "}({servingMultiplier}x)
-                        </ThemedText>
-                      ) : null}
-                    </View>
-                    <Pressable 
-                      onPress={() => updateServingMultiplier(servingMultiplier + 0.5)}
-                      style={[styles.scaleButton, { backgroundColor: theme.backgroundSecondary }]}
-                    >
-                      <Feather name="plus" size={16} color={theme.text} />
-                    </Pressable>
-                  </View>
-                </View>
-                
-                <ThemedText type="caption" style={[styles.pinchHint, { color: theme.textSecondary }]}>
-                  Pinch to scale servings
-                </ThemedText>
-
-                {/* Ingredients list */}
-                <View style={[styles.ingredientsList, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
-                  {recipe.ingredients.map((ingredient, index) => (
-                    <Pressable
-                      key={index}
-                      onPress={() => toggleIngredient(index)}
-                      style={[
-                        styles.ingredientItem,
-                        index < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                      ]}
-                    >
-                      <View style={[
-                        styles.checkbox,
-                        {
-                          borderColor: checkedIngredients.has(index) ? theme.primary : theme.border,
-                          backgroundColor: checkedIngredients.has(index) ? theme.primary : "transparent",
-                        },
-                      ]}>
-                        {checkedIngredients.has(index) ? (
-                          <Feather name="check" size={12} color="#FFF" />
-                        ) : null}
-                      </View>
-                      <ThemedText
-                        type="body"
-                        style={[
-                          styles.ingredientText,
-                          checkedIngredients.has(index) && { textDecorationLine: "line-through", opacity: 0.5 },
-                        ]}
-                      >
-                        <ThemedText style={{ fontWeight: "600" }}>
-                          {scaleIngredientAmount(ingredient.amount)} {ingredient.unit}
-                        </ThemedText>
-                        {"  "}{ingredient.name}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {/* Scale Indicator Overlay */}
-                <Animated.View style={[styles.scaleIndicatorOverlay, scaleIndicatorStyle]} pointerEvents="none">
-                  <View style={[styles.scaleIndicatorBubble, { backgroundColor: KitchColors.primary }]}>
-                    <ThemedText type="h3" style={styles.scaleIndicatorText}>
-                      {servingMultiplier}x
-                    </ThemedText>
-                  </View>
-                </Animated.View>
-              </Animated.View>
-            </GestureDetector>
-          </Animated.View>
+            </Animated.View>
+          </GestureDetector>
 
           {/* Instructions */}
-          <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-            <View style={styles.section}>
-              <ThemedText type="h4" style={styles.sectionTitle}>
-                Instructions
-              </ThemedText>
-              {recipe.instructions.map((instruction, index) => (
-                <View key={index} style={styles.instructionItem}>
-                  <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}>
-                    <ThemedText type="bodyMedium" style={styles.stepNumberText}>
-                      {index + 1}
-                    </ThemedText>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="body" style={styles.instructionText}>
-                      {typeof instruction === "string" ? instruction : instruction.text}
-                    </ThemedText>
-                    {recipe.isEstimatedInstructions ? (
-                      <View style={styles.aiEnhancedBadge}>
-                        <Feather name="cpu" size={10} color={theme.textSecondary} />
-                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, fontSize: 10 }}>
-                          AI-enhanced
-                        </ThemedText>
-                      </View>
-                    ) : null}
-                  </View>
+          <View style={styles.section}>
+            <ThemedText type="h4" style={styles.sectionTitle}>Instructions</ThemedText>
+            {recipe.instructions.map((step, i) => (
+              <View key={i} style={styles.instructionRow}>
+                <View style={[styles.stepCircle, { backgroundColor: theme.primary }]}>
+                  <ThemedText style={styles.stepCircleText}>{i + 1}</ThemedText>
                 </View>
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* Original Post Transcript */}
-          <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-            {recipe.originalTranscript ? (
-              <View style={styles.section}>
-                <Pressable onPress={toggleTranscript} style={styles.transcriptHeader}>
-                  <View style={styles.transcriptTitleRow}>
-                    <Feather name="file-text" size={18} color={theme.primary} />
-                    <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
-                      View Original Post Text
-                    </ThemedText>
-                  </View>
-                  <Feather 
-                    name={showTranscript ? "chevron-up" : "chevron-down"} 
-                    size={20} 
-                    color={theme.textSecondary} 
-                  />
-                </Pressable>
-                {showTranscript ? (
-                  <View style={[styles.transcriptContent, { backgroundColor: theme.backgroundDefault }]}>
-                    <ThemedText type="small" style={{ color: theme.textSecondary, lineHeight: 22 }}>
-                      {recipe.originalTranscript}
-                    </ThemedText>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {/* Actions Row */}
-            <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
-            <View style={styles.utilityBar}>
-              <Pressable onPress={handleWrongLink} style={styles.utilityButton} testID="button-wrong-link">
-                <Feather name="alert-circle" size={16} color={theme.textSecondary} />
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Report</ThemedText>
-              </Pressable>
-
-              <View style={[styles.utilityVertDivider, { backgroundColor: theme.border }]} />
-
-              <Pressable onPress={handleDelete} style={styles.utilityButton} testID="button-delete-recipe">
-                <Feather name="trash-2" size={16} color={theme.textSecondary} />
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>Delete</ThemedText>
-              </Pressable>
-            </View>
-            <View style={[styles.utilityDivider, { backgroundColor: theme.border }]} />
-
-            {/* Creator Section */}
-            {(recipe.creatorName || recipe.creatorHandle) ? (
-              <View style={[styles.creatorCardCompact, { backgroundColor: theme.backgroundDefault }, Shadows.cardLight]}>
-                <View style={styles.creatorCardRow}>
-                  {recipe.creatorAvatar ? (
-                    <Image source={{ uri: recipe.creatorAvatar }} style={styles.creatorCardAvatar} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.creatorCardAvatarFallback, { backgroundColor: theme.primary }]}>
-                      <Feather name="user" size={16} color="#FFF" />
-                    </View>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.instructionText}>{typeof step === "string" ? step : step.text}</ThemedText>
+                  {recipe.isEstimatedInstructions && (
+                    <View style={styles.aiBadge}><Feather name="cpu" size={10} color={theme.textSecondary} /><ThemedText type="caption" style={{ marginLeft: 4 }}>AI-Enhanced</ThemedText></View>
                   )}
-                  <View style={styles.creatorCardInfo}>
-                    {recipe.creatorName ? (
-                      <ThemedText type="bodyMedium" style={{ fontWeight: "600" }} numberOfLines={1}>
-                        {recipe.creatorName}
-                      </ThemedText>
-                    ) : null}
-                    {recipe.creatorHandle ? (
-                      <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
-                        {recipe.creatorHandle}
-                      </ThemedText>
-                    ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Tidy Utility Bar */}
+          <View style={styles.utilityBar}>
+            <Pressable onPress={() => handleOpenLink(recipe.sourceUrl)} style={styles.utilityItem}>
+              <Feather name="external-link" size={20} color={theme.textSecondary} />
+              <ThemedText type="caption">Original</ThemedText>
+            </Pressable>
+            <Pressable onPress={() => handleOpenLink(recipe.creatorRecipeUrl)} style={[styles.utilityItem, !recipe.creatorRecipeUrl && { opacity: 0.3 }]} disabled={!recipe.creatorRecipeUrl}>
+              <Feather name="book-open" size={20} color={theme.textSecondary} />
+              <ThemedText type="caption">Recipe</ThemedText>
+            </Pressable>
+            <Pressable onPress={() => setShowLinkCorrectionModal(true)} style={styles.utilityItem}>
+              <Feather name="alert-circle" size={20} color={theme.textSecondary} />
+              <ThemedText type="caption">Report</ThemedText>
+            </Pressable>
+            <Pressable onPress={handleDelete} style={styles.utilityItem}>
+              <Feather name="trash-2" size={20} color="#DC2626" />
+              <ThemedText type="caption" style={{ color: "#DC2626" }}>Delete</ThemedText>
+            </Pressable>
+          </View>
+
+          {/* Refined Creator Card */}
+          <View style={[styles.creatorCard, { backgroundColor: theme.surface || theme.backgroundDefault }]}>
+            <View style={styles.creatorInfoRow}>
+              <Image 
+                source={
+                  recipe.creatorAvatar 
+                    ? { uri: recipe.creatorAvatar } 
+                    : PLATFORM_LOGO_URLS[recipe.platform || '']
+                      ? { uri: PLATFORM_LOGO_URLS[recipe.platform || ''] }
+                      : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(recipe.creatorHandle || 'K')}&background=0D9488&color=fff&size=96` }
+                } 
+                style={styles.creatorAvatar} 
+                contentFit="cover"
+              />
+              <View style={styles.creatorTextContent}>
+                <View style={styles.creatorTitleRow}>
+                  <ThemedText style={styles.creatorName}>{recipe.creatorName || "Creator"}</ThemedText>
+                  <View style={styles.platformBadge}>
+                    <Feather name={PLATFORM_ICONS[recipe.platform || 'manual'] as any} size={10} color={theme.textSecondary} />
+                    <ThemedText style={styles.platformText}>{recipe.platform}</ThemedText>
                   </View>
                 </View>
-
-                {/* Creator Links */}
-                {(() => {
-                  const links: LinkInfo[] = [];
-                  if (recipe.sourceUrl) {
-                    const sourceType = detectLinkType(recipe.sourceUrl);
-                    const config = LINK_CONFIG[sourceType];
-                    links.push({ type: sourceType, label: config.label, icon: config.icon, url: recipe.sourceUrl });
-                  }
-                  if (recipe.creatorRecipeUrl) {
-                    const recipeUrlType = detectLinkType(recipe.creatorRecipeUrl);
-                    const sourceType = recipe.sourceUrl ? detectLinkType(recipe.sourceUrl) : null;
-                    if (recipeUrlType !== sourceType) {
-                      const config = LINK_CONFIG[recipeUrlType];
-                      links.push({ type: recipeUrlType, label: config.label, icon: config.icon, url: recipe.creatorRecipeUrl });
-                    }
-                  }
-                  return links.length > 0 ? (
-                    <>
-                      <View style={styles.creatorLinksContainer}>
-                        {links.map((link, idx) => (
-                          <Pressable
-                            key={idx}
-                            onPress={() => WebBrowser.openBrowserAsync(link.url)}
-                            style={[styles.creatorLinkPill, { backgroundColor: theme.backgroundSecondary }]}
-                            testID={`button-creator-${link.type}`}
-                          >
-                            <Feather name={link.icon as any} size={14} color={theme.primary} />
-                            <ThemedText type="caption" style={{ color: theme.primary, fontWeight: "600", marginLeft: 6 }}>
-                              {link.label}
-                            </ThemedText>
-                          </Pressable>
-                        ))}
-                      </View>
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.md, fontStyle: "italic" }}>
-                        Find more on their other channels!
-                      </ThemedText>
-                    </>
-                  ) : null;
-                })()}
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>@{recipe.creatorHandle || "kitch_user"}</ThemedText>
               </View>
-            ) : null}
-          </Animated.View>
+            </View>
+            <Button variant="outline" size="small" onPress={() => handleOpenLink(recipe.sourceUrl)} style={{ marginTop: 12 }}>
+              Support {recipe.creatorName || recipe.creatorHandle || "Creator"}
+            </Button>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Sticky Cook Mode Footer */}
-      <View 
-        style={[
-          styles.cookFooter, 
-          { 
-            backgroundColor: theme.backgroundRoot,
-            paddingBottom: Spacing.sm,
-            bottom: tabBarHeight,
-            borderTopColor: theme.border,
-          }
-        ]}
-      >
-        <Pressable
-          onPress={handleStartCookMode}
-          style={[styles.cookFooterButton, { backgroundColor: theme.primary }, Shadows.button]}
-          testID="button-start-cooking"
-        >
-          <Feather name="play-circle" size={22} color="#FFF" />
-          <ThemedText type="bodyMedium" style={styles.cookModeButtonText}>
-            Start Cooking
-          </ThemedText>
-        </Pressable>
+      {/* Sticky Footer */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: theme.backgroundRoot }]}>
+        <Button onPress={() => navigation.navigate("CookMode", { recipeId })} style={styles.cookButton}>
+          <Feather name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+          Start Cooking
+        </Button>
       </View>
-
-      {/* Link Correction Modal */}
-      <Modal
-        visible={showLinkCorrectionModal}
-        transparent
-        animationType="fade"
-        onRequestClose={closeLinkCorrectionModal}
-      >
-        <Pressable 
-          style={styles.modalOverlay} 
-          onPress={closeLinkCorrectionModal}
-        >
-          <Pressable 
-            style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }, Shadows.floating]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.modalHeader}>
-              <ThemedText type="h4" style={{ flex: 1 }}>Fix Recipe Link</ThemedText>
-              <Pressable onPress={closeLinkCorrectionModal}>
-                <Feather name="x" size={24} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-
-            {!showManualInput ? (
-              <View style={styles.modalOptions}>
-                <Pressable
-                  onPress={handleSearchAgain}
-                  style={[styles.modalOptionButton, { backgroundColor: theme.primary }]}
-                  disabled={isSearchingAgain}
-                >
-                  {isSearchingAgain ? (
-                    <ActivityIndicator color="#FFF" size="small" />
-                  ) : (
-                    <>
-                      <Feather name="search" size={18} color="#FFF" />
-                      <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: "#FFF" }}>
-                        Search Again with AI
-                      </ThemedText>
-                    </>
-                  )}
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setShowManualInput(true)}
-                  style={[styles.modalOptionButton, { backgroundColor: theme.backgroundSecondary }]}
-                >
-                  <Feather name="edit-3" size={18} color={theme.text} />
-                  <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm }}>
-                    Add Link Manually
-                  </ThemedText>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.manualInputSection}>
-                <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
-                  Paste the correct recipe URL:
-                </ThemedText>
-                <TextInput
-                  value={manualLinkInput}
-                  onChangeText={setManualLinkInput}
-                  placeholder="https://example.com/recipe"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[styles.linkInput, { 
-                    backgroundColor: theme.backgroundSecondary, 
-                    color: theme.text 
-                  }]}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                />
-                <View style={styles.manualInputButtons}>
-                  <Pressable
-                    onPress={() => setShowManualInput(false)}
-                    style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondary }]}
-                  >
-                    <ThemedText type="bodyMedium">Back</ThemedText>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleSaveManualLink}
-                    style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                    disabled={!manualLinkInput.trim()}
-                  >
-                    <ThemedText type="bodyMedium" style={{ color: "#FFF" }}>
-                      Save Link
-                    </ThemedText>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  heroContainer: {
-    width: "100%",
-    height: 320,
-    position: "relative",
-    marginBottom: -Spacing["3xl"],
-  },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-    borderBottomLeftRadius: BorderRadius.card,
-    borderBottomRightRadius: BorderRadius.card,
-  },
-  playButton: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    marginTop: -30,
-    marginLeft: -30,
-  },
-  playButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    padding: Spacing.xl,
-    paddingTop: Spacing["4xl"],
-  },
-  title: {
-    marginBottom: Spacing.md,
-  },
-  creatorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  creatorAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.sm,
-  },
-  creatorAvatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: Spacing.sm,
-  },
-  platformBadge: {
-    marginLeft: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  statsBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.card,
-    marginBottom: Spacing.xl,
-  },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
-    gap: Spacing.xs,
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.xs,
-  },
-  statDivider: {
-    width: 1,
-    height: 48,
-    backgroundColor: undefined,
-  },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  tag: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
-  description: {
-    marginBottom: Spacing.xl,
-    lineHeight: 24,
-  },
-  section: {
-    marginBottom: Spacing["3xl"],
-  },
-  sectionTitle: {
-    marginBottom: Spacing.lg,
-  },
-  ingredientCardsContainer: {
-    paddingBottom: Spacing.md,
-    gap: Spacing.md,
-  },
-  ingredientCard: {
-    width: 100,
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.xl,
-    marginRight: Spacing.sm,
-  },
-  ingredientIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.sm,
-  },
-  ingredientCardName: {
-    textAlign: "center",
-    fontWeight: "500",
-    marginBottom: Spacing.xs,
-  },
-  ingredientsList: {
-    borderRadius: BorderRadius.card,
-    overflow: "hidden",
-    marginTop: Spacing.lg,
-  },
-  ingredientItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.lg,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.md,
-  },
-  ingredientText: {
-    flex: 1,
-  },
-  instructionItem: {
-    flexDirection: "row",
-    marginBottom: Spacing.xl,
-  },
-  stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.md,
-    marginTop: 2,
-  },
-  stepNumberText: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  instructionText: {
-    flex: 1,
-    lineHeight: 28,
-  },
-  cookFooter: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-  },
-  cookFooterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 52,
-    borderRadius: BorderRadius.full,
-  },
-  cookModeButtonText: {
-    color: "#FFF",
-    fontWeight: "600",
-    marginLeft: Spacing.sm,
-  },
-  transcriptHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: Spacing.sm,
-  },
-  transcriptTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  transcriptContent: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.sm,
-  },
-  noRecipeLinkContainer: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.card,
-    borderWidth: 1,
-    marginBottom: Spacing.lg,
-  },
-  noRecipeLinkHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: Spacing.md,
-  },
-  manualSearchButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.full,
-  },
-  aiEnhancedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-    opacity: 0.7,
-  },
-  utilityDivider: {
-    height: 1,
-    marginHorizontal: -Spacing.xl,
-  },
-  utilityBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingVertical: Spacing.md,
-  },
-  utilityButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    flex: 1,
-  },
-  utilityVertDivider: {
-    width: 1,
-    height: 28,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Spacing.xl,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: BorderRadius.card,
-    padding: Spacing.xl,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  modalOptions: {
-    gap: Spacing.md,
-  },
-  modalOptionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.full,
-  },
-  manualInputSection: {
-    marginTop: Spacing.sm,
-  },
-  linkInput: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    fontSize: 14,
-    marginBottom: Spacing.lg,
-  },
-  manualInputButtons: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  cancelButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  saveButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  ingredientHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.xs,
-  },
-  servingScaleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  scaleButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  servingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    minWidth: 50,
-    justifyContent: "center",
-  },
-  pinchHint: {
-    textAlign: "center",
-    marginBottom: Spacing.md,
-    fontStyle: "italic",
-  },
-  scaleIndicatorOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    pointerEvents: "none",
-  },
-  scaleIndicatorBubble: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  scaleIndicatorText: {
-    color: "#FFF",
-    fontWeight: "700",
-  },
-  creatorCardCompact: {
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
-  },
-  creatorCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  creatorCardAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: Spacing.md,
-  },
-  creatorCardAvatarFallback: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.md,
-  },
-  creatorCardInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  creatorCardHandleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-  },
-  creatorCardPlatformBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-  },
-  creatorCardLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.xs,
-    paddingLeft: Spacing.sm,
-  },
-  creatorLinksContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-  },
-  creatorLinkPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
+  container: { flex: 1 },
+  heroContainer: { height: 320, width: '100%', position: 'relative' },
+  heroImage: { width: '100%', height: '100%', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+  playButton: { position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -30 }, { translateY: -30 }] },
+  playButtonInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  content: { padding: Spacing.xl, paddingTop: 40 },
+  confidenceBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginBottom: 12 },
+  confidenceText: { fontSize: 10, fontWeight: '800', marginLeft: 4, letterSpacing: 0.5 },
+  title: { marginBottom: 24 },
+  statsBar: { flexDirection: 'row', justifyContent: 'space-around', padding: 16, borderRadius: 16, marginBottom: 32 },
+  statItem: { alignItems: 'center', gap: 4 },
+  statDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.1)' },
+  section: { marginBottom: 32 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 },
+  card: { borderRadius: 16, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  borderBottom: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1, marginRight: 12, alignItems: 'center', justifyContent: 'center' },
+  ingredientText: { flex: 1, fontSize: 15 },
+  checkedText: { textDecorationLine: 'line-through', opacity: 0.4 },
+  instructionRow: { flexDirection: 'row', marginBottom: 20 },
+  stepCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16, marginTop: 2 },
+  stepCircleText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
+  instructionText: { flex: 1, fontSize: 16, lineHeight: 24 },
+  aiBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 6, opacity: 0.6 },
+  utilityBar: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 24 },
+  utilityItem: { alignItems: 'center', gap: 6 },
+  creatorCard: { padding: 16, borderRadius: 16, marginTop: 16, marginBottom: 16 },
+  creatorInfoRow: { flexDirection: 'row', alignItems: 'center' },
+  creatorAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#333' },
+  creatorTextContent: { marginLeft: 12, flex: 1 },
+  creatorTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  creatorName: { fontWeight: '700', fontSize: 15 },
+  platformBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  platformText: { fontSize: 10, color: '#999', textTransform: 'capitalize' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  cookButton: { height: 56, borderRadius: 28 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
+  modalContent: { width: "100%", maxWidth: 400, borderRadius: 16, padding: 24 },
+  modalHeader: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
+  modalOptions: { gap: 16 },
+  modalOptionButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 28 },
+  linkInput: { borderRadius: 12, padding: 16, fontSize: 14, marginBottom: 16 },
+  manualInputButtons: { flexDirection: "row", gap: 12 },
+  cancelButton: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 24 },
+  saveButton: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12, borderRadius: 24 },
 });
