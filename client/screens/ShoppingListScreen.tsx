@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   bottomBar: {
     position: "absolute",
