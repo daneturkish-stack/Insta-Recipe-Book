@@ -1318,11 +1318,12 @@ Extract and categorize with:
 2. vibeTags: 2-4 tags from [Quick & Easy, 15-Min Meals, 30-Min Meals, One-Pot, Meal Prep, Budget-Friendly, High-Protein, Low-Carb, Vegan, Vegetarian, Gluten-Free, Dairy-Free, Keto, Comfort Food, Healthy, Indulgent, Kid-Friendly, Date Night, Lazy Sunday, Party Food, Batch Cooking]
 3. creatorHandle: Extract from content if available
 4. creatorName: Extract from content if available
-5. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated
-6. isEstimatedInstructions: Set to true if any instruction steps were inferred or reconstructed rather than directly stated in the source
-7. confidence: Overall confidence in the extraction accuracy. Use "high" if all data comes directly from the source, "medium" if some details were inferred, "low" if significant reconstruction was needed
-8. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
-9. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
+5. creatorAvatar: If you can find a profile image URL for the creator in the source metadata or content, include it. Otherwise set to null.
+6. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated
+7. isEstimatedInstructions: Set to true if any instruction steps were inferred or reconstructed rather than directly stated in the source
+8. confidence: Overall confidence in the extraction accuracy. Use "high" if all data comes directly from the source, "medium" if some details were inferred, "low" if significant reconstruction was needed
+9. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
+10. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
 
 INGREDIENT FORMAT:
 Each ingredient must include:
@@ -1353,6 +1354,7 @@ Respond ONLY with a valid JSON object:
   "vibeTags": ["Quick & Easy", "Indulgent"],
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
+  "creatorAvatar": "https://example.com/profile.jpg",
   "isEstimated": true,
   "isEstimatedInstructions": false,
   "confidence": "medium",
@@ -1641,7 +1643,7 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         vibeTags: recipeData.vibeTags || [],
         creatorHandle: recipeData.creatorHandle || creatorHandle || null,
         creatorName: recipeData.creatorName || null,
-        creatorAvatar: pageData.profileImageUrl || null,
+        creatorAvatar: pageData.profileImageUrl || recipeData.creatorAvatar || null,
         creatorRecipeUrl,
         manualSearchQuery: !creatorRecipeUrl 
           ? `"${recipeData.creatorHandle || creatorHandle || ''}" "${recipeData.title}" recipe`.trim()

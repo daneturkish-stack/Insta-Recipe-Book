@@ -212,7 +212,7 @@ export default function RecipeDetailScreen() {
 
           {/* Instructions */}
           <View style={styles.section}>
-            <ThemedText type="h4" style={styles.sectionTitle}>Instructions</ThemedText>
+            <ThemedText type="h4" style={{ marginBottom: 16 }}>Instructions</ThemedText>
             {recipe.instructions.map((step, i) => (
               <View key={i} style={styles.instructionRow}>
                 <View style={[styles.stepCircle, { backgroundColor: theme.primary }]}>
@@ -249,7 +249,7 @@ export default function RecipeDetailScreen() {
           </View>
 
           {/* Refined Creator Card */}
-          <View style={[styles.creatorCard, { backgroundColor: theme.surface || theme.backgroundDefault }]}>
+          <View style={[styles.creatorCard, { backgroundColor: (theme as any).surface || theme.backgroundDefault }]}>
             <View style={styles.creatorInfoRow}>
               <Image 
                 source={
