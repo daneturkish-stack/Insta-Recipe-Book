@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { StyleSheet, View, Pressable, Dimensions, StatusBar, Alert, ScrollView } from "react-native";
+import { StyleSheet, View, Pressable, Dimensions, StatusBar, ScrollView, Platform, Vibration } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
 import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import YoutubePlayer from "react-native-youtube-iframe";
@@ -80,8 +81,12 @@ export default function CookModeScreen() {
   const recipe = useRecipe(recipeId);
   const [currentStep, setCurrentStep] = useState(0);
   const [activeTimers, setActiveTimers] = useState<Record<string, number>>({});
+  const [pausedTimers, setPausedTimers] = useState<Record<string, boolean>>({});
+  const [timerTotals, setTimerTotals] = useState<Record<string, number>>({});
+  const [finishedTimers, setFinishedTimers] = useState<Record<string, boolean>>({});
   const playerRef = useRef<any>(null);
   const timerIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const translateX = useSharedValue(0);
   const swipeDirection = useSharedValue<"left" | "right" | null>(null);
@@ -126,6 +131,12 @@ export default function CookModeScreen() {
   useEffect(() => {
     return () => {
       Object.values(timerIntervalsRef.current).forEach(clearInterval);
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current);
+      }
+      if ((alarmIntervalRef as any).soundRef) {
+        try { (alarmIntervalRef as any).soundRef.stopAsync(); } catch {}
+      }
     };
   }, []);
 
@@ -148,34 +159,121 @@ export default function CookModeScreen() {
     navigation.goBack();
   };
 
+  const triggerAlarm = useCallback(async (timerKey: string) => {
+    setFinishedTimers((prev) => ({ ...prev, [timerKey]: true }));
+    
+    const vibrateAlarm = () => {
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+      }
+    };
+    
+    vibrateAlarm();
+    
+    const alarmInt = setInterval(() => {
+      vibrateAlarm();
+    }, 3000);
+    alarmIntervalRef.current = alarmInt;
+    
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        require("../../assets/alarm.mp3"),
+        { shouldPlay: true, isLooping: true }
+      );
+      (alarmIntervalRef as any).soundRef = sound;
+    } catch {}
+  }, []);
+
+  const dismissAlarm = useCallback((timerKey: string) => {
+    setFinishedTimers((prev) => {
+      const { [timerKey]: _, ...rest } = prev;
+      return rest;
+    });
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+    if ((alarmIntervalRef as any).soundRef) {
+      try { (alarmIntervalRef as any).soundRef.stopAsync(); } catch {}
+      (alarmIntervalRef as any).soundRef = null;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
   const startTimer = useCallback((totalSeconds: number, label: string) => {
     const timerKey = `${currentStep}-${label}`;
     if (activeTimers[timerKey] !== undefined) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setActiveTimers((prev) => ({ ...prev, [timerKey]: totalSeconds }));
+    setTimerTotals((prev) => ({ ...prev, [timerKey]: totalSeconds }));
+    setPausedTimers((prev) => ({ ...prev, [timerKey]: false }));
 
     const interval = setInterval(() => {
-      setActiveTimers((prev) => {
-        const remaining = (prev[timerKey] || 0) - 1;
-        if (remaining <= 0) {
-          clearInterval(interval);
-          delete timerIntervalsRef.current[timerKey];
-          Alert.alert("Timer Done", `${label} timer is up! Time to move on.`);
-          const { [timerKey]: _, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [timerKey]: remaining };
+      setPausedTimers((paused) => {
+        if (paused[timerKey]) return paused;
+        
+        setActiveTimers((prev) => {
+          const remaining = (prev[timerKey] || 0) - 1;
+          if (remaining <= 0) {
+            clearInterval(interval);
+            delete timerIntervalsRef.current[timerKey];
+            triggerAlarm(timerKey);
+            const { [timerKey]: _, ...rest } = prev;
+            return rest;
+          }
+          return { ...prev, [timerKey]: remaining };
+        });
+        return paused;
       });
     }, 1000);
 
     timerIntervalsRef.current[timerKey] = interval;
-  }, [currentStep, activeTimers]);
+  }, [currentStep, activeTimers, triggerAlarm]);
+
+  const togglePauseTimer = useCallback((timerKey: string) => {
+    setPausedTimers((prev) => {
+      const isPaused = !prev[timerKey];
+      Haptics.impactAsync(isPaused ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
+      return { ...prev, [timerKey]: isPaused };
+    });
+  }, []);
+
+  const resetTimer = useCallback((timerKey: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (timerIntervalsRef.current[timerKey]) {
+      clearInterval(timerIntervalsRef.current[timerKey]);
+      delete timerIntervalsRef.current[timerKey];
+    }
+    setActiveTimers((prev) => {
+      const { [timerKey]: _, ...rest } = prev;
+      return rest;
+    });
+    setPausedTimers((prev) => {
+      const { [timerKey]: _, ...rest } = prev;
+      return rest;
+    });
+    setTimerTotals((prev) => {
+      const { [timerKey]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
 
   const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getTimerProgress = (timerKey: string, remaining: number) => {
+    const total = timerTotals[timerKey] || 1;
+    return 1 - remaining / total;
   };
 
   const contentAnimatedStyle = useAnimatedStyle(() => ({
@@ -304,14 +402,50 @@ export default function CookModeScreen() {
                   {timeMentions.map((mention, index) => {
                     const timerKey = `${currentStep}-${mention.amount} ${mention.unit}`;
                     const isActive = activeTimers[timerKey] !== undefined;
+                    const isPaused = pausedTimers[timerKey] || false;
+                    const isFinished = finishedTimers[timerKey] || false;
                     return (
                       <View key={index} style={styles.timerRow}>
-                        {isActive ? (
-                          <View style={styles.activeTimerBadge}>
-                            <Feather name="clock" size={14} color={CookModeColors.accent} />
-                            <ThemedText style={styles.activeTimerText}>
-                              {formatTimer(activeTimers[timerKey])}
+                        {isFinished ? (
+                          <View style={styles.timerFinishedContainer}>
+                            <Feather name="bell" size={20} color={CookModeColors.accent} />
+                            <ThemedText style={styles.timerFinishedText}>
+                              {mention.amount} {mention.unit} timer done
                             </ThemedText>
+                            <Pressable
+                              onPress={() => dismissAlarm(timerKey)}
+                              style={styles.dismissButton}
+                              testID={`dismiss-timer-${index}`}
+                            >
+                              <ThemedText style={styles.dismissButtonText}>Dismiss</ThemedText>
+                            </Pressable>
+                          </View>
+                        ) : isActive ? (
+                          <View style={styles.activeTimerContainer}>
+                            <View style={styles.activeTimerDisplay}>
+                              <ThemedText style={styles.activeTimerText}>
+                                {formatTimer(activeTimers[timerKey])}
+                              </ThemedText>
+                              {isPaused ? (
+                                <ThemedText style={styles.pausedLabel}>Paused</ThemedText>
+                              ) : null}
+                            </View>
+                            <View style={styles.timerControls}>
+                              <Pressable
+                                onPress={() => togglePauseTimer(timerKey)}
+                                style={[styles.timerControlButton, { backgroundColor: isPaused ? CookModeColors.primary : "rgba(255,255,255,0.1)" }]}
+                                testID={`pause-timer-${index}`}
+                              >
+                                <Feather name={isPaused ? "play" : "pause"} size={18} color={isPaused ? CookModeColors.background : CookModeColors.text} />
+                              </Pressable>
+                              <Pressable
+                                onPress={() => resetTimer(timerKey)}
+                                style={[styles.timerControlButton, { backgroundColor: "rgba(255,80,80,0.15)" }]}
+                                testID={`reset-timer-${index}`}
+                              >
+                                <Feather name="rotate-ccw" size={18} color="#FF5050" />
+                              </Pressable>
+                            </View>
                           </View>
                         ) : (
                           <Pressable
@@ -319,7 +453,7 @@ export default function CookModeScreen() {
                             style={styles.startTimerButton}
                             testID={`start-timer-${index}`}
                           >
-                            <Feather name="clock" size={14} color={CookModeColors.background} />
+                            <Feather name="play" size={14} color={CookModeColors.background} />
                             <ThemedText style={styles.startTimerText}>
                               Start {mention.amount} {mention.unit} Timer
                             </ThemedText>
@@ -493,12 +627,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   timerSection: {
-    marginTop: Spacing["3xl"],
+    marginTop: Spacing.xl,
     width: "100%",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.03)",
-    padding: 24,
-    borderRadius: 32,
+    padding: Spacing.lg,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)",
   },
@@ -511,22 +645,63 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 9999,
   },
-  activeTimerBadge: {
-    flexDirection: "row",
+  activeTimerContainer: {
+    width: "100%",
     alignItems: "center",
-    gap: Spacing.md,
-    backgroundColor: "transparent",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: 9999,
-    borderWidth: 2,
-    borderColor: CookModeColors.accent,
+    gap: Spacing.lg,
+  },
+  activeTimerDisplay: {
+    alignItems: "center",
   },
   activeTimerText: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: "800",
     color: CookModeColors.accent,
     fontVariant: ["tabular-nums"],
+  },
+  pausedLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: CookModeColors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  timerControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  timerControlButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timerFinishedContainer: {
+    width: "100%",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  timerFinishedText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: CookModeColors.accent,
+    textAlign: "center",
+  },
+  dismissButton: {
+    backgroundColor: CookModeColors.accent,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 9999,
+    marginTop: Spacing.sm,
+  },
+  dismissButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: CookModeColors.background,
   },
   ingredientsSection: {
     marginTop: Spacing["4xl"],
