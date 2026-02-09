@@ -298,149 +298,236 @@ export default function RecipeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F8F9FA' // Soft canvas background
-  },
-  heroContainer: { 
-    height: 360, // Slightly taller for a more dramatic hero feel
-    width: '100%', 
-    position: 'relative' 
-  },
-  heroImage: { 
-    width: '100%', 
-    height: '100%', 
-    borderBottomLeftRadius: 32, 
-    borderBottomRightRadius: 32 
-  },
-  playButton: { 
-    position: 'absolute', 
-    top: '50%', 
-    left: '50%', 
-    transform: [{ translateX: -32 }, { translateY: -32 }] 
-  },
-  playButtonInner: { 
-    width: 64, 
-    height: 64, 
-    borderRadius: 32, 
-    backgroundColor: 'rgba(255,255,255,0.3)', // Frosted glass effect
-    alignItems: 'center', 
-    justifyContent: 'center',
-    backdropFilter: 'blur(10px)'
-  },
-  content: { 
-    padding: Spacing.xl, 
-    paddingTop: 32 
-  },
-  confidenceBadge: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    alignSelf: 'flex-start', 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 9999, // Pill shape
-    marginBottom: 16 
-  },
-  confidenceText: { 
-    fontSize: 10, 
-    fontWeight: '800', 
-    marginLeft: 4, 
-    letterSpacing: 1 // Editorial spacing
-  },
-  title: { 
-    marginBottom: 24,
-    lineHeight: 38 // Increased for better readability
-  },
-  // Floating Stats Bar
-  statsBar: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    padding: 20, 
-    borderRadius: 24, 
-    marginBottom: 40,
-    backgroundColor: '#FFFFFF',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4
-  },
-  statItem: { 
-    alignItems: 'center', 
-    gap: 6 
-  },
-  statDivider: { 
-    width: 1, 
-    height: 32, 
-    backgroundColor: '#F3F4F6' 
-  },
-  section: { 
-    marginBottom: 40 
-  },
-  sectionHeaderRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 20 
-  },
-  card: { 
-    borderRadius: 24, // Consistent card radius
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F3F4F6'
-  },
-  row: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    padding: 18 
-  },
-  borderBottom: { 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F3F4F6' 
-  },
-  checkbox: { 
-    width: 22, 
-    height: 22, 
-    borderRadius: 8, 
-    borderWidth: 1.5, 
-    marginRight: 14, 
-    alignItems: 'center', 
-    justifyContent: 'center' 
-  },
-  ingredientText: { 
-    flex: 1, 
-    fontSize: 16,
-    color: '#1F2937' 
-  },
-  checkedText: { 
-    textDecorationLine: 'line-through', 
-    opacity: 0.3 
-  },
-  instructionRow: { 
-    flexDirection: 'row', 
-    marginBottom: 28 
-  },
-  stepCircle: { 
-    width: 32, 
-    height: 32, 
-    borderRadius: 16, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginRight: 16, 
-    marginTop: 0 
-  },
-  stepCircleText: { 
-    color: '#FFF', 
-    fontWeight: '700', 
-    fontSize: 14 
-  },
-  instructionText: { 
-    flex: 1, 
-    fontSize: 16, 
-    lineHeight: 26, // Airy, readable steps
-    color: '#374151'
-  },
-  utilityBar: { 
-    flexDirection: '
+      const styles = StyleSheet.create({
+        container: { 
+          flex: 1, 
+          backgroundColor: '#F8F9FA' // Soft canvas background
+        },
+        heroContainer: { 
+          height: 360, // Slightly taller for a more dramatic hero feel
+          width: '100%', 
+          position: 'relative' 
+        },
+        heroImage: { 
+          width: '100%', 
+          height: '100%', 
+          borderBottomLeftRadius: 32, 
+          borderBottomRightRadius: 32 
+        },
+        playButton: { 
+          position: 'absolute', 
+          top: '50%', 
+          left: '50%', 
+          transform: [{ translateX: -32 }, { translateY: -32 }] 
+        },
+        playButtonInner: { 
+          width: 64, 
+          height: 64, 
+          borderRadius: 32, 
+          backgroundColor: 'rgba(255,255,255,0.3)', // Frosted glass effect
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backdropFilter: 'blur(10px)'
+        },
+        content: { 
+          padding: Spacing.xl, 
+          paddingTop: 32 
+        },
+        confidenceBadge: { 
+          flexDirection: 'row', 
+          alignItems: 'center', 
+          alignSelf: 'flex-start', 
+          paddingHorizontal: 12, 
+          paddingVertical: 6, 
+          borderRadius: 9999, // Pill shape
+          marginBottom: 16 
+        },
+        confidenceText: { 
+          fontSize: 10, 
+          fontWeight: '800', 
+          marginLeft: 4, 
+          letterSpacing: 1 // Editorial spacing
+        },
+        title: { 
+          marginBottom: 24,
+          lineHeight: 38 // Increased for better readability
+        },
+        // Floating Stats Bar
+        statsBar: { 
+          flexDirection: 'row', 
+          justifyContent: 'space-around', 
+          padding: 20, 
+          borderRadius: 24, 
+          marginBottom: 40,
+          backgroundColor: '#FFFFFF',
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+          elevation: 4
+        },
+        statItem: { 
+          alignItems: 'center', 
+          gap: 6 
+        },
+        statDivider: { 
+          width: 1, 
+          height: 32, 
+          backgroundColor: '#F3F4F6' 
+        },
+        section: { 
+          marginBottom: 40 
+        },
+        sectionHeaderRow: { 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: 20 
+        },
+        card: { 
+          borderRadius: 24, // Consistent card radius
+          overflow: 'hidden',
+          backgroundColor: '#FFFFFF',
+          borderWidth: 1,
+          borderColor: '#F3F4F6'
+        },
+        row: { 
+          flexDirection: 'row', 
+          alignItems: 'center', 
+          padding: 18 
+        },
+        borderBottom: { 
+          borderBottomWidth: 1, 
+          borderBottomColor: '#F3F4F6' 
+        },
+        checkbox: { 
+          width: 22, 
+          height: 22, 
+          borderRadius: 8, 
+          borderWidth: 1.5, 
+          marginRight: 14, 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        },
+        ingredientText: { 
+          flex: 1, 
+          fontSize: 16,
+          color: '#1F2937' 
+        },
+        checkedText: { 
+          textDecorationLine: 'line-through', 
+          opacity: 0.3 
+        },
+        instructionRow: { 
+          flexDirection: 'row', 
+          marginBottom: 28 
+        },
+        stepCircle: { 
+          width: 32, 
+          height: 32, 
+          borderRadius: 16, 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          marginRight: 16, 
+          marginTop: 0 
+        },
+        stepCircleText: { 
+          color: '#FFF', 
+          fontWeight: '700', 
+          fontSize: 14 
+        },
+        instructionText: { 
+          flex: 1, 
+          fontSize: 16, 
+          lineHeight: 26, // Airy, readable steps
+          color: '#374151'
+        },
+        utilityBar: { 
+          flexDirection: 'row', 
+          justifyContent: 'space-around', 
+          paddingVertical: 28, 
+          borderTopWidth: 1, 
+          borderBottomWidth: 1, 
+          borderColor: '#F3F4F6', 
+          marginBottom: 32 
+        },
+        creatorCard: { 
+          padding: 20, 
+          borderRadius: 24, 
+          backgroundColor: '#FFFFFF',
+          borderWidth: 1,
+          borderColor: '#F3F4F6'
+        },
+        creatorAvatar: { 
+          width: 56, 
+          height: 56, 
+          borderRadius: 28, 
+          backgroundColor: '#F3F4F6' 
+        },
+        footer: { 
+          position: 'absolute', 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          paddingHorizontal: 24, 
+          paddingTop: 16,
+          paddingBottom: 32,
+          backgroundColor: 'rgba(255,255,255,0.9)', // Frosted sticky footer
+          borderTopWidth: 1, 
+          borderColor: '#F3F4F6'
+        },
+        cookButton: { 
+          height: 56, 
+          borderRadius: 9999,
+          backgroundColor: '#10B981',
+          shadowColor: "#10B981",
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 }
+        },
+        utilityItem: {
+          alignItems: 'center',
+          gap: 6,
+          paddingVertical: 8,
+        },
+        aiBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: 6,
+          opacity: 0.6,
+        },
+        creatorInfoRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+        },
+        creatorTextContent: {
+          flex: 1,
+        },
+        creatorTitleRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 2,
+        },
+        creatorName: {
+          fontSize: 16,
+          fontWeight: '700',
+          color: '#1F2937',
+        },
+        platformBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          backgroundColor: '#F3F4F6',
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          borderRadius: 8,
+        },
+        platformText: {
+          fontSize: 11,
+          fontWeight: '600',
+          color: '#6B7280',
+          textTransform: 'capitalize',
+        },
+      });

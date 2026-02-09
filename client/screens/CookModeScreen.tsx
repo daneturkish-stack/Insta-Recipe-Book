@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   askRemiFab: {
     position: "absolute",
     right: Spacing.xl,
-    bottom: 120, // Positioned above controls
+    bottom: 120,
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -631,5 +631,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
+  },
+  speakButtonActive: {
+    backgroundColor: CookModeColors.primary + "30",
+  },
+  navLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  stepIndicator: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timerRow: {
+    marginBottom: Spacing.md,
+    width: "100%",
+    alignItems: "center",
+  },
+  startTimerText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: CookModeColors.background,
+  },
+  ingredientsSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  ingredientChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  tapZoneLeft: {
+    position: "absolute",
+    left: 0,
+    top: "30%",
+    width: "15%",
+    height: "40%",
+  },
+  tapZoneRight: {
+    position: "absolute",
+    right: 0,
+    top: "30%",
+    width: "15%",
+    height: "40%",
   },
 });

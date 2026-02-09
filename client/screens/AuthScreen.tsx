@@ -398,3 +398,45 @@ const styles = StyleSheet.create({
     flex: 1, 
     height: 1,
     backgroundColor: '#E5E7EB'
+  },
+  input: { 
+    height: 56, 
+    borderRadius: 16,
+    borderWidth: 1.5, 
+    borderColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: Spacing.lg, 
+    fontSize: 16,
+    color: '#1F2937'
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  formHeader: {
+    marginBottom: Spacing.xl,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: 16,
+    marginBottom: Spacing.lg,
+  },
+  formFields: {
+    gap: Spacing.md,
+  },
+  googleIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

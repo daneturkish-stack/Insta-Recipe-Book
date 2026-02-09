@@ -709,6 +709,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 9999,
-    backgroundColor: '#FBBF24', // Brand Amber
+    backgroundColor: '#FBBF24',
+  },
+  listCardWrapper: {
+    width: "100%",
+    marginBottom: Spacing.md,
+  },
+  row: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: Spacing["4xl"],
+  },
+  thinkingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  thinkingText: {
+    fontSize: 14,
+  },
+  responseHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  remyAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  remyEmojiSmall: {
+    fontSize: 14,
+  },
+  showAllLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    paddingVertical: 4,
+  },
+  selectionCancelButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rouletteOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  rouletteBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  rouletteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+    padding: Spacing.xl,
+  },
+  rouletteTitle: {
+    color: "#FFF",
+    fontSize: 18,
+  },
+  rouletteContent: {
+    padding: Spacing.xl,
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  rouletteMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rouletteActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  rouletteDismiss: {
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
 });
