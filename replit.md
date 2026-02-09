@@ -91,6 +91,18 @@ When the AI fills in missing measurements or techniques, it references trusted s
 - Displays creator name, handle, avatar, and platform badge
 - "View Original Post" button links back to the source URL
 
+### Navigation Restructure & New Features
+- Shopping cart moved to bottom tab bar ("Shop" tab) with badge showing unchecked item count
+- Profile moved to Collection header top-right (user's avatar image, circular 32px button)
+- Remi AI tab icon changed from cooking pot to chef's hat
+- Meal type filtering on Collection screen: horizontal scrollable chips with 18 dish types (Breakfast, Lunch, Dinner, Snack, Appetizer, etc.) that filter recipes by `dishType`
+- Measurement unit preference (Imperial/Metric) in Profile > Cooking section
+  - Toggle between Imperial (oz, cups, °F) and Metric (g, ml, °C)
+  - Persisted in AsyncStorage under `@kitch_measurement_unit`
+  - Unit conversion utility at `client/lib/unit-conversion.ts` handles weight, volume, length, temperature
+  - RecipeDetailScreen dynamically converts ingredient display based on preference
+- Key files: `client/navigation/ShoppingStackNavigator.tsx` (new), `client/lib/unit-conversion.ts` (new)
+
 ### Cook Mode Upgrades (YouTube Sync, Remi Voice, Timers)
 - **YouTube Player Integration**: YouTube recipes (`platform === 'youtube'` with `videoUrl`) show an embedded YouTube player at the top of Cook Mode. Player auto-seeks to step timestamps when navigating steps.
 - **Structured Instructions**: Instructions now support both plain strings and `{ text, timestamp }` objects via `InstructionStep` type. The `timestamp` field enables YouTube video sync per step.
@@ -107,7 +119,8 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 - **Framework**: React Native with Expo SDK 54 (New Architecture enabled)
 - **Navigation**: React Navigation v7 with native stack navigators
-  - Tab-based navigation (Collection, Add Recipe, Remi, Pantry, Profile)
+  - Tab-based navigation (Collection, Add Recipe, Remi, Pantry, Shop)
+  - Profile accessible from Collection header (top-right avatar button)
   - Stack navigation within each tab for detail views
   - Full-screen modal for Cook Mode
 - **State Management**: TanStack React Query for server state, local AsyncStorage for recipe persistence
