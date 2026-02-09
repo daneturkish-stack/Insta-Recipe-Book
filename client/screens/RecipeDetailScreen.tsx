@@ -312,8 +312,7 @@ export default function RecipeDetailScreen() {
           position: 'relative' 
         },
         heroImage: { 
-          width: '100%', 
-          height: '100%', 
+          ...StyleSheet.absoluteFillObject,
           borderBottomLeftRadius: 32, 
           borderBottomRightRadius: 32 
         },

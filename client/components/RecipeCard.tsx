@@ -445,8 +445,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   image: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
   },
   videoIndicator: {
     position: "absolute",
@@ -559,8 +558,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   listImage: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
   },
   selectIndicatorList: {
     position: "absolute",
