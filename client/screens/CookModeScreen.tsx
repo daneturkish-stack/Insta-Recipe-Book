@@ -301,7 +301,7 @@ export default function CookModeScreen() {
         if (voiceActiveRef.current && recordingRef.current) {
           processRecording();
         }
-      }, 12000);
+      }, 5000);
 
     } catch (error) {
       console.error("Failed to start recording:", error);
