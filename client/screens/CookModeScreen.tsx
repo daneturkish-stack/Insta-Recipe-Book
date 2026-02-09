@@ -128,15 +128,23 @@ export default function CookModeScreen() {
     }
   }, [currentStep, hasYouTubeVideo, recipe]);
 
-  const speakInstruction = useCallback((text: string) => {
-    Speech.stop();
-    setIsSpeaking(true);
-    Speech.speak(text, {
-      rate: 0.9,
-      onDone: () => setIsSpeaking(false),
-      onStopped: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-    });
+  const speakInstruction = useCallback(async (text: string) => {
+    try {
+      await Speech.stop();
+      const isAvailable = await Speech.isSpeakingAsync().then(() => true).catch(() => false);
+      setIsSpeaking(true);
+      Speech.speak(text, {
+        rate: 0.9,
+        pitch: 1.0,
+        language: "en-US",
+        onDone: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    } catch (err) {
+      console.warn("Speech not available:", err);
+      setIsSpeaking(false);
+    }
   }, []);
 
   const toggleSpeak = useCallback(() => {
@@ -213,15 +221,24 @@ export default function CookModeScreen() {
   const handleAskRemi = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
+    let response = `Step ${currentStep + 1}: ${currentInstructionText}`;
+
     if (stepIngredients.length > 0) {
       const ingredientList = stepIngredients
         .map((i) => `${i.amount} ${i.unit} ${i.name}`.trim())
         .join(", ");
-      speakInstruction(`For this step, you'll need: ${ingredientList}`);
-    } else {
-      speakInstruction("No specific ingredients identified for this step. Try asking about the next step!");
+      response += `. You will need: ${ingredientList}`;
     }
-  }, [stepIngredients, speakInstruction]);
+
+    if (timeMentions.length > 0) {
+      const timeInfo = timeMentions
+        .map((t) => `${t.amount} ${t.unit}`)
+        .join(" and ");
+      response += `. This step takes about ${timeInfo}`;
+    }
+
+    speakInstruction(response);
+  }, [currentStep, currentInstructionText, stepIngredients, timeMentions, speakInstruction]);
 
   if (!recipe) {
     return (
