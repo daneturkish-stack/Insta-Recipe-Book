@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState } from "react";
-import { StyleSheet, View, FlatList, Pressable, RefreshControl } from "react-native";
+import { StyleSheet, View, FlatList, Pressable, RefreshControl, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -243,7 +243,7 @@ export default function ShoppingListScreen() {
           exiting={FadeOut}
           style={[
             styles.bottomBar,
-            { backgroundColor: theme.backgroundDefault, paddingBottom: insets.bottom + Spacing.md },
+            { backgroundColor: theme.backgroundDefault, paddingBottom: insets.bottom + (Platform.OS === "ios" ? 88 : 64) + Spacing.md },
           ]}
         >
           <Pressable onPress={handleClearChecked} style={[styles.clearButton, { borderColor: theme.border }]}>

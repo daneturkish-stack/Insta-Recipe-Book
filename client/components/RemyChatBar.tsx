@@ -3,7 +3,7 @@ import { StyleSheet, View, TextInput, Pressable, TextInputProps, Image } from "r
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
-import cookingIcon from "../assets/images/cooking.png";
+import chefsHatIcon from "../assets/images/chefs-hat.png";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -33,7 +33,7 @@ function RemyChatBarComponent({ onSubmit, placeholder, disabled }: RemyChatBarPr
   return (
     <View style={[styles.remyBar, { backgroundColor: theme.backgroundDefault }]}>
       <View style={[styles.remyAvatar, { backgroundColor: theme.primary }]}>
-        <Image source={cookingIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
+        <Image source={chefsHatIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
       </View>
       <View style={styles.remyChatInput}>
         <TextInput

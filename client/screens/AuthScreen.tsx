@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  Dimensions,
+  ImageBackground,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -14,9 +16,8 @@ import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as AppleAuthentication from "expo-apple-authentication";
-import * as AuthSession from "expo-auth-session"; // Added for manual redirect control
+import * as AuthSession from "expo-auth-session";
 
-// Standard Expo Auth Hooks (Live Ready)
 import * as Google from "expo-auth-session/providers/google";
 import * as Facebook from "expo-auth-session/providers/facebook";
 
@@ -28,6 +29,8 @@ import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 WebBrowser.maybeCompleteAuthSession();
 
 const appIcon = require("../../assets/images/icon.png");
+const foodBg = require("../../assets/images/food-collage-bg.png");
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type AuthMode = "welcome" | "login" | "register";
 
@@ -174,36 +177,43 @@ export default function AuthScreen() {
 
   if (mode === "welcome") {
     return (
-      <ScrollView
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-        contentContainerStyle={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingTop: insets.top + Spacing["6xl"], paddingBottom: insets.bottom + Spacing["3xl"] }]}
-      >
-        <View style={[styles.heroSection, { backgroundColor: theme.backgroundSecondary }]}>
-          <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
-          <ThemedText type="hero" style={styles.heroTitle}>Kitch</ThemedText>
-          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", lineHeight: 24 }}>
-            Turn social media food content into your personal cookbook
-          </ThemedText>
-        </View>
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <ImageBackground
+          source={foodBg}
+          style={styles.heroSection}
+          resizeMode="cover"
+        >
+          <View style={styles.heroOverlay} />
+        </ImageBackground>
 
-        <View style={styles.featureList}>
-          {[{ icon: "link" as const, text: "Save recipes from Instagram & TikTok" }, { icon: "book-open" as const, text: "Build your personal cookbook" }, { icon: "mic" as const, text: "AI-powered recipe extraction" }].map((feature, i) => (
-            <View key={i} style={[styles.featureRow, { backgroundColor: theme.backgroundSecondary }]}>
-              <View style={[styles.featureIconWrap, { backgroundColor: KitchColors.primaryMuted }]}><Feather name={feature.icon} size={18} color={KitchColors.primary} /></View>
-              <ThemedText type="body" style={{ flex: 1 }}>{feature.text}</ThemedText>
-            </View>
-          ))}
-        </View>
+        <View style={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingBottom: insets.bottom + Spacing["3xl"] }]}>
+          <View style={styles.heroContent}>
+            <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
+            <ThemedText type="hero" style={styles.heroTitle}>Kitch</ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", lineHeight: 24 }}>
+              Turn social media food content into your personal cookbook
+            </ThemedText>
+          </View>
 
-        <View style={styles.buttonGroup}>
-          <Pressable style={[styles.primaryButton, { backgroundColor: KitchColors.primary }]} onPress={() => setMode("register")}>
-            <ThemedText type="bodyMedium" style={{ color: "#FFFFFF" }}>Get Started</ThemedText>
-          </Pressable>
-          <Pressable style={[styles.secondaryButton, { borderColor: theme.border }]} onPress={() => setMode("login")}>
-            <ThemedText type="bodyMedium">I already have an account</ThemedText>
-          </Pressable>
+          <View style={styles.featureList}>
+            {[{ icon: "link" as const, text: "Save recipes from Instagram & TikTok" }, { icon: "book-open" as const, text: "Build your personal cookbook" }, { icon: "mic" as const, text: "AI-powered recipe extraction" }].map((feature, i) => (
+              <View key={i} style={[styles.featureRow, { backgroundColor: theme.backgroundSecondary }]}>
+                <View style={[styles.featureIconWrap, { backgroundColor: KitchColors.primaryMuted }]}><Feather name={feature.icon} size={18} color={KitchColors.primary} /></View>
+                <ThemedText type="body" style={{ flex: 1 }}>{feature.text}</ThemedText>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.buttonGroup}>
+            <Pressable style={[styles.primaryButton, { backgroundColor: KitchColors.primary }]} onPress={() => setMode("register")}>
+              <ThemedText type="bodyMedium" style={{ color: "#FFFFFF" }}>Get Started</ThemedText>
+            </Pressable>
+            <Pressable style={[styles.secondaryButton, { borderColor: theme.border }]} onPress={() => setMode("login")}>
+              <ThemedText type="bodyMedium">I already have an account</ThemedText>
+            </Pressable>
+          </View>
         </View>
-      </ScrollView>
+      </View>
     );
   }
 
@@ -270,53 +280,45 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1,
   },
-  // New: Masonry Collage Header Logic
   heroSection: { 
-    height: '45%', 
+    height: SCREEN_HEIGHT * 0.4,
     width: '100%',
-    flexDirection: 'row',
-    padding: 4,
   },
-  collageColumn: {
-    flex: 1,
-    gap: 4,
-    padding: 2
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  collageImage: {
-    flex: 1,
-    borderRadius: 12,
-  },
-  // The Login Card that overlaps the collage
   contentContainer: { 
     flex: 1,
-    marginTop: -40, // Creating that premium overlap effect
+    marginTop: -40,
     borderTopLeftRadius: 40, 
     borderTopRightRadius: 40, 
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing['2xl'],
-    // Adding the soft shadow from your design system
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.05,
     shadowRadius: 20,
-    elevation: 10
+    elevation: 10,
+  },
+  heroContent: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
   },
   appIcon: { 
     width: 80, 
     height: 80, 
-    borderRadius: 24, // Matches 24px card radius brief
+    borderRadius: 24,
     marginBottom: Spacing.lg,
-    alignSelf: 'center',
-    // Elevated floating effect
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    elevation: 5
+    elevation: 5,
   },
   heroTitle: { 
     marginBottom: Spacing.sm, 
     textAlign: "center",
-    letterSpacing: -0.5 // Editorial feel
+    letterSpacing: -0.5,
   },
   featureList: { 
     marginBottom: Spacing["2xl"], 

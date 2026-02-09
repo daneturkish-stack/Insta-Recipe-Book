@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import cookingIcon from "../assets/images/cooking.png";
+import chefsHatIcon from "../assets/images/chefs-hat.png";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -583,7 +583,7 @@ export default function RemiScreen() {
           <View
             style={[styles.remyAvatar, { backgroundColor: theme.primary }]}
           >
-            <Image source={cookingIcon} style={{ width: 16, height: 16, tintColor: "#FFF" }} />
+            <Image source={chefsHatIcon} style={{ width: 16, height: 16, tintColor: "#FFF" }} />
           </View>
         ) : null}
         <View
@@ -628,7 +628,7 @@ export default function RemiScreen() {
       >
         <View style={styles.headerLeft}>
           <View style={[styles.remyIcon, { backgroundColor: theme.primary }]}>
-            <Image source={cookingIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
+            <Image source={chefsHatIcon} style={{ width: 24, height: 24, tintColor: "#FFF" }} />
           </View>
           <View>
             <Text style={[styles.headerTitle, { color: theme.text }]}>
