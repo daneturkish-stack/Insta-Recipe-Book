@@ -55,9 +55,7 @@ export default function AuthScreen() {
   const [fRequest, fResponse, fPromptAsync] = Facebook.useAuthRequest({
     clientId: "1652831865939554",
     // Forces the use of the Expo proxy to resolve "No redirect present in URI" errors in development
-    redirectUri: AuthSession.makeRedirectUri({
-      useProxy: true,
-    }),
+    redirectUri: AuthSession.makeRedirectUri({}),
   });
 
   // Handle Google Response
@@ -136,7 +134,7 @@ export default function AuthScreen() {
     <View style={styles.socialSection}>
       {Platform.OS === "ios" && (
         <Pressable
-          style={[styles.socialButton, { backgroundColor: isDark ? "#FFFFFF" : "#000000" }]}
+          style={[styles.socialButton, { backgroundColor: isDark ? "#FFFFFF" : "#000000", borderColor: isDark ? "#FFFFFF" : "#000000" }]}
           onPress={handleAppleLogin}
         >
           <Feather name="smartphone" size={20} color={isDark ? "#000000" : "#FFFFFF"} />
@@ -151,12 +149,12 @@ export default function AuthScreen() {
         onPress={() => gPromptAsync()}
         disabled={!gRequest || isSubmitting}
       >
-        <View style={styles.googleIcon}><ThemedText type="bodyMedium" style={{ color: "#4285F4" }}>G</ThemedText></View>
-        <ThemedText type="bodyMedium" style={styles.socialButtonText}>Continue with Google</ThemedText>
+        <View style={[styles.googleIcon, { backgroundColor: theme.backgroundSecondary }]}><ThemedText type="bodyMedium" style={{ color: "#4285F4" }}>G</ThemedText></View>
+        <ThemedText type="bodyMedium" style={[styles.socialButtonText, { color: theme.text }]}>Continue with Google</ThemedText>
       </Pressable>
 
       <Pressable
-        style={[styles.socialButton, { backgroundColor: "#1877F2" }]}
+        style={[styles.socialButton, { backgroundColor: "#1877F2", borderColor: "#1877F2" }]}
         onPress={() => fPromptAsync()}
         disabled={!fRequest || isSubmitting}
       >
@@ -178,9 +176,9 @@ export default function AuthScreen() {
     return (
       <ScrollView
         style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + Spacing["6xl"], paddingBottom: insets.bottom + Spacing["3xl"] }]}
+        contentContainerStyle={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingTop: insets.top + Spacing["6xl"], paddingBottom: insets.bottom + Spacing["3xl"] }]}
       >
-        <View style={styles.heroSection}>
+        <View style={[styles.heroSection, { backgroundColor: theme.backgroundSecondary }]}>
           <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
           <ThemedText type="hero" style={styles.heroTitle}>Kitch</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", lineHeight: 24 }}>
@@ -190,7 +188,7 @@ export default function AuthScreen() {
 
         <View style={styles.featureList}>
           {[{ icon: "link" as const, text: "Save recipes from Instagram & TikTok" }, { icon: "book-open" as const, text: "Build your personal cookbook" }, { icon: "mic" as const, text: "AI-powered recipe extraction" }].map((feature, i) => (
-            <View key={i} style={styles.featureRow}>
+            <View key={i} style={[styles.featureRow, { backgroundColor: theme.backgroundSecondary }]}>
               <View style={[styles.featureIconWrap, { backgroundColor: KitchColors.primaryMuted }]}><Feather name={feature.icon} size={18} color={KitchColors.primary} /></View>
               <ThemedText type="body" style={{ flex: 1 }}>{feature.text}</ThemedText>
             </View>
@@ -212,9 +210,9 @@ export default function AuthScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + Spacing["3xl"], paddingBottom: insets.bottom + Spacing["3xl"] }]}
+      contentContainerStyle={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingTop: insets.top + Spacing["3xl"], paddingBottom: insets.bottom + Spacing["3xl"] }]}
     >
-      <Pressable style={styles.backButton} onPress={() => setMode("welcome")}><Feather name="arrow-left" size={24} color={theme.text} /></Pressable>
+      <Pressable style={[styles.backButton, { backgroundColor: theme.backgroundSecondary }]} onPress={() => setMode("welcome")}><Feather name="arrow-left" size={24} color={theme.text} /></Pressable>
       <View style={styles.formHeader}>
         <ThemedText type="h2">{mode === "login" ? "Welcome back" : "Create account"}</ThemedText>
       </View>
@@ -270,8 +268,7 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
-    backgroundColor: '#F8F9FA' // Soft off-white background per brief
+    flex: 1,
   },
   // New: Masonry Collage Header Logic
   heroSection: { 
@@ -279,7 +276,6 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     padding: 4,
-    backgroundColor: '#E5E7EB'
   },
   collageColumn: {
     flex: 1,
@@ -289,13 +285,11 @@ const styles = StyleSheet.create({
   collageImage: {
     flex: 1,
     borderRadius: 12,
-    backgroundColor: '#D1D5DB'
   },
   // The Login Card that overlaps the collage
   contentContainer: { 
     flex: 1,
     marginTop: -40, // Creating that premium overlap effect
-    backgroundColor: '#FFFFFF', 
     borderTopLeftRadius: 40, 
     borderTopRightRadius: 40, 
     paddingHorizontal: Spacing.xl,
@@ -332,7 +326,6 @@ const styles = StyleSheet.create({
     flexDirection: "row", 
     alignItems: "center", 
     gap: Spacing.md,
-    backgroundColor: '#F9FAFB',
     padding: 12,
     borderRadius: 16
   },
@@ -366,7 +359,6 @@ const styles = StyleSheet.create({
     justifyContent: "center", 
     alignItems: "center", 
     borderWidth: 1.5,
-    borderColor: '#E5E7EB'
   },
   socialSection: { 
     gap: Spacing.md, 
@@ -380,13 +372,10 @@ const styles = StyleSheet.create({
     alignItems: "center", 
     gap: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF'
   },
   socialButtonText: { 
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937'
   },
   dividerRow: { 
     flexDirection: "row", 
@@ -397,23 +386,18 @@ const styles = StyleSheet.create({
   dividerLine: { 
     flex: 1, 
     height: 1,
-    backgroundColor: '#E5E7EB'
   },
   input: { 
     height: 56, 
     borderRadius: 16,
     borderWidth: 1.5, 
-    borderColor: '#F3F4F6',
-    backgroundColor: '#F9FAFB',
     paddingHorizontal: Spacing.lg, 
     fontSize: 16,
-    color: '#1F2937'
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
@@ -435,7 +419,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -175,12 +175,12 @@ export default function RecipeDetailScreen() {
                 <Feather name="clock" size={18} color={theme.primary} />
                 <ThemedText type="bodyMedium">{totalTime > 0 ? `${totalTime} min` : "—"}</ThemedText>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
               <View style={styles.statItem}>
                 <Feather name="list" size={18} color={KitchColors.accent} />
                 <ThemedText type="bodyMedium">{recipe.instructions?.length || 0} steps</ThemedText>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
               <View style={styles.statItem}>
                 <Feather name="users" size={18} color={theme.textSecondary} />
                 <ThemedText type="bodyMedium">{scaledServings || "—"}</ThemedText>
@@ -195,9 +195,9 @@ export default function RecipeDetailScreen() {
                 <ThemedText type="h4">Ingredients</ThemedText>
                 <ThemedText type="caption" style={{ fontStyle: 'italic' }}>Pinch to scale</ThemedText>
               </View>
-              <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+              <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
                 {recipe.ingredients.map((ing, i) => (
-                  <Pressable key={i} onPress={() => toggleIngredient(i)} style={[styles.row, i < recipe.ingredients.length - 1 && styles.borderBottom]}>
+                  <Pressable key={i} onPress={() => toggleIngredient(i)} style={[styles.row, i < recipe.ingredients.length - 1 && styles.borderBottom, i < recipe.ingredients.length - 1 && { borderBottomColor: theme.border }]}>
                     <View style={[styles.checkbox, { backgroundColor: checkedIngredients.has(i) ? theme.primary : 'transparent', borderColor: theme.border }]}>
                       {checkedIngredients.has(i) && <Feather name="check" size={12} color="#FFF" />}
                     </View>
@@ -229,7 +229,7 @@ export default function RecipeDetailScreen() {
           </View>
 
           {/* Tidy Utility Bar */}
-          <View style={styles.utilityBar}>
+          <View style={[styles.utilityBar, { borderColor: theme.border }]}>
             <Pressable onPress={() => handleOpenLink(recipe.sourceUrl)} style={styles.utilityItem}>
               <Feather name="external-link" size={20} color={theme.textSecondary} />
               <ThemedText type="caption">Original</ThemedText>
@@ -249,7 +249,7 @@ export default function RecipeDetailScreen() {
           </View>
 
           {/* Refined Creator Card */}
-          <View style={[styles.creatorCard, { backgroundColor: (theme as any).surface || theme.backgroundDefault }]}>
+          <View style={[styles.creatorCard, { backgroundColor: (theme as any).surface || theme.backgroundDefault, borderColor: theme.border }]}>
             <View style={styles.creatorInfoRow}>
               <Image 
                 source={
@@ -259,15 +259,15 @@ export default function RecipeDetailScreen() {
                       ? { uri: PLATFORM_LOGO_URLS[recipe.platform || ''] }
                       : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(recipe.creatorHandle || 'K')}&background=0D9488&color=fff&size=96` }
                 } 
-                style={styles.creatorAvatar} 
+                style={[styles.creatorAvatar, { backgroundColor: theme.backgroundSecondary }]} 
                 contentFit={recipe.creatorAvatar ? "cover" : "contain"}
               />
               <View style={styles.creatorTextContent}>
                 <View style={styles.creatorTitleRow}>
                   <ThemedText style={styles.creatorName}>{recipe.creatorName || recipe.creatorHandle || "Creator"}</ThemedText>
-                  <View style={styles.platformBadge}>
+                  <View style={[styles.platformBadge, { backgroundColor: theme.backgroundSecondary }]}>
                     <Feather name={PLATFORM_ICONS[recipe.platform || 'manual'] as any} size={10} color={theme.textSecondary} />
-                    <ThemedText style={styles.platformText}>{recipe.platform}</ThemedText>
+                    <ThemedText style={[styles.platformText, { color: theme.textSecondary }]}>{recipe.platform}</ThemedText>
                   </View>
                 </View>
                 {(() => {
@@ -288,7 +288,7 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {/* Sticky Footer */}
-      <View style={[styles.footer, { bottom: tabBarHeight, paddingBottom: Spacing.md, paddingTop: Spacing.md, backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.footer, { bottom: tabBarHeight, paddingBottom: Spacing.md, paddingTop: Spacing.md, backgroundColor: isDark ? 'rgba(20, 18, 24, 0.95)' : 'rgba(255, 255, 255, 0.9)', borderColor: theme.border }]}>
         <Button onPress={() => navigation.navigate("CookMode", { recipeId })} style={styles.cookButton}>
           <Feather name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
           Start Cooking
@@ -300,8 +300,7 @@ export default function RecipeDetailScreen() {
 
       const styles = StyleSheet.create({
         container: { 
-          flex: 1, 
-          backgroundColor: '#F8F9FA' // Soft canvas background
+          flex: 1,
         },
         heroContainer: { 
           height: 360, // Slightly taller for a more dramatic hero feel
@@ -324,10 +323,9 @@ export default function RecipeDetailScreen() {
           width: 64, 
           height: 64, 
           borderRadius: 32, 
-          backgroundColor: 'rgba(255,255,255,0.3)', // Frosted glass effect
+          backgroundColor: 'rgba(255,255,255,0.3)',
           alignItems: 'center', 
           justifyContent: 'center',
-          backdropFilter: 'blur(10px)'
         },
         content: { 
           padding: Spacing.xl, 
@@ -359,7 +357,6 @@ export default function RecipeDetailScreen() {
           padding: 20, 
           borderRadius: 24, 
           marginBottom: 40,
-          backgroundColor: '#FFFFFF',
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.06,
@@ -372,8 +369,7 @@ export default function RecipeDetailScreen() {
         },
         statDivider: { 
           width: 1, 
-          height: 32, 
-          backgroundColor: '#F3F4F6' 
+          height: 32,
         },
         section: { 
           marginBottom: 40 
@@ -385,11 +381,9 @@ export default function RecipeDetailScreen() {
           marginBottom: 20 
         },
         card: { 
-          borderRadius: 24, // Consistent card radius
+          borderRadius: 24,
           overflow: 'hidden',
-          backgroundColor: '#FFFFFF',
           borderWidth: 1,
-          borderColor: '#F3F4F6'
         },
         row: { 
           flexDirection: 'row', 
@@ -397,8 +391,7 @@ export default function RecipeDetailScreen() {
           padding: 18 
         },
         borderBottom: { 
-          borderBottomWidth: 1, 
-          borderBottomColor: '#F3F4F6' 
+          borderBottomWidth: 1,
         },
         checkbox: { 
           width: 22, 
@@ -412,7 +405,6 @@ export default function RecipeDetailScreen() {
         ingredientText: { 
           flex: 1, 
           fontSize: 16,
-          color: '#1F2937' 
         },
         checkedText: { 
           textDecorationLine: 'line-through', 
@@ -439,8 +431,7 @@ export default function RecipeDetailScreen() {
         instructionText: { 
           flex: 1, 
           fontSize: 16, 
-          lineHeight: 26, // Airy, readable steps
-          color: '#374151'
+          lineHeight: 26,
         },
         utilityBar: { 
           flexDirection: 'row', 
@@ -448,21 +439,17 @@ export default function RecipeDetailScreen() {
           paddingVertical: 28, 
           borderTopWidth: 1, 
           borderBottomWidth: 1, 
-          borderColor: '#F3F4F6', 
           marginBottom: 32 
         },
         creatorCard: { 
           padding: 20, 
           borderRadius: 24, 
-          backgroundColor: '#FFFFFF',
           borderWidth: 1,
-          borderColor: '#F3F4F6'
         },
         creatorAvatar: { 
           width: 56, 
           height: 56, 
-          borderRadius: 28, 
-          backgroundColor: '#F3F4F6' 
+          borderRadius: 28,
         },
         footer: { 
           position: 'absolute', 
@@ -472,9 +459,7 @@ export default function RecipeDetailScreen() {
           paddingHorizontal: 24, 
           paddingTop: 16,
           paddingBottom: 32,
-          backgroundColor: 'rgba(255,255,255,0.9)', // Frosted sticky footer
-          borderTopWidth: 1, 
-          borderColor: '#F3F4F6'
+          borderTopWidth: 1,
         },
         cookButton: { 
           height: 56, 
@@ -513,13 +498,11 @@ export default function RecipeDetailScreen() {
         creatorName: {
           fontSize: 16,
           fontWeight: '700',
-          color: '#1F2937',
         },
         platformBadge: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 4,
-          backgroundColor: '#F3F4F6',
           paddingHorizontal: 8,
           paddingVertical: 3,
           borderRadius: 8,
@@ -527,7 +510,6 @@ export default function RecipeDetailScreen() {
         platformText: {
           fontSize: 11,
           fontWeight: '600',
-          color: '#6B7280',
           textTransform: 'capitalize',
         },
       });

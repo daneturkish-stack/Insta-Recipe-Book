@@ -45,7 +45,7 @@ export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { data: recipes, isLoading, refetch, isRefetching } = useRecipes();
@@ -490,7 +490,7 @@ export default function CollectionScreen() {
           style={[
             styles.selectionBar,
             { 
-              backgroundColor: theme.backgroundDefault,
+              backgroundColor: isDark ? 'rgba(30, 27, 36, 0.95)' : 'rgba(255, 255, 255, 0.9)',
               paddingBottom: insets.bottom + Spacing.md,
             }
           ]}
@@ -581,7 +581,6 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA', // Premium Light off-white base
   },
   list: {
     flex: 1,
@@ -608,11 +607,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 9999, // Pill shape
+    borderRadius: 9999,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    // Subtle lift for interactive elements
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -621,9 +617,8 @@ const styles = StyleSheet.create({
   // AI/Remy interaction: More cohesive and less like a separate block
   remyResponseBubble: {
     padding: Spacing.lg,
-    borderRadius: 24, // Consistent card radius
+    borderRadius: 24,
     borderWidth: 0,
-    backgroundColor: '#FFFFFF',
     marginBottom: Spacing.xl,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -642,7 +637,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     alignItems: "center",
     justifyContent: "center",
   },
@@ -669,8 +663,6 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(10px)',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -695,7 +687,6 @@ const styles = StyleSheet.create({
     width: "90%",
     maxWidth: 360,
     borderRadius: 32, // Extra rounded for special components
-    backgroundColor: '#FFFFFF',
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 20 },
