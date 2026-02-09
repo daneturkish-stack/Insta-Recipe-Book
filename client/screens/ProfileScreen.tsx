@@ -1,10 +1,11 @@
-import React from "react";
-import { StyleSheet, View, Pressable } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Pressable, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -25,7 +26,7 @@ export default function ProfileScreen() {
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
   const { data: recipes } = useRecipes();
-  const { user, trial, logout } = useAuth();
+  const { user, trial, logout, updateProfileImage } = useAuth();
   const {
     dietaryPreferences,
     toggleDietaryPreference,
@@ -33,8 +34,35 @@ export default function ProfileScreen() {
     setMeasurementUnit,
     loaded,
   } = usePreferences();
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const recipeCount = recipes?.length || 0;
+
+  const handlePickImage = async () => {
+    try {
+      Haptics.selectionAsync();
+      const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permResult.granted) {
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      setIsUploadingImage(true);
+      await updateProfileImage(result.assets[0].uri);
+    } catch (err) {
+      console.error("Failed to update profile image:", err);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const SettingsRow = ({
     icon,
@@ -133,19 +161,28 @@ export default function ProfileScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
       <View style={styles.profileSection}>
-        {user?.profileImage ? (
-          <Image
-            source={{ uri: user.profileImage }}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-        ) : (
-          <Image
-            source={avatarImage}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-        )}
+        <Pressable onPress={handlePickImage} style={styles.avatarContainer} testID="btn-edit-avatar">
+          {user?.profileImage ? (
+            <Image
+              source={{ uri: user.profileImage }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          ) : (
+            <Image
+              source={avatarImage}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          )}
+          <View style={[styles.avatarEditBadge, { backgroundColor: theme.primary }]}>
+            {isUploadingImage ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Feather name="camera" size={14} color="#FFF" />
+            )}
+          </View>
+        </Pressable>
         <ThemedText type="h3" style={styles.name}>
           {user?.displayName || "Home Chef"}
         </ThemedText>
@@ -345,11 +382,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing["3xl"],
   },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: Spacing.lg,
+  },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: Spacing.lg,
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
   name: {
     marginBottom: Spacing.xs,

@@ -44,6 +44,7 @@ interface AuthContextValue extends AuthState {
   socialLogin: (params: SocialLoginParams) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccess: () => Promise<void>;
+  updateProfileImage: (imageUri: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -216,6 +217,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [baseUrl]);
 
+  const updateProfileImage = useCallback(
+    async (imageUri: string) => {
+      const storedToken = await getAuthToken();
+      if (!storedToken) throw new Error("Not authenticated");
+
+      const url = new URL("/api/auth/profile-image", baseUrl);
+      const res = await fetch(url.toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storedToken}`,
+        },
+        body: JSON.stringify({ profileImage: imageUri }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile image");
+      }
+
+      const data = await res.json();
+      setUser(data.user);
+    },
+    [baseUrl],
+  );
+
   const logout = useCallback(async () => {
     try {
       if (token) {
@@ -246,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     socialLogin,
     logout,
     refreshAccess,
+    updateProfileImage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

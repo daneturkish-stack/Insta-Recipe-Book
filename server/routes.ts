@@ -1129,6 +1129,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/auth/profile-image", async (req: Request, res: Response) => {
+    try {
+      const user = await authenticateRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { profileImage } = req.body;
+      if (!profileImage || typeof profileImage !== "string") {
+        return res.status(400).json({ error: "Profile image data is required" });
+      }
+
+      const updatedUser = await storage.updateProfileImage(user.id, profileImage);
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Failed to update profile image" });
+      }
+
+      res.json({ user: sanitizeUser(updatedUser) });
+    } catch (err: any) {
+      console.error("Profile image update error:", err);
+      res.status(500).json({ error: "Failed to update profile image" });
+    }
+  });
+
   app.post("/api/auth/subscription", async (req: Request, res: Response) => {
     try {
       const user = await authenticateRequest(req);

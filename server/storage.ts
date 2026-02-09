@@ -43,6 +43,7 @@ export interface IStorage {
   loginWithProvider(provider: string, providerId: string, email: string, displayName?: string, profileImage?: string): Promise<{ user: User; token: string }>;
   getUserFromToken(token: string): Promise<User | undefined>;
   updateSubscriptionStatus(userId: string, status: string): Promise<void>;
+  updateProfileImage(userId: string, profileImage: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -196,6 +197,15 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ subscriptionStatus: status })
       .where(eq(users.id, userId));
+  }
+
+  async updateProfileImage(userId: string, profileImage: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ profileImage })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 
