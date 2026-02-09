@@ -76,7 +76,7 @@ export default function PantryScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
 
   const micScale = useSharedValue(1);
-  
+
   const micAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: micScale.value }],
   }));
@@ -101,13 +101,34 @@ export default function PantryScreen() {
 
   const pantryNames = pantryItems.map((p) => p.name.toLowerCase());
 
+  /** * INJECTED: Dynamic Suggestions Logic
+   * This now scans your saved recipes to suggest ingredients you actually use.
+   */
   const filteredSuggestions = useMemo(() => {
-    if (!newIngredient.trim()) return [];
-    const query = newIngredient.toLowerCase();
-    return COMMON_INGREDIENTS.filter(
-      (i) => i.name.toLowerCase().includes(query) && !pantryNames.includes(i.name.toLowerCase())
-    ).slice(0, 5);
-  }, [newIngredient, pantryNames]);
+    const query = newIngredient.toLowerCase().trim();
+
+    // Extract ingredients from your saved recipes
+    const recipeIngredients = recipes.flatMap(r => 
+      r.ingredients?.map(i => ({ 
+        name: i.name.charAt(0).toUpperCase() + i.name.slice(1).toLowerCase(), 
+        category: i.aisle || 'pantry' 
+      })) || []
+    );
+
+    // Combine static list with recipe-based ingredients
+    const combined = [...COMMON_INGREDIENTS, ...recipeIngredients];
+
+    // Remove duplicates and items already in pantry
+    const uniqueItems = Array.from(new Map(combined.map(item => [item.name.toLowerCase(), item])).values())
+      .filter(item => !pantryNames.includes(item.name.toLowerCase()));
+
+    // Show more items (15) for a "forthcoming" feel when query is empty
+    if (!query) return uniqueItems.slice(0, 15);
+
+    return uniqueItems.filter(
+      (i) => i.name.toLowerCase().includes(query)
+    ).slice(0, 10);
+  }, [newIngredient, pantryNames, recipes]);
 
   const handleAddIngredient = async (name: string, category: string = "other") => {
     if (!name.trim()) return;
@@ -171,7 +192,7 @@ export default function PantryScreen() {
       }
 
       console.log("[Voice] Recording URI:", uri);
-      
+
       let base64Audio: string;
       if (Platform.OS === "web") {
         const response = await fetch(uri);
@@ -189,7 +210,7 @@ export default function PantryScreen() {
         const audioFile = new File(uri);
         base64Audio = await audioFile.base64();
       }
-      
+
       console.log("[Voice] Base64 length:", base64Audio?.length || 0);
 
       if (!base64Audio || base64Audio.length === 0) {
@@ -198,7 +219,7 @@ export default function PantryScreen() {
 
       const transcribeUrl = new URL("/api/remy/transcribe", getApiUrl()).toString();
       console.log("[Voice] Sending to:", transcribeUrl);
-      
+
       const transcribeResponse = await fetch(transcribeUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,10 +227,10 @@ export default function PantryScreen() {
       });
 
       console.log("[Voice] Response status:", transcribeResponse.status);
-      
+
       const transcribeData = await transcribeResponse.json();
       console.log("[Voice] Response data:", JSON.stringify(transcribeData));
-      
+
       if (transcribeData.error || !transcribeData.text) {
         throw new Error(transcribeData.error || "No transcription received");
       }
@@ -240,11 +261,11 @@ export default function PantryScreen() {
           Alert.alert("Already have these", "All those ingredients are already in your pantry!");
         }
       } else {
-        Alert.alert("Hmm...", "I couldn't identify any ingredients. Try again, and speak clearly about what's in your fridge or cupboard!");
+        Alert.alert("Hmm...", "I couldn't identify any ingredients. Try again!");
       }
     } catch (error) {
       console.error("Voice processing failed:", error);
-      Alert.alert("Oops!", "Could not process your voice. Please try again or type the ingredients.");
+      Alert.alert("Oops!", "Could not process your voice. Please try again or type.");
     } finally {
       setIsProcessingVoice(false);
     }
@@ -263,7 +284,7 @@ export default function PantryScreen() {
     });
 
     if (result.length === 0) {
-      Alert.alert("No matches", "No recipes match your current ingredients. Try adding more!");
+      Alert.alert("No matches", "Try adding more staples to see matching recipes!");
     } else {
       navigation.navigate("PantryResults", { matches: result });
     }
@@ -347,7 +368,7 @@ export default function PantryScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-                
+
                 <Animated.View style={micAnimatedStyle}>
                   <Pressable
                     onPress={isRecording ? stopVoiceRecording : startVoiceRecording}
@@ -370,7 +391,7 @@ export default function PantryScreen() {
                   </Pressable>
                 </Animated.View>
               </View>
-              
+
               {isRecording ? (
                 <ThemedText type="caption" style={[styles.recordingHint, { color: theme.error }]}>
                   Listening... Tell me what's in your fridge!
@@ -395,27 +416,24 @@ export default function PantryScreen() {
               ) : null}
             </Animated.View>
 
-            {/* Quick Add Buttons */}
+            {/* INJECTED: Dynamic Quick Add Buttons */}
             <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.quickAdd}>
               <ThemedText type="small" style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                Quick add:
+                {recipes.length > 0 ? "From your recipes:" : "Quick add staples:"}
               </ThemedText>
               <View style={styles.quickAddRow}>
-                {COMMON_INGREDIENTS.slice(0, 8)
-                  .filter((i) => !pantryNames.includes(i.name.toLowerCase()))
-                  .slice(0, 5)
-                  .map((ingredient) => (
-                    <Pressable
-                      key={ingredient.name}
-                      style={[styles.quickChip, { borderColor: theme.border }]}
-                      onPress={() => handleAddIngredient(ingredient.name, ingredient.category)}
-                    >
-                      <Feather name="plus" size={12} color={theme.primary} />
-                      <ThemedText type="caption" style={{ marginLeft: 4 }}>
-                        {ingredient.name}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
+                {filteredSuggestions.map((ingredient) => (
+                  <Pressable
+                    key={ingredient.name}
+                    style={[styles.quickChip, { borderColor: theme.border, backgroundColor: theme.backgroundDefault }]}
+                    onPress={() => handleAddIngredient(ingredient.name, ingredient.category)}
+                  >
+                    <Feather name="plus" size={12} color={theme.primary} />
+                    <ThemedText type="caption" style={{ marginLeft: 6, fontWeight: '500' }}>
+                      {ingredient.name}
+                    </ThemedText>
+                  </Pressable>
+                ))}
               </View>
             </Animated.View>
           </>
@@ -434,7 +452,6 @@ export default function PantryScreen() {
         ListFooterComponent={
           pantryItems.length > 0 ? (
             <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-              {/* Grouped Ingredients */}
               {Object.entries(groupedItems).map(([category, items]) => (
                 <View key={category} style={styles.categorySection}>
                   <ThemedText type="small" style={[styles.categoryLabel, { color: theme.textSecondary }]}>
@@ -446,7 +463,6 @@ export default function PantryScreen() {
                 </View>
               ))}
 
-              {/* Action Buttons */}
               <View style={styles.actions}>
                 <Button onPress={handleFindRecipes} loading={pantryMatch.isPending}>
                   Find Recipes I Can Make
@@ -486,13 +502,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: Spacing.lg,
     height: 52,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
   micButton: {
     width: 52,
     height: 52,
-    borderRadius: BorderRadius.full,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -522,10 +538,14 @@ const styles = StyleSheet.create({
   },
   quickAdd: {
     marginBottom: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   sectionLabel: {
-    fontWeight: "600",
-    marginBottom: Spacing.sm,
+    fontWeight: "700",
+    marginBottom: Spacing.md,
+    textTransform: 'uppercase',
+    fontSize: 10,
+    letterSpacing: 1,
   },
   quickAddRow: {
     flexDirection: "row",
@@ -535,8 +555,8 @@ const styles = StyleSheet.create({
   quickChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
