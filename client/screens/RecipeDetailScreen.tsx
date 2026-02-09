@@ -24,6 +24,8 @@ import { Button } from "@/components/Button";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useDeleteRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
+import { usePreferences } from "@/hooks/usePreferences";
+import { convertIngredients } from "@/lib/unit-conversion";
 import { apiRequest } from "@/lib/query-client";
 import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/constants/theme";
 
@@ -54,6 +56,7 @@ export default function RecipeDetailScreen() {
   const recipe = useRecipe(recipeId);
   const deleteRecipe = useDeleteRecipe();
   const updateRecipe = useUpdateRecipe();
+  const { measurementUnit } = usePreferences();
 
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [showTranscript, setShowTranscript] = useState(false);
@@ -135,6 +138,7 @@ export default function RecipeDetailScreen() {
 
   if (!recipe) return null;
 
+  const displayIngredients = convertIngredients(recipe.ingredients, measurementUnit);
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   const confidenceLevel = recipe.confidence || (recipe.isEstimated ? "medium" : "high");
   const confidenceColor = confidenceLevel === "high" ? "#059669" : confidenceLevel === "medium" ? "#E8A838" : "#DC2626";
@@ -196,8 +200,8 @@ export default function RecipeDetailScreen() {
                 <ThemedText type="caption" style={{ fontStyle: 'italic' }}>Pinch to scale</ThemedText>
               </View>
               <View style={[styles.card, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
-                {recipe.ingredients.map((ing, i) => (
-                  <Pressable key={i} onPress={() => toggleIngredient(i)} style={[styles.row, i < recipe.ingredients.length - 1 && styles.borderBottom, i < recipe.ingredients.length - 1 && { borderBottomColor: theme.border }]}>
+                {displayIngredients.map((ing, i) => (
+                  <Pressable key={i} onPress={() => toggleIngredient(i)} style={[styles.row, i < displayIngredients.length - 1 && styles.borderBottom, i < displayIngredients.length - 1 && { borderBottomColor: theme.border }]}>
                     <View style={[styles.checkbox, { backgroundColor: checkedIngredients.has(i) ? theme.primary : 'transparent', borderColor: theme.border }]}>
                       {checkedIngredients.has(i) && <Feather name="check" size={12} color="#FFF" />}
                     </View>

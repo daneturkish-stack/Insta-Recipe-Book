@@ -28,6 +28,7 @@ import { useRecipes, useSmartSearch, usePantry, usePantryMatch } from "@/hooks/u
 import { useShakeDetector } from "@/hooks/useShakeDetector";
 import { Spacing, BorderRadius, KitchColors } from "@/constants/theme";
 import type { Recipe } from "@/types/recipe";
+import { DISH_TYPES } from "@/types/recipe";
 import { getApiUrl } from "@/lib/query-client";
 
 const emptyImage = require("../../assets/images/empty-collection.png");
@@ -62,6 +63,7 @@ export default function CollectionScreen() {
   const [isRouletteActive, setIsRouletteActive] = useState(false);
   const [rouletteRecipe, setRouletteRecipe] = useState<Recipe | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid-2");
+  const [dishTypeFilter, setDishTypeFilter] = useState<string | null>(null);
 
   const rouletteScale = useSharedValue(0);
   const rouletteOpacity = useSharedValue(0);
@@ -232,14 +234,22 @@ export default function CollectionScreen() {
 
   const displayedRecipes = useMemo(() => {
     if (!recipes) return [];
-    if (filteredIds === null) return recipes;
-    if (filteredIds.length === 0) return [];
-    
-    const orderMap = new Map(filteredIds.map((id, i) => [id, i]));
-    return recipes
-      .filter((r) => filteredIds.includes(r.id))
-      .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
-  }, [recipes, filteredIds]);
+    let result: Recipe[];
+    if (filteredIds === null) {
+      result = recipes;
+    } else if (filteredIds.length === 0) {
+      result = [];
+    } else {
+      const orderMap = new Map(filteredIds.map((id, i) => [id, i]));
+      result = recipes
+        .filter((r) => filteredIds.includes(r.id))
+        .sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+    }
+    if (dishTypeFilter) {
+      result = result.filter(r => r.dishType === dishTypeFilter);
+    }
+    return result;
+  }, [recipes, filteredIds, dishTypeFilter]);
 
   const handleRecipePress = useCallback((recipe: Recipe) => {
     navigation.navigate("RecipeDetail", { recipeId: recipe.id });
@@ -389,6 +399,52 @@ export default function CollectionScreen() {
               }}
             >
               {action.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {/* Dish Type Filter Chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: -Spacing.lg }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: Spacing.sm, paddingBottom: Spacing.md }}
+      >
+        <Pressable
+          onPress={() => {
+            setDishTypeFilter(null);
+            Haptics.selectionAsync();
+          }}
+          style={[
+            styles.filterChip,
+            { 
+              backgroundColor: !dishTypeFilter ? theme.primary : theme.backgroundDefault,
+              borderColor: !dishTypeFilter ? theme.primary : theme.border 
+            }
+          ]}
+        >
+          <ThemedText type="small" style={{ color: !dishTypeFilter ? '#FFF' : theme.text, fontWeight: !dishTypeFilter ? '600' : '400' }}>
+            All
+          </ThemedText>
+        </Pressable>
+        {DISH_TYPES.map((type) => (
+          <Pressable
+            key={type}
+            onPress={() => {
+              setDishTypeFilter(prev => prev === type ? null : type);
+              Haptics.selectionAsync();
+            }}
+            style={[
+              styles.filterChip,
+              { 
+                backgroundColor: dishTypeFilter === type ? theme.primary : theme.backgroundDefault,
+                borderColor: dishTypeFilter === type ? theme.primary : theme.border 
+              }
+            ]}
+          >
+            <ThemedText type="small" style={{ color: dishTypeFilter === type ? '#FFF' : theme.text, fontWeight: dishTypeFilter === type ? '600' : '400' }}>
+              {type}
             </ThemedText>
           </Pressable>
         ))}
@@ -788,6 +844,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.md,
     marginTop: Spacing.md,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   rouletteDismiss: {
     alignItems: "center",

@@ -29,6 +29,8 @@ export default function ProfileScreen() {
   const {
     dietaryPreferences,
     toggleDietaryPreference,
+    measurementUnit,
+    setMeasurementUnit,
     loaded,
   } = usePreferences();
 
@@ -207,6 +209,88 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          Cooking
+        </ThemedText>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary, marginBottom: Spacing.md, paddingLeft: Spacing.xs }}
+        >
+          Recipe ingredients will display in your preferred units
+        </ThemedText>
+        <View style={styles.measurementToggle}>
+          <Pressable
+            testID="btn-unit-imperial"
+            onPress={() => {
+              Haptics.selectionAsync();
+              setMeasurementUnit("imperial");
+            }}
+            style={[
+              styles.measurementOption,
+              {
+                backgroundColor: measurementUnit === "imperial" ? theme.primary : theme.backgroundDefault,
+                borderColor: measurementUnit === "imperial" ? theme.primary : theme.border,
+              },
+            ]}
+          >
+            <ThemedText
+              type="bodyMedium"
+              style={{
+                color: measurementUnit === "imperial" ? "#FFFFFF" : theme.text,
+                textAlign: "center",
+              }}
+            >
+              Imperial
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{
+                color: measurementUnit === "imperial" ? "rgba(255,255,255,0.7)" : theme.textSecondary,
+                textAlign: "center",
+                marginTop: 2,
+              }}
+            >
+              oz, cups, °F
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            testID="btn-unit-metric"
+            onPress={() => {
+              Haptics.selectionAsync();
+              setMeasurementUnit("metric");
+            }}
+            style={[
+              styles.measurementOption,
+              {
+                backgroundColor: measurementUnit === "metric" ? theme.primary : theme.backgroundDefault,
+                borderColor: measurementUnit === "metric" ? theme.primary : theme.border,
+              },
+            ]}
+          >
+            <ThemedText
+              type="bodyMedium"
+              style={{
+                color: measurementUnit === "metric" ? "#FFFFFF" : theme.text,
+                textAlign: "center",
+              }}
+            >
+              Metric
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{
+                color: measurementUnit === "metric" ? "rgba(255,255,255,0.7)" : theme.textSecondary,
+                textAlign: "center",
+                marginTop: 2,
+              }}
+            >
+              g, ml, °C
+            </ThemedText>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
           Account
         </ThemedText>
         <View style={styles.settingsGroup}>
@@ -337,6 +421,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: 20,
     borderWidth: 1,
+  },
+  measurementToggle: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  measurementOption: {
+    flex: 1,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    alignItems: "center",
   },
   footer: {
     marginTop: Spacing["2xl"],
