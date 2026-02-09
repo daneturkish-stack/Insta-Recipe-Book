@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { StyleSheet, View, Pressable, Dimensions, StatusBar, Alert } from "react-native";
+import { StyleSheet, View, Pressable, Dimensions, StatusBar, Alert, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -279,7 +279,11 @@ export default function CookModeScreen() {
             <Feather name="chevron-right" size={28} color={CookModeColors.primary} />
           </Animated.View>
 
-          <View style={styles.content}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <Animated.View 
               key={currentStep}
               entering={FadeIn.duration(200)}
@@ -350,7 +354,7 @@ export default function CookModeScreen() {
                 </Animated.View>
               ) : null}
             </Animated.View>
-          </View>
+          </ScrollView>
         </Animated.View>
       </GestureDetector>
 
@@ -478,9 +482,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "center",
+  },
+  contentContainer: {
     paddingHorizontal: Spacing["4xl"],
-    paddingVertical: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing["3xl"],
+    flexGrow: 1,
   },
   stepContainer: {
     alignItems: "flex-start",
