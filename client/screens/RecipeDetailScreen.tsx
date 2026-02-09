@@ -141,7 +141,7 @@ export default function RecipeDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 160 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarHeight + 100 }}>
 
         {/* Hero Image */}
         <View style={styles.heroContainer}>
@@ -288,7 +288,7 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {/* Sticky Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.footer, { bottom: tabBarHeight, paddingBottom: Spacing.md, paddingTop: Spacing.md, backgroundColor: theme.backgroundRoot }]}>
         <Button onPress={() => navigation.navigate("CookMode", { recipeId })} style={styles.cookButton}>
           <Feather name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
           Start Cooking
