@@ -12,7 +12,7 @@ Key capabilities:
 - Local recipe storage with search and smart AI-powered filtering
 - Pantry management with ingredient matching to find makeable recipes
 - Voice input for pantry: speak items aloud, AI parses and categorizes them automatically
-- Cook Mode for step-by-step guided cooking with hands-free voice reading
+- Cook Mode for step-by-step guided cooking with Remi voice assistant (toggle-based continuous listening)
 - Remi AI assistant (dedicated tab) for food and cooking conversations, recipe help, and recommendations — Jamie Oliver-inspired conversational tone
 - Remi chat UI: ChatGPT-style clean layout (no speech bubbles), typewriter text effect with word highlighting
 - Remi Tips & Tricks guide: built-in modal with app usage tips (gestures, saving recipes, accuracy, pantry, Cook Mode)
@@ -106,9 +106,14 @@ When the AI fills in missing measurements or techniques, it references trusted s
 ### Cook Mode Upgrades (YouTube Sync, Remi Voice, Timers)
 - **YouTube Player Integration**: YouTube recipes (`platform === 'youtube'` with `videoUrl`) show an embedded YouTube player at the top of Cook Mode. Player auto-seeks to step timestamps when navigating steps.
 - **Structured Instructions**: Instructions now support both plain strings and `{ text, timestamp }` objects via `InstructionStep` type. The `timestamp` field enables YouTube video sync per step.
-- **Ask Remi Mic Button**: Floating mic FAB (bottom-right) in Cook Mode. Triggers haptic pulse and reads out step-specific ingredients via TTS. Hackathon demo keyword detection for "How much?" / "What ingredients?" queries.
+- **Remi Voice Assistant (Toggle-Based)**: Simple on/off mic toggle at bottom-right of Cook Mode. Tap to activate continuous voice loop:
+  - Record audio (12s max per chunk) → Whisper transcription → Remi AI chat (with full recipe context, current step, conversation history) → TTS response (en-GB accent) → auto-resume listening
+  - Visual states: listening (green pulsing), processing (amber), speaking (purple)
+  - Tap mic while listening to send recording early; long-press to stop loop
+  - No per-step speaker buttons or auto-read toggle — all removed for simplicity
+  - Voice status bar shows current state with colored dot indicator
 - **Timer Detection**: RegEx scans instruction text for time mentions (e.g., "10 mins", "2 hours", "30 seconds"). Renders inline "Start Timer" buttons. Active timers show countdown badge. Native alert fires when timer hits zero.
-- **Dependencies**: `react-native-youtube-iframe` + `react-native-web-webview` (web fallback)
+- **Dependencies**: `react-native-youtube-iframe` + `react-native-web-webview` (web fallback), `expo-av` (Audio recording), `expo-speech` (TTS)
 
 ## User Preferences
 
