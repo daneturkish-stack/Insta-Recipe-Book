@@ -23,7 +23,7 @@
         import { Button } from "@/components/Button";
 
         import { useTheme } from "@/hooks/useTheme";
-        import { useRecipe, useDeleteRecipe, useUpdateRecipe, usePantry } from "@/hooks/useRecipes";
+        import { useRecipe, useDeleteRecipe, useUpdateRecipe, usePantry, useAddToShoppingList } from "@/hooks/useRecipes";
         import { usePreferences } from "@/hooks/usePreferences";
         import { convertIngredients } from "@/lib/unit-conversion";
         import { apiRequest } from "@/lib/query-client";
@@ -56,7 +56,8 @@
           const recipe = useRecipe(recipeId);
           const deleteRecipe = useDeleteRecipe();
           const updateRecipe = useUpdateRecipe();
-          const { data: pantryItems = [] } = usePantry(); // Injected: Get Pantry data
+          const { data: pantryItems = [] } = usePantry();
+          const addToShoppingList = useAddToShoppingList();
           const { measurementUnit } = usePreferences();
 
           const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
@@ -124,10 +125,8 @@
             });
           };
 
-          /**
-           * INJECTED: Smart Shopping List Logic
-           * Cross-references the pantry to 'Ghost' items you already have.
-           */
+          const [addedToList, setAddedToList] = useState(false);
+
           const handleAddToShoppingList = async () => {
             if (!recipe) return;
             setIsAddingToList(true);
@@ -136,7 +135,6 @@
               const pantryNames = pantryItems.map(p => p.name.toLowerCase());
 
               const itemsToAdd = displayIngredients.map(ing => {
-                // Smart match: check if the pantry contains this ingredient name
                 const inPantry = pantryNames.some(pName => 
                   ing.name.toLowerCase().includes(pName) || pName.includes(ing.name.toLowerCase())
                 );
@@ -145,24 +143,21 @@
                   name: ing.name,
                   amount: scaleIngredientAmount(ing.amount),
                   unit: ing.unit,
-                  aisle: ing.aisle || 'other',
-                  inPantry: inPantry, // The 'Ghost' flag
-                  isChecked: inPantry, // Auto-check if we have it
-                  recipeId: recipe.id,
-                  recipeTitle: recipe.title
+                  aisle: (ing.aisle || 'other') as any,
+                  inPantry: inPantry,
+                  isChecked: inPantry,
+                  recipeIds: [recipe.id],
+                  recipeTitles: [recipe.title],
                 };
               });
 
-              await apiRequest("POST", "/api/shopping-list/bulk", { items: itemsToAdd });
+              await addToShoppingList.mutateAsync(itemsToAdd);
 
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              const ghostCount = itemsToAdd.filter(i => i.inPantry).length;
-              Alert.alert(
-                "List Updated", 
-                `Added ${itemsToAdd.length} ingredients. ${ghostCount > 0 ? `${ghostCount} were already in your pantry!` : ""}`
-              );
+              setAddedToList(true);
+              setTimeout(() => setAddedToList(false), 3000);
             } catch (error) {
-              Alert.alert("Error", "Could not add items to shopping list.");
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             } finally {
               setIsAddingToList(false);
             }
@@ -251,10 +246,15 @@
                         >
                           {isAddingToList ? (
                             <ActivityIndicator size="small" color={theme.primary} />
+                          ) : addedToList ? (
+                            <>
+                              <Feather name="check-circle" size={14} color="#059669" />
+                              <ThemedText type="caption" style={{ color: "#059669", fontWeight: '700', marginLeft: 6 }}>Added</ThemedText>
+                            </>
                           ) : (
                             <>
                               <Feather name="shopping-cart" size={14} color={theme.primary} />
-                              <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700', marginLeft: 6 }}>Add to List</ThemedText>
+                              <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700', marginLeft: 6 }}>Add to shopping list</ThemedText>
                             </>
                           )}
                         </Pressable>

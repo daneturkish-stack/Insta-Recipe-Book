@@ -280,6 +280,26 @@ export function useClearShoppingList() {
   });
 }
 
+export function useAddToShoppingList() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newItems: Omit<ShoppingListItem, "id">[]) => {
+      const existing = await getStoredShoppingList();
+      const itemsWithIds: ShoppingListItem[] = newItems.map((item) => ({
+        ...item,
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      }));
+      const merged = [...existing, ...itemsWithIds];
+      await saveShoppingListToStorage(merged);
+      return merged;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shoppingList"] });
+    },
+  });
+}
+
 export function useClearCheckedItems() {
   const queryClient = useQueryClient();
 
