@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -22,7 +23,10 @@ const appIcon = require("../../assets/images/icon.png");
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { logout, refreshAccess } = useAuth();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const isModal = route.name === "Subscription";
+  const { logout, refreshAccess, hasAccess } = useAuth();
   const {
     offerings,
     isLoading: rcLoading,
@@ -54,6 +58,9 @@ export default function PaywallScreen() {
     if (success) {
       setStatusMessage("Subscription activated!");
       await refreshAccess();
+      if (isModal) {
+        navigation.goBack();
+      }
     }
   };
 
@@ -65,6 +72,9 @@ export default function PaywallScreen() {
     if (success) {
       setStatusMessage("Purchases restored!");
       await refreshAccess();
+      if (isModal) {
+        navigation.goBack();
+      }
     } else {
       setStatusMessage("No active subscription found to restore.");
     }
@@ -81,10 +91,20 @@ export default function PaywallScreen() {
         },
       ]}
     >
+      {isModal ? (
+        <Pressable
+          testID="button-close-paywall"
+          onPress={() => navigation.goBack()}
+          style={[styles.closeButton, { top: insets.top + Spacing.md }]}
+        >
+          <Feather name="x" size={24} color={theme.textSecondary} />
+        </Pressable>
+      ) : null}
+
       <View style={styles.headerSection}>
         <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
         <ThemedText type="h2" style={styles.title}>
-          Your trial has ended
+          {isModal ? "Kitch Pro" : "Your trial has ended"}
         </ThemedText>
         <ThemedText
           type="body"
@@ -94,7 +114,9 @@ export default function PaywallScreen() {
             lineHeight: 24,
           }}
         >
-          Subscribe to Kitch Pro to keep saving recipes and using all features
+          {isModal
+            ? "Unlock unlimited recipes and all premium features"
+            : "Subscribe to Kitch Pro to keep saving recipes and using all features"}
         </ThemedText>
       </View>
 
@@ -229,21 +251,23 @@ export default function PaywallScreen() {
         </ThemedText>
       </Pressable>
 
-      <View style={styles.bottomLinks}>
-        <Pressable
-          testID="button-logout-paywall"
-          onPress={logout}
-          style={styles.logoutLink}
-        >
-          <Feather name="log-out" size={16} color={theme.textSecondary} />
-          <ThemedText
-            type="small"
-            style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}
+      {!isModal ? (
+        <View style={styles.bottomLinks}>
+          <Pressable
+            testID="button-logout-paywall"
+            onPress={logout}
+            style={styles.logoutLink}
           >
-            Sign out
-          </ThemedText>
-        </Pressable>
-      </View>
+            <Feather name="log-out" size={16} color={theme.textSecondary} />
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}
+            >
+              Sign out
+            </ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
 
       <ThemedText
         type="caption"
@@ -327,6 +351,16 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     alignItems: "center",
+  },
+  closeButton: {
+    position: "absolute",
+    right: Spacing.lg,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   bottomLinks: {
     flexDirection: "row",

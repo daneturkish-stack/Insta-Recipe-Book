@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Paywall: undefined;
   Main: undefined;
   CookMode: { recipeId: string };
+  Subscription: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -59,6 +60,15 @@ export default function RootStackNavigator() {
               headerShown: false,
               presentation: "fullScreenModal",
               animation: "fade",
+            }}
+          />
+          <Stack.Screen
+            name="Subscription"
+            component={PaywallScreen}
+            options={{
+              headerShown: false,
+              presentation: "modal",
+              animation: "slide_from_bottom",
             }}
           />
         </>

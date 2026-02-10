@@ -2,10 +2,13 @@ import React, { useState } from "react";
 import { StyleSheet, View, Pressable, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
@@ -25,6 +28,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: recipes } = useRecipes();
   const { user, trial, logout, updateProfileImage } = useAuth();
   const {
@@ -335,6 +339,7 @@ export default function ProfileScreen() {
             icon="user"
             label="Subscription"
             value={subscriptionLabel}
+            onPress={() => navigation.navigate("Subscription")}
           />
           <SettingsRow icon="moon" label="Dark Mode" value="System" />
         </View>
