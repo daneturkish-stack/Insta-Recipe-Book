@@ -11,13 +11,16 @@ import { getAuthToken } from "@/lib/auth-token";
 
 const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
 const ENTITLEMENT_ID = "premium";
+const isTestKey = REVENUECAT_API_KEY.startsWith("test_");
 
 let isConfigured = false;
+let configFailed = false;
 
 export async function configureRevenueCat(userId?: string) {
-  if (isConfigured) return;
+  if (isConfigured || configFailed) return;
   if (!REVENUECAT_API_KEY) {
     console.warn("RevenueCat API key not configured");
+    configFailed = true;
     return;
   }
 
@@ -29,19 +32,21 @@ export async function configureRevenueCat(userId?: string) {
     });
     isConfigured = true;
   } catch (err) {
-    console.error("Failed to configure RevenueCat:", err);
+    console.warn("RevenueCat: Configuration issue (non-blocking):", err);
+    configFailed = true;
   }
 }
 
 export async function identifyRevenueCatUser(userId: string) {
+  if (configFailed) return;
   if (!isConfigured) {
     await configureRevenueCat(userId);
     return;
   }
   try {
     await Purchases.logIn(userId);
-  } catch (err) {
-    console.error("Failed to identify RevenueCat user:", err);
+  } catch (err: any) {
+    console.warn("RevenueCat: User identification issue (non-blocking):", err?.message || err);
   }
 }
 
@@ -74,8 +79,8 @@ export function useRevenueCat() {
       const info = await Purchases.getCustomerInfo();
       setCustomerInfo(info);
     } catch (err: any) {
-      console.error("Failed to load RevenueCat offerings:", err);
-      setError(err.message || "Failed to load subscription options");
+      console.warn("RevenueCat: Could not load offerings (non-blocking):", err?.message || err);
+      setError(null);
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +113,7 @@ export function useRevenueCat() {
         if (err.userCancelled) {
           return false;
         }
-        console.error("Purchase failed:", err);
+        console.warn("RevenueCat: Purchase issue:", err?.message || err);
         setError(err.message || "Purchase failed. Please try again.");
         return false;
       } finally {
@@ -135,7 +140,7 @@ export function useRevenueCat() {
 
       return nowSubscribed;
     } catch (err: any) {
-      console.error("Restore failed:", err);
+      console.warn("RevenueCat: Restore issue:", err?.message || err);
       setError(err.message || "Failed to restore purchases. Please try again.");
       return false;
     } finally {
@@ -172,6 +177,6 @@ async function syncSubscriptionToBackend(status: string) {
       body: JSON.stringify({ subscriptionStatus: status }),
     });
   } catch (err) {
-    console.error("Failed to sync subscription to backend:", err);
+    console.warn("RevenueCat: Could not sync subscription to backend");
   }
 }
