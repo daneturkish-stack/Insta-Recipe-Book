@@ -21,6 +21,11 @@ export async function configureRevenueCat(userId?: string) {
     return;
   }
 
+  if (Platform.OS === "web") {
+    console.log("RevenueCat: Skipping configuration on web (Apple API key is for iOS/Android only).");
+    return;
+  }
+
   try {
     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
     Purchases.configure({
@@ -34,6 +39,7 @@ export async function configureRevenueCat(userId?: string) {
 }
 
 export async function identifyRevenueCatUser(userId: string) {
+  if (Platform.OS === "web") return;
   if (!isConfigured) {
     await configureRevenueCat(userId);
     return;
