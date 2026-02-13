@@ -1,15 +1,11 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Pressable, ActivityIndicator, Platform } from "react-native";
+import { StyleSheet, View, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import { RootStackParamList } from "@/navigation/RootStackNavigator";
-
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -28,9 +24,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: recipes } = useRecipes();
-  const { user, trial, logout, updateProfileImage } = useAuth();
+  const { user, logout, updateProfileImage } = useAuth();
   const {
     dietaryPreferences,
     toggleDietaryPreference,
@@ -144,16 +139,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const trialDaysText = trial
-    ? trial.expired
-      ? "Expired"
-      : `${trial.daysLeft} days left`
-    : "";
-
-  const subscriptionLabel = user?.subscriptionStatus === "active"
-    ? "Pro"
-    : trialDaysText;
-
   return (
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -205,31 +190,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
-
-      {trial && !trial.expired && user?.subscriptionStatus !== "active" ? (
-        <View style={[styles.trialCard, { backgroundColor: `${KitchColors.accent}15` }]}>
-          <View style={styles.trialHeader}>
-            <Feather name="gift" size={18} color={KitchColors.accent} />
-            <ThemedText type="bodyMedium" style={{ marginLeft: Spacing.sm, color: KitchColors.accent }}>
-              Free Trial
-            </ThemedText>
-          </View>
-          <ThemedText type="h3" style={{ marginVertical: Spacing.sm }}>
-            {trial.daysLeft} days remaining
-          </ThemedText>
-          <View style={styles.trialProgressBg}>
-            <View
-              style={[
-                styles.trialProgressFill,
-                {
-                  backgroundColor: KitchColors.accent,
-                  width: `${Math.max(5, (trial.daysLeft / 30) * 100)}%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
-      ) : null}
 
       <View style={styles.section}>
         <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
@@ -335,12 +295,6 @@ export default function ProfileScreen() {
           Account
         </ThemedText>
         <View style={styles.settingsGroup}>
-          <SettingsRow
-            icon="user"
-            label="Subscription"
-            value={subscriptionLabel}
-            onPress={() => navigation.navigate("Subscription")}
-          />
           <SettingsRow icon="moon" label="Dark Mode" value="System" />
         </View>
       </View>
@@ -420,25 +374,6 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: "center",
-  },
-  trialCard: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.card,
-    marginBottom: Spacing["2xl"],
-  },
-  trialHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  trialProgressBg: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(232, 168, 56, 0.2)",
-    overflow: "hidden",
-  },
-  trialProgressFill: {
-    height: 6,
-    borderRadius: 3,
   },
   section: {
     marginBottom: Spacing["2xl"],

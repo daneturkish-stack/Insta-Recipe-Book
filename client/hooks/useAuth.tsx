@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getApiUrl } from "@/lib/query-client";
 import { setAuthToken, getAuthToken, removeAuthToken } from "@/lib/auth-token";
-import { identifyRevenueCatUser } from "@/hooks/useRevenueCat";
 
 export interface AuthUser {
   id: string;
@@ -81,8 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.user);
       setTokenState(storedToken);
       setTrial(data.trial);
-      setHasAccess(data.hasAccess);
-      identifyRevenueCatUser(data.user.id);
+      setHasAccess(true);
     } catch {
       await removeAuthToken();
     } finally {
@@ -99,7 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setAuthToken(data.token);
       setTokenState(data.token);
       setUser(data.user);
-      identifyRevenueCatUser(data.user.id);
 
       const url = new URL("/api/auth/me", baseUrl);
       const res = await fetch(url.toString(), {
@@ -109,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const meData = await res.json();
         setTrial(meData.trial);
-        setHasAccess(meData.hasAccess);
+        setHasAccess(true);
       }
     },
     [baseUrl],

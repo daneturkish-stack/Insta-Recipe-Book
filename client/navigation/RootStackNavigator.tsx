@@ -5,24 +5,21 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import CookModeScreen from "@/screens/CookModeScreen";
 import AuthScreen from "@/screens/AuthScreen";
-import PaywallScreen from "@/screens/PaywallScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/hooks/useAuth";
 import { KitchColors } from "@/constants/theme";
 
 export type RootStackParamList = {
   Auth: undefined;
-  Paywall: undefined;
   Main: undefined;
   CookMode: { recipeId: string };
-  Subscription: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
-  const { user, isLoading, hasAccess } = useAuth();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -40,12 +37,6 @@ export default function RootStackNavigator() {
           component={AuthScreen}
           options={{ headerShown: false, animation: "fade" }}
         />
-      ) : !hasAccess ? (
-        <Stack.Screen
-          name="Paywall"
-          component={PaywallScreen}
-          options={{ headerShown: false, animation: "fade" }}
-        />
       ) : (
         <>
           <Stack.Screen
@@ -60,15 +51,6 @@ export default function RootStackNavigator() {
               headerShown: false,
               presentation: "fullScreenModal",
               animation: "fade",
-            }}
-          />
-          <Stack.Screen
-            name="Subscription"
-            component={PaywallScreen}
-            options={{
-              headerShown: false,
-              presentation: "modal",
-              animation: "slide_from_bottom",
             }}
           />
         </>
