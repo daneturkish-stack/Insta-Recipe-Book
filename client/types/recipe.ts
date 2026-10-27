@@ -1,9 +1,26 @@
+// Where an ingredient's amount came from. "confirmed" means the user checked it.
+export type IngredientSource = "written" | "spoken" | "website" | "inferred" | "confirmed";
+
 export interface Ingredient {
   name: string;
   amount: string;
   unit: string;
   aisle?: AisleCategory; // Added for Phase 2 grouping
   isEstimated?: boolean; // Labeling specific AI-filled gaps
+  source?: IngredientSource;
+  evidence?: string | null; // The words the amount was read or heard from
+}
+
+// Older recipes only have isEstimated; treat those as guesses.
+export function ingredientSource(ing: Ingredient): IngredientSource {
+  if (ing.source) return ing.source;
+  return ing.isEstimated ? "inferred" : "written";
+}
+
+// Heard amounts can be mis-transcribed and inferred ones are guesses - both are worth a look.
+export function needsReview(ing: Ingredient): boolean {
+  const source = ingredientSource(ing);
+  return source === "spoken" || source === "inferred";
 }
 
 export type RecipeSourceType = 
@@ -15,7 +32,7 @@ export type RecipeSourceType =
 
 export type ConfidenceLevel = "high" | "medium" | "low";
 
-export type VerificationMethod = 'domain_match' | 'instagram_link' | 'unverified' | 'user_manual';
+export type VerificationMethod = 'domain_match' | 'instagram_link' | 'caption_link' | 'bio_link' | 'unverified' | 'user_manual';
 
 export interface RecipeSource {
   type: RecipeSourceType;
