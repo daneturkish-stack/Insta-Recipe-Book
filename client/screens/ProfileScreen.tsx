@@ -323,7 +323,7 @@ export default function ProfileScreen() {
 
       <View style={styles.footer}>
         <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center" }}>
-          Kitch - Your Digital Recipe Book
+          Simmer - Your Digital Recipe Book
         </ThemedText>
         <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.xs }}>
           Made with love for home cooks

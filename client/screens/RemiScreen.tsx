@@ -126,7 +126,7 @@ function TypewriterText({
             key={i}
             style={
               isLatest
-                ? { color: highlightColor, fontFamily: "Inter_600SemiBold" }
+                ? { color: highlightColor, fontFamily: "Figtree_600SemiBold" }
                 : undefined
             }
           >
@@ -154,7 +154,7 @@ const TIPS: { section: string; items: TipItem[] }[] = [
         iconFamily: "feather",
         title: "Paste a Link",
         description:
-          "Go to the Add tab and paste an Instagram Reel or TikTok link. Kitch will use AI to extract the full recipe for you automatically.",
+          "Go to the Add tab and paste an Instagram Reel or TikTok link. Simmer will use AI to extract the full recipe for you automatically.",
       },
       {
         icon: "alert-circle",
@@ -180,7 +180,7 @@ const TIPS: { section: string; items: TipItem[] }[] = [
         iconFamily: "mci",
         title: "Shake for Recipe Roulette",
         description:
-          "Can't decide what to make? Give your phone a shake on the Collection screen and Kitch will pick a recipe for you — prioritising ones you can make with your pantry.",
+          "Can't decide what to make? Give your phone a shake on the Collection screen and Simmer will pick a recipe for you — prioritising ones you can make with your pantry.",
       },
       {
         icon: "gesture-pinch",
@@ -199,19 +199,19 @@ const TIPS: { section: string; items: TipItem[] }[] = [
         iconFamily: "feather",
         title: "Add Pantry Items",
         description:
-          "Head to the Pantry tab and add what you have at home. Kitch will match your ingredients to your saved recipes and show you what you can make.",
+          "Head to the Pantry tab and add what you have at home. Simmer will match your ingredients to your saved recipes and show you what you can make.",
       },
       {
         icon: "mic",
         iconFamily: "feather",
         title: "Voice Input",
         description:
-          "Tap the microphone in the Pantry tab and speak your ingredients aloud — Kitch will parse and categorise them automatically. Great when you're unloading shopping!",
+          "Tap the microphone in the Pantry tab and speak your ingredients aloud — Simmer will parse and categorise them automatically. Great when you're unloading shopping!",
       },
     ],
   },
   {
-    section: "Cooking with Kitch",
+    section: "Cooking with Simmer",
     items: [
       {
         icon: "play-circle",
@@ -289,7 +289,7 @@ function TipsModal({
           showsVerticalScrollIndicator={false}
         >
           <Text style={[tipsStyles.intro, { color: theme.textSecondary }]}>
-            Here are some handy ways to get the most out of Kitch.
+            Here are some handy ways to get the most out of Simmer.
           </Text>
 
           {TIPS.map((section) => (
@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 17,
     lineHeight: 26,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Figtree_400Regular",
   },
   userText: {
     color: "#FFF",
@@ -944,7 +944,7 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     ...Typography.small,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Figtree_500Medium",
   },
   inputContainer: {
     paddingHorizontal: Spacing.md,

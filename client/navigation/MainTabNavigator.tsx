@@ -87,7 +87,7 @@ export default function MainTabNavigator() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "500",
-          fontFamily: "Inter_500Medium",
+          fontFamily: "Figtree_500Medium",
         },
         headerShown: false,
       }}

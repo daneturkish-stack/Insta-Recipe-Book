@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 
 import CollectionScreen from "../screens/CollectionScreen";
 import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import ReviewIngredientsScreen from "../screens/ReviewIngredientsScreen";
 import CreateShoppingListScreen from "../screens/CreateShoppingListScreen";
 import ShoppingListScreen from "../screens/ShoppingListScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -45,6 +46,7 @@ function ProfileHeaderButton() {
 export type CollectionStackParamList = {
   Collection: undefined;
   RecipeDetail: { recipeId: string };
+  ReviewIngredients: { recipeId: string };
   CreateShoppingList: { recipes: Recipe[] };
   ShoppingList: undefined;
   Profile: undefined;
@@ -71,6 +73,14 @@ export default function CollectionStackNavigator() {
         options={{
           headerTitle: () => <ScreenHeaderTitle title="Recipe" />,
           headerTransparent: false,
+        }}
+      />
+      <Stack.Screen
+        name="ReviewIngredients"
+        component={ReviewIngredientsScreen}
+        options={{
+          headerShown: false,
+          presentation: "modal",
         }}
       />
       <Stack.Screen

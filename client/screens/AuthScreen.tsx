@@ -11,8 +11,8 @@ import {
   ImageBackground,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -22,13 +22,13 @@ import * as Google from "expo-auth-session/providers/google";
 import * as Facebook from "expo-auth-session/providers/facebook";
 
 import { ThemedText } from "@/components/ThemedText";
+import { SimmerIcon } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { KitchColors, Spacing, BorderRadius } from "@/constants/theme";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const appIcon = require("../../assets/images/kitch-logo-text.png");
 const foodBg = require("../../assets/images/food-collage-bg.png");
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -46,6 +46,20 @@ export default function AuthScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const features = [
+    { icon: "link" as const, text: "Save recipes from Instagram & TikTok" },
+    { icon: "book-open" as const, text: "Build your personal cookbook" },
+    { icon: "mic" as const, text: "AI-powered recipe extraction" },
+  ];
+  const [featureIndex, setFeatureIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFeatureIndex((i) => (i + 1) % features.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, []);
 
   // --- GOOGLE CONFIGURATION (Live Ready) ---
   const [gRequest, gResponse, gPromptAsync] = Google.useAuthRequest({
@@ -186,21 +200,46 @@ export default function AuthScreen() {
           <View style={styles.heroOverlay} />
         </ImageBackground>
 
-        <View style={[styles.contentContainer, { backgroundColor: theme.backgroundDefault, paddingBottom: insets.bottom + Spacing["3xl"] }]}>
+        <ScrollView
+          style={[styles.contentContainer, { backgroundColor: theme.backgroundDefault }]}
+          contentContainerStyle={{ paddingBottom: insets.bottom + Spacing["3xl"] }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.heroContent}>
-            <Image source={appIcon} style={styles.appIcon} contentFit="contain" />
+            <View style={[styles.appIcon, { backgroundColor: theme.accent, alignItems: "center", justifyContent: "center" }]}>
+              <SimmerIcon size={40} color={theme.backgroundRoot} />
+            </View>
+            <ThemedText type="h1" style={{ color: theme.text, marginBottom: Spacing.sm }}>
+              Simmer
+            </ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", lineHeight: 24 }}>
               Turn social media food content into your personal cookbook
             </ThemedText>
           </View>
 
           <View style={styles.featureList}>
-            {[{ icon: "link" as const, text: "Save recipes from Instagram & TikTok" }, { icon: "book-open" as const, text: "Build your personal cookbook" }, { icon: "mic" as const, text: "AI-powered recipe extraction" }].map((feature, i) => (
-              <View key={i} style={[styles.featureRow, { backgroundColor: theme.backgroundSecondary }]}>
-                <View style={[styles.featureIconWrap, { backgroundColor: KitchColors.primaryMuted }]}><Feather name={feature.icon} size={18} color={KitchColors.primary} /></View>
-                <ThemedText type="body" style={{ flex: 1 }}>{feature.text}</ThemedText>
+            <Animated.View
+              key={featureIndex}
+              entering={FadeIn.duration(350)}
+              exiting={FadeOut.duration(200)}
+              style={[styles.featureRow, { backgroundColor: theme.backgroundSecondary }]}
+            >
+              <View style={[styles.featureIconWrap, { backgroundColor: KitchColors.primaryMuted }]}>
+                <Feather name={features[featureIndex].icon} size={18} color={KitchColors.primary} />
               </View>
-            ))}
+              <ThemedText type="body" style={{ flex: 1 }}>{features[featureIndex].text}</ThemedText>
+            </Animated.View>
+            <View style={styles.featureDots}>
+              {features.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.featureDot,
+                    { backgroundColor: i === featureIndex ? theme.accent : theme.border },
+                  ]}
+                />
+              ))}
+            </View>
           </View>
 
           <View style={styles.buttonGroup}>
@@ -211,7 +250,7 @@ export default function AuthScreen() {
               <ThemedText type="bodyMedium">I already have an account</ThemedText>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -302,36 +341,45 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  appIcon: { 
-    width: 120, 
-    height: 120, 
-    borderRadius: 28,
     marginBottom: Spacing.lg,
+  },
+  appIcon: {
+    width: 92,
+    height: 92,
+    borderRadius: 24,
+    marginBottom: Spacing.md,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
   },
-  featureList: { 
-    marginBottom: Spacing["2xl"], 
-    gap: Spacing.md 
+  featureList: {
+    marginBottom: Spacing.lg,
   },
-  featureRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
     padding: 12,
     borderRadius: 16
   },
-  featureIconWrap: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 12, 
-    justifyContent: "center", 
+  featureIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: '#10B98115' // Light Emerald tint
+  },
+  featureDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: Spacing.sm,
+  },
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   buttonGroup: { 
     gap: Spacing.md, 

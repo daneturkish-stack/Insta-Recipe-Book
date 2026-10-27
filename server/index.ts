@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -16,16 +17,6 @@ declare module "http" {
 function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
-
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-    }
-
-    if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d: string) => {
-        origins.add(`https://${d.trim()}`);
-      });
-    }
 
     const origin = req.header("origin");
 
@@ -242,7 +233,9 @@ function setupErrorHandler(app: express.Application) {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
+      // reusePort (SO_REUSEPORT) isn't supported by Node's listener on macOS
+      // and throws ENOTSUP; only include it where it actually works.
+      ...(process.platform !== "darwin" ? { reusePort: true } : {}),
     },
     () => {
       log(`express server serving on port ${port}`);

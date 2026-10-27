@@ -41,3 +41,14 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local secrets
+.env
+
+# AI assistant tooling
+.agents/
+.claude/
+skills-lock.json
+
+# build output
+static-build/
