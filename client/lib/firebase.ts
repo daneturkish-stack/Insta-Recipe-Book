@@ -1,5 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, initializeAuth, type Auth } from "firebase/auth";
+// Exported by Firebase's React Native build, which Metro uses, but missing from
+// the web typings TypeScript resolves.
+// @ts-expect-error
+import { getReactNativePersistence } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "demo-api-key",
@@ -11,4 +16,15 @@ const firebaseConfig = {
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+// Keep the signed-in user on the device so they stay logged in between launches.
+// initializeAuth can only run once per app, so a fast refresh falls back to the
+// instance that already exists.
+function createAuth(): Auth {
+    try {
+        return initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+    } catch {
+        return getAuth(app);
+    }
+}
+
+export const auth = createAuth();
