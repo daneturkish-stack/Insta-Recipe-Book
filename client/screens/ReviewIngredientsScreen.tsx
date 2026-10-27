@@ -11,7 +11,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius, KitchColors } from "@/constants/theme";
-import { ingredientSource, needsReview, type Ingredient } from "@/types/recipe";
+import { ingredientSource, needsReview, type Ingredient, type Recipe } from "@/types/recipe";
 
 // Parses "60 g" / "2" style amounts into a number plus the trailing label,
 // so estimated quantities can be nudged with a stepper. Anything that doesn't
@@ -30,19 +30,38 @@ function formatAmount(value: number, suffix: string): string {
   return suffix ? `${text} ${suffix}` : text;
 }
 
+function NothingToReview() {
+  const { theme } = useTheme();
+  const navigation = useNavigation<any>();
+  return (
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot, justifyContent: "center", alignItems: "center" }]}>
+      <ThemedText type="body" style={{ color: theme.textSecondary }}>Nothing left to check here.</ThemedText>
+      <Button variant="outline" size="small" style={{ marginTop: Spacing.lg }} onPress={() => navigation.goBack()}>
+        Back to recipe
+      </Button>
+    </View>
+  );
+}
+
+// Waits for the recipe to load before starting the review, so the draft below
+// is seeded from the real ingredients rather than an empty list.
 export default function ReviewIngredientsScreen() {
+  const route = useRoute<any>();
+  const recipe = useRecipe(route.params.recipeId);
+  if (!recipe) return <NothingToReview />;
+  return <ReviewFlow key={recipe.id} recipe={recipe} />;
+}
+
+function ReviewFlow({ recipe }: { recipe: Recipe }) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { recipeId } = route.params;
-
-  const recipe = useRecipe(recipeId);
+  const recipeId = recipe.id;
   const updateRecipe = useUpdateRecipe();
 
   // Work on a local draft of the ingredients so nothing is saved until the
   // reviewer finishes (or bails) - the recipe on disk only changes once.
-  const [draft, setDraft] = useState<Ingredient[]>(() => recipe?.ingredients ?? []);
+  const [draft, setDraft] = useState<Ingredient[]>(() => recipe.ingredients ?? []);
   const [stepIndex, setStepIndex] = useState(0);
   const [customText, setCustomText] = useState<string | null>(null);
 
@@ -53,22 +72,6 @@ export default function ReviewIngredientsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-
-  if (!recipe || estimatedIndices.length === 0) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot, justifyContent: "center", alignItems: "center" }]}>
-        <ThemedText type="body" style={{ color: theme.textSecondary }}>Nothing left to check here.</ThemedText>
-        <Button variant="outline" size="small" style={{ marginTop: Spacing.lg }} onPress={() => navigation.goBack()}>
-          Back to recipe
-        </Button>
-      </View>
-    );
-  }
-
-  const currentIndex = estimatedIndices[stepIndex];
-  const current = draft[currentIndex];
-  const parsed = parseAmount(current.amount);
-  const wasHeard = ingredientSource(current) === "spoken";
 
   const commitAndClose = useCallback(async (finalDraft: Ingredient[]) => {
     await updateRecipe.mutateAsync({ id: recipeId, ingredients: finalDraft });
@@ -85,6 +88,14 @@ export default function ReviewIngredientsScreen() {
       commitAndClose(nextDraft);
     }
   }, [stepIndex, estimatedIndices.length, commitAndClose]);
+
+  // All hooks above this line - an early return before them breaks React's hook order.
+  if (estimatedIndices.length === 0) return <NothingToReview />;
+
+  const currentIndex = estimatedIndices[stepIndex];
+  const current = draft[currentIndex];
+  const parsed = parseAmount(current.amount);
+  const wasHeard = ingredientSource(current) === "spoken";
 
   const applyAmount = (newAmount: string, confirm: boolean) => {
     const nextDraft = draft.map((ing, i) =>
