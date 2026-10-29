@@ -11,16 +11,13 @@ import * as WebBrowser from "expo-web-browser"; // Added for OAuth
 
 import {
   useFonts,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
-import {
-  Nunito_600SemiBold,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-} from "@expo-google-fonts/nunito";
+  Figtree_400Regular,
+  Figtree_500Medium,
+  Figtree_600SemiBold,
+  Figtree_700Bold,
+  Figtree_800ExtraBold,
+} from "@expo-google-fonts/figtree";
+import { Caprasimo_400Regular } from "@expo-google-fonts/caprasimo";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -38,7 +35,8 @@ SplashScreen.preventAutoHideAsync();
 const linking = {
   prefixes: [
     Linking.createURL("/"),
-    "kitch://",
+    "simmer://",
+    "kitch://", // kept for compatibility with any existing installs/shortcuts
   ],
   config: {
     screens: {
@@ -111,39 +109,47 @@ export default function App() {
   }, [colorScheme]);
 
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Nunito_600SemiBold,
-    Nunito_700Bold,
-    Nunito_800ExtraBold,
+    Figtree_400Regular,
+    Figtree_500Medium,
+    Figtree_600SemiBold,
+    Figtree_700Bold,
+    Figtree_800ExtraBold,
+    Caprasimo_400Regular,
   });
+
+  const openAddRecipeWith = useCallback((sharedUrl: string) => {
+    navigationRef.current?.navigate("Main", {
+      screen: "AddRecipeTab",
+      params: {
+        screen: "AddRecipe",
+        params: { sharedUrl },
+      },
+    } as any);
+  }, []);
 
   const handleDeepLink = useCallback((event: { url: string }) => {
     const { url } = event;
 
+    // From the iOS Share Extension (targets/share/ShareViewController.swift):
+    // simmer://add?url=<percent-encoded source url>
+    if (url.startsWith("simmer://add?") || url.startsWith("kitch://add?")) {
+      const queryString = url.split("?")[1] ?? "";
+      const sharedUrl = new URLSearchParams(queryString).get("url");
+      if (sharedUrl) {
+        openAddRecipeWith(sharedUrl);
+        return;
+      }
+    }
+
     if (isInstagramOrTikTokUrl(url)) {
-      navigationRef.current?.navigate("Main", {
-        screen: "AddRecipeTab",
-        params: {
-          screen: "AddRecipe",
-          params: { sharedUrl: url },
-        },
-      } as any);
+      openAddRecipeWith(url);
     } else {
       const extractedUrl = extractUrlFromText(url);
       if (extractedUrl) {
-        navigationRef.current?.navigate("Main", {
-          screen: "AddRecipeTab",
-          params: {
-            screen: "AddRecipe",
-            params: { sharedUrl: extractedUrl },
-          },
-        } as any);
+        openAddRecipeWith(extractedUrl);
       }
     }
-  }, []);
+  }, [openAddRecipeWith]);
 
   useEffect(() => {
     const subscription = Linking.addEventListener("url", handleDeepLink);

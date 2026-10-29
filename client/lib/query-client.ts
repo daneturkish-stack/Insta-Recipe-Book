@@ -8,10 +8,15 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  // Clean the host by removing any existing http:// or https:// to prevent double protocols
+  // Clean the host by removing any existing http:// or https://
   const cleanHost = host.replace(/^https?:\/\//, '');
 
-  // Return a consistent, absolute URL
+  // If the host is localhost or a local IP (like 192.168.x.x), use http://
+  if (cleanHost.startsWith('localhost:') || cleanHost.startsWith('192.168.') || cleanHost.startsWith('10.') || cleanHost.startsWith('127.')) {
+    return `http://${cleanHost}`;
+  }
+
+  // Otherwise, use https://
   return `https://${cleanHost}`;
 }
 
@@ -72,27 +77,27 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const baseUrl = getApiUrl();
-    const cleanRoute = queryKey.join("/");
-    const url = new URL(cleanRoute.startsWith('/') ? cleanRoute : `/${cleanRoute}`, baseUrl);
+    async ({ queryKey }) => {
+      const baseUrl = getApiUrl();
+      const cleanRoute = queryKey.join("/");
+      const url = new URL(cleanRoute.startsWith('/') ? cleanRoute : `/${cleanRoute}`, baseUrl);
 
-    const res = await fetch(url.href, {
-      credentials: "include",
-      headers: getAuthHeaders(),
-    });
+      const res = await fetch(url.href, {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
 
-    await throwIfResNotOk(res);
-    const contentType = res.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      throw new Error("Server returned an unexpected response");
-    }
-    return await res.json();
-  };
+      await throwIfResNotOk(res);
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Server returned an unexpected response");
+      }
+      return await res.json();
+    };
 
 export const queryClient = new QueryClient({
   defaultOptions: {

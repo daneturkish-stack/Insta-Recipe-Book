@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getApiUrl } from "@/lib/query-client";
 import { setAuthToken, getAuthToken, removeAuthToken } from "@/lib/auth-token";
+import { auth } from "@/lib/firebase";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+} from "firebase/auth";
 
 export interface AuthUser {
   id: string;
@@ -57,181 +66,98 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const baseUrl = getApiUrl();
 
-  const restoreSession = useCallback(async () => {
+  const syncBackend = useCallback(async (firebaseUser: FirebaseUser) => {
     try {
-      const storedToken = await getAuthToken();
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
-      }
+      const idToken = await firebaseUser.getIdToken();
+      await setAuthToken(idToken);
+      setTokenState(idToken);
 
       const url = new URL("/api/auth/me", baseUrl);
       const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${storedToken}` },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
       if (!res.ok) {
-        await removeAuthToken();
-        setIsLoading(false);
-        return;
+        throw new Error("Backend sync failed");
       }
 
       const data = await res.json();
       setUser(data.user);
-      setTokenState(storedToken);
       setTrial(data.trial);
-      setHasAccess(true);
-    } catch {
+      setHasAccess(data.hasAccess);
+    } catch (err) {
+      console.error("Failed to sync auth state with backend:", err);
+      setUser(null);
+      setTokenState(null);
+      setTrial(null);
+      setHasAccess(false);
       await removeAuthToken();
-    } finally {
-      setIsLoading(false);
     }
   }, [baseUrl]);
 
   useEffect(() => {
-    restoreSession();
-  }, [restoreSession]);
-
-  const handleAuthResponse = useCallback(
-    async (data: { user: AuthUser; token: string }) => {
-      await setAuthToken(data.token);
-      setTokenState(data.token);
-      setUser(data.user);
-
-      const url = new URL("/api/auth/me", baseUrl);
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${data.token}` },
-      });
-
-      if (res.ok) {
-        const meData = await res.json();
-        setTrial(meData.trial);
-        setHasAccess(true);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        await syncBackend(firebaseUser);
+      } else {
+        setUser(null);
+        setTokenState(null);
+        setTrial(null);
+        setHasAccess(false);
+        await removeAuthToken();
       }
-    },
-    [baseUrl],
-  );
+      setIsLoading(false);
+    });
+    return unsubscribe;
+  }, [syncBackend]);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const url = new URL("/api/auth/login", baseUrl);
-      const res = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        let message = "Login failed";
-        try {
-          const parsed = JSON.parse(text);
-          message = parsed.error || parsed.message || text;
-        } catch {
-          message = text || "Login failed";
-        }
-        throw new Error(message);
-      }
-
-      const data = await res.json();
-      await handleAuthResponse(data);
+      await signInWithEmailAndPassword(auth, email, password);
     },
-    [baseUrl, handleAuthResponse],
+    [],
   );
 
   const register = useCallback(
     async (email: string, password: string, displayName: string) => {
-      const url = new URL("/api/auth/register", baseUrl);
-      const res = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, displayName }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        let message = "Registration failed";
-        try {
-          const parsed = JSON.parse(text);
-          message = parsed.error || parsed.message || text;
-        } catch {
-          message = text || "Registration failed";
-        }
-        throw new Error(message);
-      }
-
-      const data = await res.json();
-      await handleAuthResponse(data);
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName });
+      await cred.user.getIdToken(true); // Force token refresh
     },
-    [baseUrl, handleAuthResponse],
+    [],
   );
 
   const socialLogin = useCallback(
     async (params: SocialLoginParams) => {
-      const url = new URL("/api/auth/social", baseUrl);
-      const res = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        let message = "Social login failed";
-        try {
-          const parsed = JSON.parse(text);
-          message = parsed.error || parsed.message || text;
-        } catch {
-          message = text || "Social login failed";
-        }
-        throw new Error(message);
-      }
-
-      const data = await res.json();
-      await handleAuthResponse(data);
+      console.warn("Firebase Social Login requires provider credentials integration. Not fully implemented.");
+      throw new Error("Social login not yet migrated to Firebase Auth on the client.");
     },
-    [baseUrl, handleAuthResponse],
+    [],
   );
 
   const refreshAccess = useCallback(async () => {
-    try {
-      const storedToken = await getAuthToken();
-      if (!storedToken) return;
-
-      const url = new URL("/api/auth/me", baseUrl);
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${storedToken}` },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        setTrial(data.trial);
-        setHasAccess(data.hasAccess);
-      }
-    } catch (err) {
-      console.error("Failed to refresh access:", err);
+    if (auth.currentUser) {
+      await auth.currentUser.getIdToken(true);
+      await syncBackend(auth.currentUser);
     }
-  }, [baseUrl]);
+  }, [syncBackend]);
 
   const updateProfileImage = useCallback(
     async (imageUri: string) => {
-      const storedToken = await getAuthToken();
-      if (!storedToken) throw new Error("Not authenticated");
+      if (!auth.currentUser) throw new Error("Not authenticated");
+      const idToken = await auth.currentUser.getIdToken();
 
       const url = new URL("/api/auth/profile-image", baseUrl);
       const res = await fetch(url.toString(), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${storedToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({ profileImage: imageUri }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to update profile image");
-      }
+      if (!res.ok) throw new Error("Failed to update profile image");
 
       const data = await res.json();
       setUser(data.user);
@@ -240,23 +166,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    try {
-      if (token) {
-        const url = new URL("/api/auth/logout", baseUrl);
-        await fetch(url.toString(), {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {
-    } finally {
-      await removeAuthToken();
-      setTokenState(null);
-      setUser(null);
-      setTrial(null);
-      setHasAccess(false);
-    }
-  }, [token, baseUrl]);
+    await signOut(auth);
+  }, []);
 
   const value: AuthContextValue = {
     user,

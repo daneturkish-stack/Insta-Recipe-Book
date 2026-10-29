@@ -9,6 +9,8 @@ import path from "node:path";
 import os from "node:os";
 import { storage } from "./storage";
 import { YoutubeTranscript } from "youtube-transcript";
+import { verifyIngredients, computeConfidence, countSources } from "./provenance";
+import { findCreatorLinkedRecipe, fetchRecipePageHtml, extractCaptionHandle } from "./recipe-links";
 
 const execAsync = promisify(exec);
 
@@ -41,12 +43,12 @@ async function fetchPageContent(url: string): Promise<PageContent> {
     }
 
     const html = await response.text();
-    
+
     const extractedContent: string[] = [];
     let imageUrl: string | null = null;
     let videoUrl: string | null = null;
     let profileImageUrl: string | null = null;
-    
+
     // Helper to decode HTML entities
     const decodeHtmlEntities = (str: string) => {
       return str
@@ -54,32 +56,44 @@ async function fetchPageContent(url: string): Promise<PageContent> {
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
+        .replace(/&#39;/g, "'")
+        .replace(/&#x([\dA-Fa-f]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
     };
-    
+
+    // Unescape a JSON string body (\n, \/, \uXXXX) so captions keep their links,
+    // emoji and accented characters instead of having escapes stripped.
+    const decodeJsonText = (str: string) => {
+      try {
+        return JSON.parse(`"${str}"`) as string;
+      } catch {
+        return str.replace(/\\n/g, '\n').replace(/\\\//g, '/').replace(/\\u[\dA-Fa-f]{4}/g, '');
+      }
+    };
+
     // Extract image URL (og:image)
     const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
     if (ogImageMatch) {
       imageUrl = decodeHtmlEntities(ogImageMatch[1]);
     }
-    
+
     // Extract video URL (og:video)
     const ogVideoMatch = html.match(/<meta[^>]*property=["']og:video["'][^>]*content=["']([^"']+)["']/i) ||
-                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video["']/i) ||
-                         html.match(/<meta[^>]*property=["']og:video:url["'][^>]*content=["']([^"']+)["']/i) ||
-                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video:url["']/i);
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video["']/i) ||
+      html.match(/<meta[^>]*property=["']og:video:url["'][^>]*content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:video:url["']/i);
     if (ogVideoMatch) {
       videoUrl = decodeHtmlEntities(ogVideoMatch[1]);
     }
-    
+
     // Also try to find video URLs in JSON data
     const videoUrlPatterns = [
       /"video_url"\s*:\s*"([^"]+)"/,
       /"playback_url"\s*:\s*"([^"]+)"/,
       /"contentUrl"\s*:\s*"([^"]+)"/,
     ];
-    
+
     if (!videoUrl) {
       for (const pattern of videoUrlPatterns) {
         const match = html.match(pattern);
@@ -89,13 +103,13 @@ async function fetchPageContent(url: string): Promise<PageContent> {
         }
       }
     }
-    
+
     // Also try to find high-res images in JSON
     const imageUrlPatterns = [
       /"display_url"\s*:\s*"([^"]+)"/,
       /"thumbnail_url"\s*:\s*"([^"]+)"/,
     ];
-    
+
     if (!imageUrl) {
       for (const pattern of imageUrlPatterns) {
         const match = html.match(pattern);
@@ -105,28 +119,28 @@ async function fetchPageContent(url: string): Promise<PageContent> {
         }
       }
     }
-    
+
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) {
       extractedContent.push(`Page Title: ${titleMatch[1]}`);
     }
-    
+
     const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-                          html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
     if (metaDescMatch) {
-      extractedContent.push(`Description: ${metaDescMatch[1]}`);
+      extractedContent.push(`Description: ${decodeHtmlEntities(metaDescMatch[1])}`);
     }
-    
+
     const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
-                        html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
     if (ogDescMatch) {
-      extractedContent.push(`Post Content: ${ogDescMatch[1]}`);
+      extractedContent.push(`Post Content: ${decodeHtmlEntities(ogDescMatch[1])}`);
     }
-    
+
     const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
-                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
     if (ogTitleMatch) {
-      extractedContent.push(`Post Title: ${ogTitleMatch[1]}`);
+      extractedContent.push(`Post Title: ${decodeHtmlEntities(ogTitleMatch[1])}`);
     }
 
     const jsonLdMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gi);
@@ -154,17 +168,18 @@ async function fetchPageContent(url: string): Promise<PageContent> {
     }
 
     const captionPatterns = [
-      /"caption"\s*:\s*"([^"]+)"/g,
-      /"text"\s*:\s*"([^"]+)"/g,
-      /"description"\s*:\s*"([^"]+)"/g,
+      /"shortDescription"\s*:\s*"((?:[^"\\]|\\.)+)"/g, // YouTube description, where creators link the blog post
+      /"caption"\s*:\s*"((?:[^"\\]|\\.)+)"/g,
+      /"text"\s*:\s*"((?:[^"\\]|\\.)+)"/g,
+      /"description"\s*:\s*"((?:[^"\\]|\\.)+)"/g,
     ];
-    
+
     for (const pattern of captionPatterns) {
       const matches = html.matchAll(pattern);
       for (const match of matches) {
-        const text = match[1];
-        if (text.length > 50 && text.length < 5000 && !extractedContent.some(c => c.includes(text))) {
-          extractedContent.push(`Content: ${text.replace(/\\n/g, '\n').replace(/\\u[\dA-Fa-f]{4}/g, '')}`);
+        const text = decodeJsonText(match[1]);
+        if (text.length > 50 && text.length < 8000 && !extractedContent.some(c => c.includes(text))) {
+          extractedContent.push(`Content: ${text}`);
         }
       }
     }
@@ -178,7 +193,7 @@ async function fetchPageContent(url: string): Promise<PageContent> {
       /"avatar"\s*:\s*"([^"]+)"/,
       /"owner"\s*:\s*\{[^}]*"profile_pic_url"\s*:\s*"([^"]+)"/,
     ];
-    
+
     for (const pattern of profileImagePatterns) {
       const match = html.match(pattern);
       if (match) {
@@ -206,35 +221,35 @@ async function transcribeVideoFromUrl(videoUrl: string): Promise<string | null> 
   const tempDir = os.tmpdir();
   const videoPath = path.join(tempDir, `video_${tempId}.mp4`);
   const audioPath = path.join(tempDir, `audio_${tempId}.mp3`);
-  
+
   try {
     console.log(`Downloading video for transcription...`);
-    
+
     // Download video
     const videoResponse = await fetch(videoUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
       },
     });
-    
+
     if (!videoResponse.ok) {
       console.log(`Failed to download video: ${videoResponse.status}`);
       return null;
     }
-    
+
     const videoBuffer = await videoResponse.arrayBuffer();
     await writeFile(videoPath, Buffer.from(videoBuffer));
     console.log(`Video downloaded to ${videoPath}`);
-    
+
     // Extract audio using ffmpeg
     console.log(`Extracting audio...`);
     await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -q:a 4 -y "${audioPath}" 2>/dev/null`);
     console.log(`Audio extracted to ${audioPath}`);
-    
+
     // Read audio file for transcription
     const audioBuffer = await readFile(audioPath);
     const audioFile = new File([audioBuffer], "audio.mp3", { type: "audio/mpeg" });
-    
+
     // Transcribe with OpenAI Whisper
     console.log(`Transcribing audio with Whisper...`);
     const transcription = await openai.audio.transcriptions.create({
@@ -242,19 +257,19 @@ async function transcribeVideoFromUrl(videoUrl: string): Promise<string | null> 
       model: "whisper-1",
       language: "en",
     });
-    
+
     console.log(`Transcription complete: ${transcription.text.substring(0, 100)}...`);
-    
+
     // Cleanup temp files
-    await unlink(videoPath).catch(() => {});
-    await unlink(audioPath).catch(() => {});
-    
+    await unlink(videoPath).catch(() => { });
+    await unlink(audioPath).catch(() => { });
+
     return transcription.text;
   } catch (error) {
     console.error("Error transcribing video:", error);
     // Cleanup on error
-    await unlink(videoPath).catch(() => {});
-    await unlink(audioPath).catch(() => {});
+    await unlink(videoPath).catch(() => { });
+    await unlink(audioPath).catch(() => { });
     return null;
   }
 }
@@ -284,30 +299,30 @@ function extractDomain(url: string): string {
 function checkDomainMatchesCreator(domain: string, creatorHandle: string): boolean {
   const normalizedHandle = normalizeHandle(creatorHandle);
   const normalizedDomain = domain.toLowerCase().replace(/\.(com|net|org|io|co|ie|uk|ca|blog)$/, '').replace(/[^a-z0-9]/g, '');
-  
+
   if (normalizedDomain.includes(normalizedHandle) || normalizedHandle.includes(normalizedDomain)) {
     return true;
   }
-  
+
   const handleWords = normalizedHandle.replace(/([a-z])([A-Z])/g, '$1 $2').split(/(?=[A-Z])|[^a-z0-9]+/).filter(Boolean);
   const domainWords = normalizedDomain.split(/[^a-z0-9]+/).filter(Boolean);
-  
-  const matchingWords = handleWords.filter(word => 
+
+  const matchingWords = handleWords.filter(word =>
     domainWords.some(dWord => dWord.includes(word) || word.includes(dWord))
   );
-  
+
   return matchingWords.length >= Math.min(2, handleWords.length);
 }
 
 async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): Promise<{ isVerified: boolean; method: 'domain_match' | 'instagram_link' | 'unverified' }> {
   const domain = extractDomain(websiteUrl);
   const normalizedHandle = normalizeHandle(creatorHandle);
-  
+
   if (checkDomainMatchesCreator(domain, creatorHandle)) {
     console.log(`Domain "${domain}" matches creator handle "${creatorHandle}" - verified by domain match`);
     return { isVerified: true, method: 'domain_match' };
   }
-  
+
   try {
     console.log(`Checking website for Instagram link to verify creator...`);
     const response = await fetch(websiteUrl, {
@@ -317,18 +332,18 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
       },
       redirect: "follow",
     });
-    
+
     if (!response.ok) {
       return { isVerified: false, method: 'unverified' };
     }
-    
+
     const html = await response.text();
-    
+
     const instagramPatterns = [
       /instagram\.com\/([a-zA-Z0-9._]+)/gi,
       /href=["'][^"']*instagram\.com\/([a-zA-Z0-9._]+)["']/gi,
     ];
-    
+
     for (const pattern of instagramPatterns) {
       const matches = [...html.matchAll(pattern)];
       for (const match of matches) {
@@ -339,7 +354,7 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
         }
       }
     }
-    
+
     console.log(`No matching Instagram link found on website`);
     return { isVerified: false, method: 'unverified' };
   } catch (error) {
@@ -348,7 +363,7 @@ async function verifyCreatorWebsite(websiteUrl: string, creatorHandle: string): 
   }
 }
 
-async function performWebSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+async function performWebSearch(query: string): Promise<Array<{ url: string, title: string, snippet: string }>> {
   // Try Serper.dev API first (reliable, 2500 free searches/month)
   const serperApiKey = process.env.SERPER_API_KEY;
   if (serperApiKey) {
@@ -360,21 +375,21 @@ async function performWebSearch(query: string): Promise<Array<{url: string, titl
   } else {
     console.log(`No SERPER_API_KEY found, falling back to scraping for: "${query}"`);
   }
-  
+
   // Fallback to Google scraping (may be blocked)
   const googleResults = await performGoogleSearch(query);
   if (googleResults.length > 0) {
     return googleResults;
   }
-  
+
   // Final fallback to DuckDuckGo
   console.log(`Google returned no results, trying DuckDuckGo for: "${query}"`);
   return performDuckDuckGoSearch(query);
 }
 
-async function performSerperSearch(query: string, apiKey: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+async function performSerperSearch(query: string, apiKey: string): Promise<Array<{ url: string, title: string, snippet: string }>> {
   console.log(`Serper search: "${query}"`);
-  
+
   try {
     const response = await fetch('https://google.serper.dev/search', {
       method: 'POST',
@@ -389,15 +404,15 @@ async function performSerperSearch(query: string, apiKey: string): Promise<Array
         hl: 'en',
       }),
     });
-    
+
     if (!response.ok) {
       console.log(`Serper search failed: ${response.status}`);
       return [];
     }
-    
+
     const data = await response.json();
-    const results: Array<{url: string, title: string, snippet: string}> = [];
-    
+    const results: Array<{ url: string, title: string, snippet: string }> = [];
+
     // Parse organic results
     if (data.organic && Array.isArray(data.organic)) {
       for (const result of data.organic) {
@@ -410,7 +425,7 @@ async function performSerperSearch(query: string, apiKey: string): Promise<Array
         }
       }
     }
-    
+
     console.log(`Found ${results.length} results from Serper`);
     return results;
   } catch (error) {
@@ -419,12 +434,12 @@ async function performSerperSearch(query: string, apiKey: string): Promise<Array
   }
 }
 
-async function performGoogleSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+async function performGoogleSearch(query: string): Promise<Array<{ url: string, title: string, snippet: string }>> {
   const encodedQuery = encodeURIComponent(query);
   const searchUrl = `https://www.google.com/search?q=${encodedQuery}&num=10`;
-  
+
   console.log(`Google search: "${query}"`);
-  
+
   try {
     const response = await fetch(searchUrl, {
       headers: {
@@ -435,37 +450,37 @@ async function performGoogleSearch(query: string): Promise<Array<{url: string, t
         "Cache-Control": "no-cache",
       },
     });
-    
+
     if (!response.ok) {
       console.log(`Google search failed: ${response.status}`);
       return [];
     }
-    
+
     const html = await response.text();
-    const results: Array<{url: string, title: string, snippet: string}> = [];
-    
+    const results: Array<{ url: string, title: string, snippet: string }> = [];
+
     // Parse Google search results - look for result links
     // Google results have URLs in various formats, try multiple patterns
-    
+
     // Pattern 1: Standard search result links with /url?q=
     const urlPattern = /\/url\?q=([^&"]+)/gi;
     const urlMatches = [...html.matchAll(urlPattern)];
-    
+
     // Pattern 2: Direct href links to results (data-ved links usually have real URLs)
     const hrefPattern = /href="(https?:\/\/(?!www\.google|google|accounts\.google|support\.google|maps\.google)[^"]+)"/gi;
     const hrefMatches = [...html.matchAll(hrefPattern)];
-    
+
     const seenUrls = new Set<string>();
-    
+
     // Process /url?q= matches
     for (const match of urlMatches) {
       try {
         const decodedUrl = decodeURIComponent(match[1]);
         // Skip Google's own URLs and tracking
-        if (decodedUrl.includes('google.com') || 
-            decodedUrl.includes('youtube.com') ||
-            decodedUrl.includes('webcache') ||
-            seenUrls.has(decodedUrl)) {
+        if (decodedUrl.includes('google.com') ||
+          decodedUrl.includes('youtube.com') ||
+          decodedUrl.includes('webcache') ||
+          seenUrls.has(decodedUrl)) {
           continue;
         }
         seenUrls.add(decodedUrl);
@@ -478,15 +493,15 @@ async function performGoogleSearch(query: string): Promise<Array<{url: string, t
         // Skip malformed URLs
       }
     }
-    
+
     // Also check direct hrefs if we didn't get enough results
     if (results.length < 5) {
       for (const match of hrefMatches) {
         const url = match[1];
-        if (!seenUrls.has(url) && 
-            !url.includes('google.com') &&
-            !url.includes('gstatic.com') &&
-            !url.includes('youtube.com')) {
+        if (!seenUrls.has(url) &&
+          !url.includes('google.com') &&
+          !url.includes('gstatic.com') &&
+          !url.includes('youtube.com')) {
           seenUrls.add(url);
           results.push({
             url: url,
@@ -496,7 +511,7 @@ async function performGoogleSearch(query: string): Promise<Array<{url: string, t
         }
       }
     }
-    
+
     console.log(`Found ${results.length} results from Google`);
     return results.slice(0, 10);
   } catch (error) {
@@ -505,12 +520,12 @@ async function performGoogleSearch(query: string): Promise<Array<{url: string, t
   }
 }
 
-async function performDuckDuckGoSearch(query: string): Promise<Array<{url: string, title: string, snippet: string}>> {
+async function performDuckDuckGoSearch(query: string): Promise<Array<{ url: string, title: string, snippet: string }>> {
   const encodedQuery = encodeURIComponent(query);
   const searchUrl = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
-  
+
   console.log(`DuckDuckGo search: "${query}"`);
-  
+
   const response = await fetch(searchUrl, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -518,35 +533,35 @@ async function performDuckDuckGoSearch(query: string): Promise<Array<{url: strin
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
-  
+
   if (!response.ok) {
     console.log(`DuckDuckGo search failed: ${response.status}`);
     return [];
   }
-  
+
   const html = await response.text();
-  
-  const results: Array<{url: string, title: string, snippet: string}> = [];
-  
+
+  const results: Array<{ url: string, title: string, snippet: string }> = [];
+
   const resultPattern = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([^<]*)</gi;
   const matches = [...html.matchAll(resultPattern)];
-  
+
   console.log(`Found ${matches.length} raw results from DuckDuckGo`);
-  
+
   for (const match of matches) {
     const resultUrl = match[1];
     const title = match[2];
     const snippet = match[3] || '';
-    
+
     const decodedUrl = decodeURIComponent(resultUrl.replace(/.*uddg=([^&]+).*/, '$1'));
-    
+
     results.push({
       url: decodedUrl,
       title: title.trim(),
       snippet: snippet.trim(),
     });
   }
-  
+
   return results;
 }
 
@@ -554,27 +569,27 @@ function validateRecipeMatch(candidateTitle: string, candidateSnippet: string, t
   const normalizedTarget = targetRecipeName.toLowerCase().trim();
   const normalizedTitle = candidateTitle.toLowerCase();
   const normalizedSnippet = candidateSnippet.toLowerCase();
-  
+
   // Extract key words from target recipe name (ignore common words)
   const stopWords = ['the', 'a', 'an', 'and', 'or', 'with', 'in', 'on', 'for', 'to', 'of', 'recipe', 'easy', 'best', 'homemade', 'simple', 'quick'];
   const targetWords = normalizedTarget.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
-  
+
   if (targetWords.length === 0) return true; // No meaningful words to match
-  
+
   // Check how many key words appear in title or snippet
   const combinedText = `${normalizedTitle} ${normalizedSnippet}`;
   const matchedWords = targetWords.filter(word => combinedText.includes(word));
   const matchRatio = matchedWords.length / targetWords.length;
-  
+
   // Require at least 70% of key words to match
   const isMatch = matchRatio >= 0.7;
-  
+
   if (!isMatch) {
     console.log(`Recipe match validation failed: target="${targetRecipeName}", matched ${matchedWords.length}/${targetWords.length} words (${(matchRatio * 100).toFixed(0)}%)`);
     console.log(`  Target words: ${targetWords.join(', ')}`);
     console.log(`  Matched: ${matchedWords.join(', ')}`);
   }
-  
+
   return isMatch;
 }
 
@@ -582,17 +597,17 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
   try {
     const creatorName = creatorHandle ? creatorHandle.replace('@', '').replace(/[_.-]/g, ' ') : '';
     const normalizedCreatorName = normalizeHandle(creatorName);
-    
+
     // Check if we have a valid recipe name (not just "Unknown" or placeholder text)
-    const hasValidRecipeName = recipeName && 
-      !recipeName.toLowerCase().includes('unknown') && 
+    const hasValidRecipeName = recipeName &&
+      !recipeName.toLowerCase().includes('unknown') &&
       !recipeName.toLowerCase().includes('not provided') &&
       recipeName.length > 3;
-    
+
     console.log(`Searching for recipe: "${recipeName}" (valid: ${hasValidRecipeName}) by creator: "${creatorName || 'unknown'}"`);
-    
+
     const excludeDomains = ['instagram.com', 'tiktok.com', 'youtube.com', 'facebook.com', 'twitter.com', 'pinterest.com', 'amazon.com', 'reddit.com'];
-    
+
     interface CandidateResult {
       url: string;
       title: string;
@@ -600,24 +615,24 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
       domainMatchScore: number;
       source: string;
     }
-    
+
     const allCandidates: CandidateResult[] = [];
-    
+
     // Strategy 0: If we only have creator handle but no recipe name, search for their recipes page
     if (creatorName && !hasValidRecipeName) {
       console.log(`No valid recipe name - searching for creator's recipe website directly...`);
-      
+
       // Try to find creator's recipes page
       const creatorWebsiteQuery = `${creatorName} recipes`;
       const websiteResults = await performWebSearch(creatorWebsiteQuery);
-      
+
       for (const result of websiteResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         const domain = extractDomain(result.url);
         const domainMatches = checkDomainMatchesCreator(domain, creatorName);
-        
+
         // Prioritize results that match creator's domain
         if (domainMatches) {
           allCandidates.push({
@@ -628,7 +643,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
           console.log(`Found creator's website: ${result.url}`);
         }
       }
-      
+
       // If we found the creator's website, return immediately
       if (allCandidates.length > 0) {
         const best = allCandidates[0];
@@ -644,16 +659,16 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         };
       }
     }
-    
+
     // Strategy 1: Search specifically on creator's likely domain
     if (creatorName && hasValidRecipeName) {
       const siteSearchQuery = `site:${normalizedCreatorName}.* ${recipeName} recipe`;
       const siteResults = await performWebSearch(siteSearchQuery);
-      
+
       for (const result of siteResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         const domain = extractDomain(result.url);
         allCandidates.push({
           ...result,
@@ -663,49 +678,49 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         console.log(`Site search found: ${result.url}`);
       }
     }
-    
+
     // Strategy 2: Search with creator name and recipe
     if (creatorName && hasValidRecipeName) {
       const creatorSearchQuery = `${creatorName} ${recipeName} recipe`;
       const creatorResults = await performWebSearch(creatorSearchQuery);
-      
+
       for (const result of creatorResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         // Check if this URL is already in candidates
         if (allCandidates.some(c => c.url === result.url)) continue;
-        
+
         const domain = extractDomain(result.url);
         const domainMatches = checkDomainMatchesCreator(domain, creatorName);
-        
+
         allCandidates.push({
           ...result,
           domainMatchScore: domainMatches ? 15 : 5,
           source: 'creator-search',
         });
-        
+
         if (domainMatches) {
           console.log(`Creator search found matching domain: ${result.url}`);
         }
       }
     }
-    
+
     // Strategy 3: Generic recipe search as fallback (quoted) - only if we have valid recipe name
     if (hasValidRecipeName) {
       const genericSearchQuery = `"${recipeName}" recipe`;
       const genericResults = await performWebSearch(genericSearchQuery);
-      
+
       for (const result of genericResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         // Check if this URL is already in candidates
         if (allCandidates.some(c => c.url === result.url)) continue;
-        
+
         const domain = extractDomain(result.url);
         const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
-        
+
         allCandidates.push({
           ...result,
           domainMatchScore: domainMatches ? 10 : 1,
@@ -713,21 +728,21 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         });
       }
     }
-    
+
     // Strategy 4: If still no results, try simpler unquoted search - only if we have valid recipe name
     if (allCandidates.length === 0 && hasValidRecipeName) {
       const simpleSearchQuery = `${recipeName} recipe`;
       const simpleResults = await performWebSearch(simpleSearchQuery);
-      
+
       for (const result of simpleResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         if (allCandidates.some(c => c.url === result.url)) continue;
-        
+
         const domain = extractDomain(result.url);
         const domainMatches = creatorName && checkDomainMatchesCreator(domain, creatorName);
-        
+
         allCandidates.push({
           ...result,
           domainMatchScore: domainMatches ? 8 : 1,
@@ -735,28 +750,28 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         });
       }
     }
-    
+
     // Strategy 5: If STILL no results and we have creator name, search for creator's website directly
     if (allCandidates.length === 0 && creatorName) {
       // First find creator's website
       const creatorWebsiteQuery = `${creatorName} official website recipes`;
       const websiteResults = await performWebSearch(creatorWebsiteQuery);
-      
+
       for (const result of websiteResults) {
         const isExcluded = excludeDomains.some(domain => result.url.includes(domain));
         if (isExcluded) continue;
-        
+
         if (allCandidates.some(c => c.url === result.url)) continue;
-        
+
         const domain = extractDomain(result.url);
         const domainMatches = checkDomainMatchesCreator(domain, creatorName);
-        
+
         if (domainMatches) {
           // Found creator's website, now search on that site for the recipe
           const simplifiedRecipeName = recipeName.split(' ').slice(0, 3).join(' ');
           const siteSpecificQuery = `site:${domain} ${simplifiedRecipeName}`;
           console.log(`Found creator website ${domain}, searching for recipe: ${siteSpecificQuery}`);
-          
+
           const siteRecipeResults = await performWebSearch(siteSpecificQuery);
           for (const siteResult of siteRecipeResults) {
             allCandidates.push({
@@ -765,7 +780,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
               source: 'creator-website-search',
             });
           }
-          
+
           // Even if no specific recipe found, include the website as a candidate
           if (siteRecipeResults.length === 0) {
             allCandidates.push({
@@ -777,10 +792,10 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         }
       }
     }
-    
+
     // Sort by domain match score (highest first)
     allCandidates.sort((a, b) => b.domainMatchScore - a.domainMatchScore);
-    
+
     console.log(`Total candidates found: ${allCandidates.length}`);
     if (allCandidates.length > 0) {
       console.log(`Top 5 candidates:`);
@@ -788,23 +803,23 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         console.log(`  - ${c.url} (score: ${c.domainMatchScore}, source: ${c.source})`);
       }
     }
-    
+
     // Try to verify top candidates - now also validate recipe name match
     for (const candidate of allCandidates.slice(0, 5)) {
       // First validate that the found result actually matches our target recipe
-      const recipeMatches = hasValidRecipeName 
+      const recipeMatches = hasValidRecipeName
         ? validateRecipeMatch(candidate.title, candidate.snippet, recipeName)
         : true; // If no valid recipe name, skip this validation
-      
+
       if (!recipeMatches) {
         console.log(`Skipping candidate ${candidate.url} - recipe name mismatch`);
         continue;
       }
-      
-      const verification = creatorHandle 
+
+      const verification = creatorHandle
         ? await verifyCreatorWebsite(candidate.url, creatorHandle)
         : { isVerified: false, method: 'unverified' as const };
-      
+
       if (verification.isVerified || candidate.domainMatchScore >= 10) {
         const domain = extractDomain(candidate.url);
         console.log(`Selected verified/high-score candidate: ${candidate.url} (verified: ${verification.isVerified})`);
@@ -818,13 +833,13 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         };
       }
     }
-    
+
     // Return best unverified candidate if available AND it matches the recipe name
     for (const candidate of allCandidates) {
-      const recipeMatches = hasValidRecipeName 
+      const recipeMatches = hasValidRecipeName
         ? validateRecipeMatch(candidate.title, candidate.snippet, recipeName)
         : true;
-      
+
       if (recipeMatches) {
         const domain = extractDomain(candidate.url);
         console.log(`No verified match found, returning best unverified that matches recipe: ${candidate.url}`);
@@ -838,7 +853,7 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
         };
       }
     }
-    
+
     // No matching recipe found - all candidates were for different recipes
     console.log('No suitable recipe page found - candidates existed but none matched the specific recipe name');
     return null;
@@ -848,33 +863,41 @@ async function searchForCreatorRecipe(recipeName: string, creatorHandle: string 
   }
 }
 
+// One line per list item, entities decoded, so "1/2 pound pork skin" reads as
+// the page shows it and evidence quotes can be matched against it.
+function htmlListToText(html: string): string {
+  return html
+    .replace(/<\/(li|p|h\d)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([\dA-Fa-f]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\u25a2/g, '')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 async function fetchRecipeFromWebsite(url: string): Promise<string | null> {
   try {
     console.log(`Fetching full recipe from: ${url}`);
-    
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-      redirect: "follow",
-    });
-    
-    if (!response.ok) {
-      console.log(`Failed to fetch recipe page: ${response.status}`);
+
+    const html = await fetchRecipePageHtml(url);
+    if (!html) {
+      console.log(`Failed to fetch recipe page: ${url}`);
       return null;
     }
-    
-    const html = await response.text();
-    
+
     const jsonLdPattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
     const jsonLdMatches = [...html.matchAll(jsonLdPattern)];
-    
+
     for (const match of jsonLdMatches) {
       try {
         const jsonData = JSON.parse(match[1]);
         const recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
-        
+
         for (const item of recipes) {
           if (item['@type'] === 'Recipe' || (item['@graph'] && item['@graph'].find((g: any) => g['@type'] === 'Recipe'))) {
             const recipe = item['@type'] === 'Recipe' ? item : item['@graph'].find((g: any) => g['@type'] === 'Recipe');
@@ -887,9 +910,9 @@ async function fetchRecipeFromWebsite(url: string): Promise<string | null> {
       } catch (e) {
       }
     }
-    
+
     const textContent: string[] = [];
-    
+
     const recipeCardPattern = /<div[^>]+class="[^"]*recipe[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
     const cardMatches = html.matchAll(recipeCardPattern);
     for (const match of cardMatches) {
@@ -903,49 +926,43 @@ async function fetchRecipeFromWebsite(url: string): Promise<string | null> {
         textContent.push(cleanText);
       }
     }
-    
+
     const ingredientPatterns = [
       /<(ul|ol)[^>]+class="[^"]*ingredient[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
       /<div[^>]+class="[^"]*ingredient[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
     ];
-    
+
     for (const pattern of ingredientPatterns) {
       const matches = html.matchAll(pattern);
       for (const match of matches) {
-        const cleanText = match[0]
-          .replace(/<[^>]+>/g, '\n')
-          .replace(/\n+/g, '\n')
-          .trim();
+        const cleanText = htmlListToText(match[0]);
         if (cleanText.length > 20) {
           textContent.push(`INGREDIENTS:\n${cleanText}`);
         }
       }
     }
-    
+
     const instructionPatterns = [
       /<(ul|ol)[^>]+class="[^"]*instruction[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
       /<(ul|ol)[^>]+class="[^"]*step[^"]*"[^>]*>([\s\S]*?)<\/\1>/gi,
       /<div[^>]+class="[^"]*instruction[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
     ];
-    
+
     for (const pattern of instructionPatterns) {
       const matches = html.matchAll(pattern);
       for (const match of matches) {
-        const cleanText = match[0]
-          .replace(/<[^>]+>/g, '\n')
-          .replace(/\n+/g, '\n')
-          .trim();
+        const cleanText = htmlListToText(match[0]);
         if (cleanText.length > 20) {
           textContent.push(`INSTRUCTIONS:\n${cleanText}`);
         }
       }
     }
-    
+
     if (textContent.length > 0) {
       console.log('Extracted recipe content from HTML');
       return textContent.join('\n\n');
     }
-    
+
     const bodyText = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -956,12 +973,12 @@ async function fetchRecipeFromWebsite(url: string): Promise<string | null> {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    
+
     if (bodyText.length > 500) {
       console.log('Returning general page content');
       return bodyText.substring(0, 10000);
     }
-    
+
     return null;
   } catch (error) {
     console.error("Error fetching recipe from website:", error);
@@ -987,7 +1004,14 @@ async function authenticateRequest(req: Request): Promise<any> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.substring(7);
-  return storage.getUserFromToken(token);
+  try {
+    const { auth } = await import("./firebase");
+    const decodedToken = await auth.verifyIdToken(token);
+    return await storage.getUser(decodedToken.uid);
+  } catch (error) {
+    console.error("Firebase auth verification error:", error);
+    return null;
+  }
 }
 
 function sanitizeUser(user: any) {
@@ -996,108 +1020,27 @@ function sanitizeUser(user: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
-    try {
-      const { email, password, displayName } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-      }
-      if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
-      }
-      const result = await storage.registerWithEmail(email, password, displayName);
-      res.json({ user: sanitizeUser(result.user), token: result.token });
-    } catch (err: any) {
-      if (err.message.includes("already exists")) {
-        return res.status(409).json({ error: err.message });
-      }
-      console.error("Registration error:", err);
-      res.status(500).json({ error: "Registration failed" });
-    }
-  });
-
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
-    try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-      }
-      const result = await storage.loginWithEmail(email, password);
-      res.json({ user: sanitizeUser(result.user), token: result.token });
-    } catch (err: any) {
-      if (err.message.includes("Invalid")) {
-        return res.status(401).json({ error: err.message });
-      }
-      console.error("Login error:", err);
-      res.status(500).json({ error: "Login failed" });
-    }
-  });
-
-  app.post("/api/auth/social", async (req: Request, res: Response) => {
-    try {
-      const { provider, token, providerId, email, displayName, profileImage } = req.body;
-
-      if (!provider) {
-        return res.status(400).json({ error: "Provider is required" });
-      }
-
-      let resolvedProviderId = providerId;
-      let resolvedEmail = email;
-      let resolvedDisplayName = displayName;
-      let resolvedProfileImage = profileImage;
-
-      if (token && (provider === "google" || provider === "facebook")) {
-        if (provider === "google") {
-          const profileRes = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!profileRes.ok) {
-            return res.status(401).json({ error: "Invalid Google token" });
-          }
-          const profile = await profileRes.json() as any;
-          resolvedProviderId = profile.id;
-          resolvedEmail = profile.email;
-          resolvedDisplayName = profile.name || profile.email?.split("@")[0];
-          resolvedProfileImage = profile.picture;
-        } else if (provider === "facebook") {
-          const profileRes = await fetch(
-            `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${token}`
-          );
-          if (!profileRes.ok) {
-            return res.status(401).json({ error: "Invalid Facebook token" });
-          }
-          const profile = await profileRes.json() as any;
-          resolvedProviderId = profile.id;
-          resolvedEmail = profile.email || `fb_${profile.id}@facebook.com`;
-          resolvedDisplayName = profile.name || "Facebook User";
-          resolvedProfileImage = profile.picture?.data?.url;
-        }
-      }
-
-      if (!resolvedProviderId || !resolvedEmail) {
-        return res.status(400).json({ error: "Could not resolve user identity from provider" });
-      }
-
-      const result = await storage.loginWithProvider(
-        provider,
-        resolvedProviderId,
-        resolvedEmail,
-        resolvedDisplayName,
-        resolvedProfileImage
-      );
-      res.json({ user: sanitizeUser(result.user), token: result.token });
-    } catch (err: any) {
-      console.error("Social auth error:", err);
-      res.status(500).json({ error: "Social authentication failed" });
-    }
-  });
-
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
-      const user = await authenticateRequest(req);
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "No token" });
+      const token = authHeader.substring(7);
+
+      const { auth } = await import("./firebase");
+      const decodedToken = await auth.verifyIdToken(token);
+      let user = await storage.getUser(decodedToken.uid);
+
       if (!user) {
-        return res.status(401).json({ error: "Not authenticated" });
+        user = await storage.createUser({
+          id: decodedToken.uid,
+          email: decodedToken.email || "",
+          displayName: decodedToken.name || decodedToken.email?.split("@")[0] || "User",
+          profileImage: decodedToken.picture || null,
+          authProvider: decodedToken.firebase.sign_in_provider,
+          providerId: decodedToken.uid
+        });
       }
+
       const trialStartDate = new Date(user.trialStartDate);
       const now = new Date();
       const trialDaysLeft = Math.max(0, 30 - Math.floor((now.getTime() - trialStartDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -1124,17 +1067,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasAccess,
       });
     } catch (err: any) {
-      console.error("Auth check error:", err);
-      res.status(500).json({ error: "Failed to check authentication" });
+      console.error("Auth check/sync error:", err);
+      res.status(401).json({ error: "Failed to check authentication" });
     }
   });
 
   app.put("/api/auth/profile-image", async (req: Request, res: Response) => {
     try {
       const user = await authenticateRequest(req);
-      if (!user) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
 
       const { profileImage } = req.body;
       if (!profileImage || typeof profileImage !== "string") {
@@ -1142,9 +1083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedUser = await storage.updateProfileImage(user.id, profileImage);
-      if (!updatedUser) {
-        return res.status(500).json({ error: "Failed to update profile image" });
-      }
+      if (!updatedUser) return res.status(500).json({ error: "Failed to update profile image" });
 
       res.json({ user: sanitizeUser(updatedUser) });
     } catch (err: any) {
@@ -1156,9 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/subscription", async (req: Request, res: Response) => {
     try {
       const user = await authenticateRequest(req);
-      if (!user) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      if (!user) return res.status(401).json({ error: "Not authenticated" });
 
       const { subscriptionStatus } = req.body;
       if (!subscriptionStatus || !["active", "expired", "cancelled", "trial"].includes(subscriptionStatus)) {
@@ -1170,20 +1107,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       console.error("Subscription update error:", err);
       res.status(500).json({ error: "Failed to update subscription" });
-    }
-  });
-
-  app.post("/api/auth/logout", async (req: Request, res: Response) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.substring(7);
-        await storage.deleteSession(token);
-      }
-      res.json({ success: true });
-    } catch (err: any) {
-      console.error("Logout error:", err);
-      res.status(500).json({ error: "Logout failed" });
     }
   });
 
@@ -1199,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instagramPattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels)\/[\w-]+/i;
       const tiktokPattern = /^https?:\/\/(www\.)?(tiktok\.com|vm\.tiktok\.com)\//i;
       const youtubePattern = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i;
-      
+
       let platform: "instagram" | "tiktok" | "youtube" | "manual" = "manual";
       if (instagramPattern.test(url)) {
         platform = "instagram";
@@ -1215,13 +1138,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. instagram.com/username/reel/xxx or instagram.com/username/p/xxx
       // 3. instagram.com/p/xxx (post ID only - no handle available)
       let creatorHandle: string | null = null;
-      
+
       // Pattern 1: @username in URL
       const atMatch = url.match(/@([\w.]+)/);
       if (atMatch) {
         creatorHandle = `@${atMatch[1]}`;
       }
-      
+
       // Pattern 2: Instagram URL with username before /reel/ or /p/
       if (!creatorHandle && platform === 'instagram') {
         const igUserMatch = url.match(/instagram\.com\/([^\/]+)\/(?:reel|p|reels)\//i);
@@ -1229,7 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creatorHandle = `@${igUserMatch[1]}`;
         }
       }
-      
+
       // Pattern 3: YouTube channel handle (youtube.com/@handle/...)
       if (!creatorHandle && platform === 'youtube') {
         const ytHandleMatch = url.match(/youtube\.com\/@([^\/\?]+)/i);
@@ -1237,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           creatorHandle = `@${ytHandleMatch[1]}`;
         }
       }
-      
+
       console.log(`Extracted creator handle from URL: ${creatorHandle || 'none'}`);
 
       // Fetch actual content from the page
@@ -1281,7 +1204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 if (channelRes.ok) {
                   const channelHtml = await channelRes.text();
                   const channelOgImage = channelHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-                                         channelHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                    channelHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
                   if (channelOgImage) {
                     pageData.profileImageUrl = channelOgImage[1];
                     console.log(`Got YouTube channel avatar from og:image`);
@@ -1299,7 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Try to get transcript - YouTube uses dedicated transcript API, others use video transcription
       let videoTranscript: string | null = null;
-      
+
       if (platform === 'youtube') {
         console.log(`Fetching YouTube transcript...`);
         try {
@@ -1312,11 +1235,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`YouTube transcript not available: ${ytError.message}. Will fall back to page content.`);
         }
       }
-      
+
       if (!videoTranscript && pageData.videoUrl) {
         console.log(`Attempting video transcription...`);
         videoTranscript = await transcribeVideoFromUrl(pageData.videoUrl);
         console.log(`Video transcript: ${videoTranscript ? 'Success' : 'Failed/None'}`);
+      }
+
+      // Follow any link the creator gives for the full recipe ("full recipe on
+      // my blog", "link in bio") before asking the model to guess anything.
+      let creatorRecipeUrl: string | null = null;
+      let websiteVerified = false;
+      let verificationMethod: 'domain_match' | 'instagram_link' | 'caption_link' | 'bio_link' | 'unverified' | null = null;
+      let websiteDomain: string | null = null;
+      let websiteContent: string | null = null;
+
+      const captionText = pageData.text || "";
+      if (!creatorHandle) {
+        creatorHandle = extractCaptionHandle(captionText);
+        if (creatorHandle) console.log(`Creator handle from post metadata: ${creatorHandle}`);
+      }
+      const titleHint = captionText.match(/(?:Post Title|Video Title|Page Title): ([^\n]+)/)?.[1] || "";
+      const { recipe: linkedRecipe, cues: linkCues } = await findCreatorLinkedRecipe({
+        captionText,
+        titleHint: `${titleHint} ${captionText.slice(0, 600)}`,
+        platform,
+        creatorHandle,
+      });
+
+      if (linkedRecipe) {
+        websiteContent = await fetchRecipeFromWebsite(linkedRecipe.url);
+        if (websiteContent) {
+          console.log(`Using recipe linked by the creator (${linkedRecipe.via}): ${linkedRecipe.url}`);
+          creatorRecipeUrl = linkedRecipe.url;
+          // The creator pointed at this page themselves, which is stronger than any domain heuristic.
+          websiteVerified = true;
+          verificationMethod = linkedRecipe.via;
+          websiteDomain = extractDomain(linkedRecipe.url);
+        }
       }
 
       const systemPrompt = `You are a professional recipe extraction assistant for the Kitch app. Your job is to extract and structure recipes from social media food posts.
@@ -1343,11 +1299,8 @@ Extract and categorize with:
 3. creatorHandle: Extract from content if available
 4. creatorName: Extract from content if available
 5. creatorAvatar: If you can find a profile image URL for the creator in the source metadata or content, include it. Otherwise set to null.
-6. isEstimated: Set to true if you had to estimate/infer ANY ingredient quantities, measurements, or steps that were not explicitly stated
-7. isEstimatedInstructions: Set to true if any instruction steps were inferred or reconstructed rather than directly stated in the source
-8. confidence: Overall confidence in the extraction accuracy. Use "high" if all data comes directly from the source, "medium" if some details were inferred, "low" if significant reconstruction was needed
-9. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
-10. sourceNote: A brief explanation of where the recipe came from (e.g., "Full recipe extracted from video transcript" or "Measurements estimated based on standard techniques from Serious Eats")
+6. isEstimatedInstructions: Set to true if any instruction steps were inferred or reconstructed rather than directly stated in the source
+7. authoritativeReference: If you filled in missing measurements or techniques from a trusted source, name the source (e.g., "Serious Eats" or "America's Test Kitchen"). Set to null if all info came from the original content.
 
 INGREDIENT FORMAT:
 Each ingredient must include:
@@ -1365,7 +1318,12 @@ Each ingredient must include:
   - spices: salt, pepper, cumin, paprika, cinnamon, dried herbs, spice blends
   - beverages: coffee, tea, juice, wine, beer, spirits (used for cooking)
   - other: anything that doesn't fit the above categories
-- "isEstimated": true if this specific ingredient's amount/unit was inferred rather than explicitly stated in the source; false if stated explicitly
+- "source": where this ingredient's AMOUNT came from. Exactly one of:
+  - "website": stated in the CREATOR WEBSITE content
+  - "written": stated in the POST CAPTION/DESCRIPTION text
+  - "spoken": said aloud in the VIDEO TRANSCRIPT
+  - "inferred": not stated anywhere - you estimated it
+- "evidence": the exact words, copied character-for-character from that source, that state this amount (e.g. "2 tablespoons of soy sauce"). Keep it under 120 characters. Must include the number. Use null when source is "inferred". Never paraphrase - an evidence quote that cannot be found in the source is treated as made up.
 
 Respond ONLY with a valid JSON object:
 {
@@ -1379,13 +1337,10 @@ Respond ONLY with a valid JSON object:
   "creatorHandle": "@foodcreator",
   "creatorName": "Chef Name",
   "creatorAvatar": "https://example.com/profile.jpg",
-  "isEstimated": true,
   "isEstimatedInstructions": false,
-  "confidence": "medium",
   "authoritativeReference": null,
-  "sourceNote": "Full recipe extracted from video transcript with explicit measurements",
   "ingredients": [
-    {"name": "ingredient name", "amount": "1", "unit": "cup", "aisle": "pantry", "isEstimated": false}
+    {"name": "soy sauce", "amount": "2", "unit": "tbsp", "aisle": "pantry", "source": "spoken", "evidence": "two tablespoons of soy sauce"}
   ],
   "instructions": [
     "Step 1 instruction",
@@ -1393,23 +1348,27 @@ Respond ONLY with a valid JSON object:
   ]
 }`;
 
-      let userPrompt: string;
-      
-      // Build the content sections
-      const contentSections: string[] = [];
-      
-      if (videoTranscript) {
-        contentSections.push(`VIDEO TRANSCRIPT (what the creator said):
+      const buildContentSections = (website: string | null, websiteUrl: string | null) => {
+        const sections: string[] = [];
+        if (website) {
+          sections.push(`CREATOR WEBSITE (${websiteUrl}):
+${website}`);
+        }
+        if (videoTranscript) {
+          sections.push(`VIDEO TRANSCRIPT (what the creator said):
 ${videoTranscript}`);
-      }
-      
-      if (pageData.text) {
-        contentSections.push(`POST CAPTION/DESCRIPTION:
+        }
+        if (pageData.text) {
+          sections.push(`POST CAPTION/DESCRIPTION:
 ${pageData.text}`);
-      }
-      
-      const hasSubstantiveContent = videoTranscript || (pageData.text && pageData.text.length > 200);
+        }
+        return sections;
+      };
 
+      const contentSections = buildContentSections(websiteContent, creatorRecipeUrl);
+      const hasSubstantiveContent = websiteContent || videoTranscript || (pageData.text && pageData.text.length > 200);
+
+      let userPrompt: string;
       if (contentSections.length > 0 && hasSubstantiveContent) {
         userPrompt = `Extract the recipe from this ${platform} food post.
 
@@ -1417,9 +1376,9 @@ SOURCE URL: ${url}
 
 ${contentSections.join('\n\n---\n\n')}
 
-Based on the above content, extract the EXACT recipe being shown. 
+Based on the above content, extract the EXACT recipe being shown.
 
-PRIORITY: The VIDEO TRANSCRIPT is the most reliable source - use it for ingredients and instructions when available. The post caption may have additional context.
+PRIORITY: ${websiteContent ? "The CREATOR WEBSITE is the creator's own written recipe - use it for the ingredient list, amounts and steps. " : ""}The VIDEO TRANSCRIPT is what the creator said - use it for spoken amounts and steps. The post caption may list ingredients too.
 
 Include:
 - The actual recipe title from the post
@@ -1429,10 +1388,12 @@ Include:
 - Appropriate dish type category
 - 2-4 relevant tags
 - Creator info if available
-- Complete ingredient list with measurements (use exact amounts from transcript if spoken)
+- Complete ingredient list with measurements, each tagged with its source and evidence quote
 - Step-by-step instructions (match what the creator actually said/did)
 
-IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the content. Set isEstimated to false if the transcript provides all ingredients and steps explicitly.`;
+IMPORTANT: Do NOT make up a different recipe. Extract what's actually in the content. Only mark an amount "inferred" if it genuinely isn't stated in any of the sources above.
+
+If the content names the dish but doesn't list its ingredients (e.g. "recipe in bio"), still return a complete recipe for that exact dish using the authoritative references, with every amount marked "inferred" and isEstimatedInstructions true. Never return an empty ingredient list or ask for more content.`;
       } else if (contentSections.length > 0) {
         userPrompt = `I have limited metadata from this ${platform} food post but could not access the full video transcript or detailed content.
 
@@ -1451,7 +1412,7 @@ You MUST provide:
 - Detailed step-by-step instructions
 - Creator info if available from metadata
 
-Set isEstimated to true, isEstimatedInstructions to true, and confidence to "low". Set sourceNote to explain that the recipe was reconstructed from the video title since the full content was not accessible.`;
+Mark every ingredient amount you could not find in the content above as source "inferred", and set isEstimatedInstructions to true.`;
       } else {
         userPrompt = `I need to extract a recipe from this ${platform} URL, but I couldn't fetch the full content or transcript: ${url}
 
@@ -1463,20 +1424,23 @@ If you cannot determine the specific recipe from the URL at all, respond with th
   "title": null
 }
 
-Otherwise, if you can identify or reasonably infer the dish from the URL, provide a complete, well-researched recipe for that specific dish. Mark isEstimated as true and confidence as "low" since the content couldn't be directly accessed. Set sourceNote to explain that the recipe was reconstructed based on available metadata.`
+Otherwise, if you can identify or reasonably infer the dish from the URL, provide a complete, well-researched recipe for that specific dish. Mark every ingredient as source "inferred" and set isEstimatedInstructions to true, since the content couldn't be directly accessed.`
       }
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-        max_completion_tokens: 2048,
-      });
+      const runExtraction = async (prompt: string) => {
+        const response = await openai.chat.completions.create({
+          model: "gpt-5.2",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          response_format: { type: "json_object" },
+          max_completion_tokens: 4096,
+        });
+        return response.choices[0]?.message?.content || null;
+      };
 
-      const content = response.choices[0]?.message?.content;
+      const content = await runExtraction(userPrompt);
       if (!content) {
         throw new Error("No response from AI");
       }
@@ -1490,45 +1454,40 @@ Otherwise, if you can identify or reasonably infer the dish from the URL, provid
         });
       }
 
-      let creatorRecipeUrl: string | null = null;
-      let websiteVerified = false;
-      let verificationMethod: 'domain_match' | 'instagram_link' | 'unverified' | null = null;
-      let websiteDomain: string | null = null;
+      let ingredients = verifyIngredients(recipeData.ingredients, {
+        transcript: videoTranscript,
+        caption: pageData.text,
+        website: websiteContent,
+      });
 
-      // Check if recipe extraction seems incomplete (no ingredients or very few, or isEstimated)
-      const ingredientCount = recipeData.ingredients?.length || 0;
+      // Still missing amounts and the creator didn't link a recipe - search for their site.
+      const inferredCount = countSources(ingredients).inferred;
       const instructionCount = recipeData.instructions?.length || 0;
-      const isIncomplete = ingredientCount < 3 || instructionCount < 2 || recipeData.isEstimated;
+      const isIncomplete = ingredients.length < 3 || instructionCount < 2 || inferredCount > 0;
 
-      if (isIncomplete) {
-        console.log(`Recipe seems incomplete (${ingredientCount} ingredients, ${instructionCount} instructions, isEstimated: ${recipeData.isEstimated}). Searching for full recipe...`);
-        
+      if (isIncomplete && !creatorRecipeUrl) {
+        console.log(`Recipe seems incomplete (${ingredients.length} ingredients, ${inferredCount} estimated, ${instructionCount} instructions). Searching for full recipe...`);
+
         const extractedCreatorHandle = recipeData.creatorHandle || creatorHandle;
         const searchResult = await searchForCreatorRecipe(recipeData.title, extractedCreatorHandle);
-        
+
         if (searchResult) {
           console.log(`Found potential full recipe at: ${searchResult.url} (verified: ${searchResult.isVerified}, method: ${searchResult.verificationMethod})`);
-          creatorRecipeUrl = searchResult.url;
-          websiteVerified = searchResult.isVerified;
-          verificationMethod = searchResult.verificationMethod || null;
-          websiteDomain = searchResult.domainName || null;
-          
-          const websiteContent = await fetchRecipeFromWebsite(searchResult.url);
-          
-          if (websiteContent) {
-            console.log(`Got additional recipe content (${websiteContent.length} chars). Re-extracting with enhanced data...`);
-            
-            const enhancedPrompt = `Extract the recipe from this ${platform} food post. I've also found additional content from the creator's website.
+          const searchedContent = await fetchRecipeFromWebsite(searchResult.url);
+
+          if (searchedContent) {
+            console.log(`Got additional recipe content (${searchedContent.length} chars). Re-extracting with enhanced data...`);
+
+            const enhancedPrompt = `Extract the recipe from this ${platform} food post. I've also found a written recipe on a website that may be the creator's.
 
 SOURCE URL (social media post): ${url}
 
-${contentSections.length > 0 ? contentSections.join('\n\n---\n\n') + '\n\n---\n\n' : ''}FULL RECIPE FROM CREATOR'S WEBSITE (${searchResult.url}):
-${websiteContent}
+${buildContentSections(searchedContent, searchResult.url).join('\n\n---\n\n')}
 
-Based on ALL the above content, extract the complete recipe. 
+Based on ALL the above content, extract the complete recipe.
 
 PRIORITY:
-1. Use the WEBSITE CONTENT for complete ingredient list and detailed instructions
+1. Use the CREATOR WEBSITE content for the complete ingredient list and detailed instructions
 2. Use the VIDEO TRANSCRIPT for any verbal instructions or tips not in the written recipe
 3. Use the POST CAPTION for context and serving suggestions
 
@@ -1540,39 +1499,35 @@ Include:
 - Appropriate dish type category
 - 2-4 relevant tags
 - Creator info
-- COMPLETE ingredient list with exact measurements from the website. Each ingredient must have name, amount, unit, aisle (grocery store category), and isEstimated (false if from website)
-- DETAILED step-by-step instructions from the website
-- confidence: "high" since we have the full recipe from the creator's website
-- isEstimatedInstructions: false since instructions come from the website
+- COMPLETE ingredient list, each with name, amount, unit, aisle, source and evidence
+- DETAILED step-by-step instructions`;
 
-Since we have the full recipe from the creator's website, set isEstimated to false if all measurements are explicit.`;
-
-            const enhancedResponse = await openai.chat.completions.create({
-              model: "gpt-5.2",
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: enhancedPrompt },
-              ],
-              response_format: { type: "json_object" },
-              max_completion_tokens: 2048,
-            });
-
-            const enhancedContent = enhancedResponse.choices[0]?.message?.content;
+            const enhancedContent = await runExtraction(enhancedPrompt);
             if (enhancedContent) {
               try {
                 const enhancedRecipeData = JSON.parse(enhancedContent);
                 if (enhancedRecipeData.title && !enhancedRecipeData.error) {
-                  const newIngredientCount = enhancedRecipeData.ingredients?.length || 0;
-                  const newInstructionCount = enhancedRecipeData.instructions?.length || 0;
-                  console.log(`Enhanced recipe extraction successful: "${enhancedRecipeData.title}" with ${newIngredientCount} ingredients, ${newInstructionCount} instructions`);
-                  
-                  // If we got a complete recipe from the website, force isEstimated to false
-                  if (newIngredientCount >= 3 && newInstructionCount >= 2) {
-                    enhancedRecipeData.isEstimated = false;
-                    console.log(`Recipe has complete data from website - setting isEstimated to false`);
+                  const enhancedIngredients = verifyIngredients(enhancedRecipeData.ingredients, {
+                    transcript: videoTranscript,
+                    caption: pageData.text,
+                    website: searchedContent,
+                  });
+                  console.log(`Enhanced extraction: "${enhancedRecipeData.title}" with ${enhancedIngredients.length} ingredients (${countSources(enhancedIngredients).inferred} estimated)`);
+
+                  // Only switch if the website actually filled gaps. A site we can't tie to
+                  // the creator may be someone else's recipe, so it only replaces an
+                  // extraction that was thin or mostly guesswork.
+                  const filledGaps = countSources(enhancedIngredients).inferred < inferredCount || ingredients.length < 3;
+                  const originalWasMostlyGuessed = ingredients.length < 3 || inferredCount > ingredients.length / 2;
+                  if (enhancedIngredients.length >= 3 && filledGaps && (searchResult.isVerified || originalWasMostlyGuessed)) {
+                    recipeData = enhancedRecipeData;
+                    ingredients = enhancedIngredients;
+                    websiteContent = searchedContent;
+                    creatorRecipeUrl = searchResult.url;
+                    websiteVerified = searchResult.isVerified;
+                    verificationMethod = searchResult.verificationMethod || null;
+                    websiteDomain = searchResult.domainName || null;
                   }
-                  
-                  recipeData = enhancedRecipeData;
                 }
               } catch (e) {
                 console.log('Failed to parse enhanced recipe, using original extraction');
@@ -1582,76 +1537,57 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         }
       }
 
-      // Determine source type and confidence
+      // Confidence comes from the verified provenance counts, not the model's self-assessment.
       type RecipeSourceType = "creator_website" | "authoritative_source" | "video_transcript" | "social_post_only";
-      type ConfidenceLevel = "high" | "medium" | "low";
-      
+
+      const counts = countSources(ingredients);
+      const isEstimatedInstructions = recipeData.isEstimatedInstructions ?? true;
+      const { confidence, summary } = computeConfidence({
+        ingredients,
+        instructionsInferred: isEstimatedInstructions,
+        websiteVerified,
+      });
+
       let sourceType: RecipeSourceType;
-      let confidence: ConfidenceLevel;
-      let sourceName: string | null = null;
-      let sourceNote: string = recipeData.sourceNote || "";
-      
-      if (creatorRecipeUrl) {
-        // Full recipe from a website - confidence depends on verification
+      let sourceName: string | null;
+      if (creatorRecipeUrl && counts.website > 0) {
         sourceType = "creator_website";
-        
-        if (websiteVerified) {
-          // Verified match - high confidence if not estimated
-          confidence = recipeData.isEstimated ? "medium" : "high";
-          sourceName = websiteDomain || "creator's website";
-          if (!sourceNote) {
-            const verifyNote = verificationMethod === 'instagram_link' 
-              ? ' (verified via Instagram link)' 
-              : ' (verified by domain match)';
-            sourceNote = `Full recipe from ${sourceName}${verifyNote}`;
-          }
-        } else {
-          // Unverified website - cap at medium confidence
-          confidence = "medium";
-          sourceName = websiteDomain || "recipe website";
-          if (!sourceNote) {
-            sourceNote = `Recipe found on ${sourceName} - not verified as creator's official site`;
-          }
-        }
-      } else if (recipeData.authoritativeReference) {
-        // Filled in with authoritative sources
-        sourceType = "authoritative_source";
-        confidence = "medium";
-        sourceName = recipeData.authoritativeReference;
-        if (!sourceNote) {
-          sourceNote = `Measurements and techniques referenced from ${sourceName}`;
-        }
-      } else if (videoTranscript && videoTranscript.length > 100) {
-        // Extracted from video transcript
+        sourceName = websiteDomain || "creator's website";
+      } else if (counts.spoken > 0 && counts.spoken >= counts.written) {
         sourceType = "video_transcript";
-        confidence = recipeData.isEstimated ? "medium" : "high";
         sourceName = recipeData.creatorHandle || creatorHandle || "video creator";
-        if (!sourceNote) {
-          sourceNote = recipeData.isEstimated 
-            ? "Extracted from video, some details estimated"
-            : "Full recipe extracted from video with explicit measurements";
-        }
+      } else if (counts.inferred > ingredients.length / 2 && recipeData.authoritativeReference) {
+        sourceType = "authoritative_source";
+        sourceName = recipeData.authoritativeReference;
       } else {
-        // Only social post content
         sourceType = "social_post_only";
-        confidence = "low";
-        sourceName = platform === "instagram" ? "Instagram post" : platform === "tiktok" ? "TikTok post" : "social media post";
-        if (!sourceNote) {
-          sourceNote = "Recipe reconstructed from post caption - details may be estimated";
-        }
+        sourceName = platform === "instagram" ? "Instagram post" : platform === "tiktok" ? "TikTok post" : platform === "youtube" ? "YouTube video" : "social media post";
       }
 
-      const validAisles = ["produce", "meat", "seafood", "dairy", "bakery", "frozen", "pantry", "spices", "beverages", "other"];
-      const normalizedIngredients = (recipeData.ingredients || []).map((ing: any) => ({
-        name: ing.name,
-        amount: ing.amount || "",
-        unit: ing.unit || "",
-        aisle: validAisles.includes(ing.aisle) ? ing.aisle : "other",
-        isEstimated: ing.isEstimated ?? recipeData.isEstimated ?? true,
-      }));
-
-      const aiConfidence = recipeData.confidence;
-      const finalConfidence = (aiConfidence === "high" || aiConfidence === "medium" || aiConfidence === "low") ? aiConfidence : confidence;
+      // Plain-language reason for the rating, shown under the badge.
+      const noteParts: string[] = [];
+      if (creatorRecipeUrl && counts.website > 0) {
+        const how = verificationMethod === "caption_link" ? "linked in the post"
+          : verificationMethod === "bio_link" ? "linked from the creator's bio"
+          : websiteVerified ? "the creator's site" : "not confirmed as the creator's site";
+        noteParts.push(`Full recipe from ${websiteDomain} (${how}).`);
+      }
+      if (platform !== "manual" && !videoTranscript && counts.inferred > 0) {
+        noteParts.push("Couldn't access the video's audio.");
+      }
+      if (linkCues.dmGated && !creatorRecipeUrl && counts.inferred > 0) {
+        noteParts.push("The creator shares the full recipe by DM, so missing amounts were estimated.");
+      } else if ((linkCues.linkInBio || linkCues.blogMention) && !creatorRecipeUrl && (counts.inferred > 0 || ingredients.length === 0)) {
+        noteParts.push("The post points to a full recipe we couldn't open.");
+      }
+      if (counts.inferred > 0 && recipeData.authoritativeReference) {
+        noteParts.push(`Estimates based on ${recipeData.authoritativeReference}.`);
+      }
+      if (isEstimatedInstructions) {
+        noteParts.push("Some steps were filled in rather than taken from the creator.");
+      }
+      noteParts.push(summary);
+      const sourceNote = noteParts.join(" ");
 
       const recipe = {
         id: randomUUID(),
@@ -1669,15 +1605,15 @@ Since we have the full recipe from the creator's website, set isEstimated to fal
         creatorName: recipeData.creatorName || null,
         creatorAvatar: pageData.profileImageUrl || recipeData.creatorAvatar || null,
         creatorRecipeUrl,
-        manualSearchQuery: !creatorRecipeUrl 
+        manualSearchQuery: !creatorRecipeUrl
           ? `"${recipeData.creatorHandle || creatorHandle || ''}" "${recipeData.title}" recipe`.trim()
           : null,
-        ingredients: normalizedIngredients,
+        ingredients,
         instructions: recipeData.instructions || [],
         originalTranscript: videoTranscript || null,
-        isEstimated: recipeData.isEstimated ?? true,
-        isEstimatedInstructions: recipeData.isEstimatedInstructions ?? recipeData.isEstimated ?? true,
-        confidence: finalConfidence,
+        isEstimated: counts.inferred > 0,
+        isEstimatedInstructions,
+        confidence,
         recipeSource: {
           type: sourceType,
           name: sourceName,
@@ -1737,9 +1673,9 @@ If no recipes match, return: {"matchingIds": []}`;
         model: "gpt-5.2",
         messages: [
           { role: "system", content: systemPrompt },
-          { 
-            role: "user", 
-            content: `Search query: "${query}"\n\nAvailable recipes:\n${JSON.stringify(recipeSummaries, null, 2)}` 
+          {
+            role: "user",
+            content: `Search query: "${query}"\n\nAvailable recipes:\n${JSON.stringify(recipeSummaries, null, 2)}`
           },
         ],
         response_format: { type: "json_object" },
@@ -1793,9 +1729,9 @@ Only include recipes with at least 50% ingredient match.`;
         model: "gpt-5.2",
         messages: [
           { role: "system", content: systemPrompt },
-          { 
-            role: "user", 
-            content: `User's pantry ingredients: ${pantryItems.join(", ")}\n\nRecipes:\n${JSON.stringify(recipeSummaries, null, 2)}` 
+          {
+            role: "user",
+            content: `User's pantry ingredients: ${pantryItems.join(", ")}\n\nRecipes:\n${JSON.stringify(recipeSummaries, null, 2)}`
           },
         ],
         response_format: { type: "json_object" },
@@ -1827,7 +1763,7 @@ Only include recipes with at least 50% ingredient match.`;
       console.log(`[Re-search] Searching for recipe URL: "${recipeTitle}" by ${creatorHandle || 'unknown creator'}`);
 
       const searchResult = await searchForCreatorRecipe(recipeTitle, creatorHandle || null);
-      
+
       if (searchResult?.url) {
         console.log(`[Re-search] Found: ${searchResult.url}`);
         res.json({
@@ -1936,7 +1872,7 @@ IMPORTANT:
       }
 
       const result = JSON.parse(jsonMatch[0]);
-      
+
       res.json({
         message: result.message || "Here's what I found!",
         matchedRecipeIds: result.matchedRecipeIds || [],
@@ -1963,7 +1899,7 @@ IMPORTANT:
 
       // Build context about recipes
       let recipeContext = "";
-      
+
       if (currentRecipe) {
         recipeContext = `
 CURRENT RECIPE THE USER IS VIEWING:
@@ -1984,10 +1920,10 @@ ${currentRecipe.instructions?.map((step: string, i: number) => `${i + 1}. ${step
       }
 
       if (allRecipes && allRecipes.length > 0) {
-        const recipeSummaries = allRecipes.map((r: any) => 
+        const recipeSummaries = allRecipes.map((r: any) =>
           `- "${r.title}" (${r.dishType || "uncategorized"}): ${r.ingredients?.map((i: any) => i.name).join(", ") || "no ingredients"}`
         ).join("\n");
-        
+
         recipeContext += `
 USER'S SAVED RECIPE COLLECTION (${allRecipes.length} recipes):
 ${recipeSummaries}
@@ -2097,7 +2033,7 @@ You're not a search engine. You're a brilliant, sparkling cooking companion with
   app.post("/api/remy/transcribe", async (req: Request, res: Response) => {
     try {
       const audioData = req.body.audio;
-      
+
       if (!audioData) {
         return res.status(400).json({ error: "Audio data is required" });
       }
@@ -2107,17 +2043,39 @@ You're not a search engine. You're a brilliant, sparkling cooking companion with
       // Convert base64 audio to buffer
       const audioBuffer = Buffer.from(audioData, "base64");
       console.log("[Transcribe] Audio buffer size:", audioBuffer.length, "bytes");
-      
-      // Detect format and convert if needed
-      const { ensureCompatibleFormat, speechToText, detectAudioFormat } = await import("./replit_integrations/audio/client");
-      const detectedFormat = detectAudioFormat(audioBuffer);
-      console.log("[Transcribe] Detected format:", detectedFormat);
-      
-      const { buffer: compatibleBuffer, format } = await ensureCompatibleFormat(audioBuffer);
-      console.log("[Transcribe] Converted to format:", format, "size:", compatibleBuffer.length);
-      
-      // Use the proper transcription function
-      const text = await speechToText(compatibleBuffer, format);
+
+      /* Replaced Replit AI Integration with direct OpenAI Whisper */
+      const tempId = randomUUID();
+      const tempDir = os.tmpdir();
+      const tempInput = path.join(tempDir, `audio_in_${tempId}.tmp`);
+      const tempOutput = path.join(tempDir, `audio_out_${tempId}.mp3`);
+
+      await writeFile(tempInput, audioBuffer);
+
+      // Attempt to convert to standard mp3 for whisper
+      await execAsync(`ffmpeg -i "${tempInput}" -acodec libmp3lame -q:a 4 -y "${tempOutput}" 2>/dev/null`).catch(() => { });
+
+      let finalAudioPath = tempOutput;
+      try {
+        await readFile(tempOutput);
+      } catch {
+        finalAudioPath = tempInput; // fallback to original
+      }
+
+      const audioFileBuffer = await readFile(finalAudioPath);
+      const audioFile = new File([audioFileBuffer], "audio.mp3", { type: "audio/mpeg" });
+
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-1",
+        language: "en",
+      });
+
+      const text = transcription.text;
+
+      await unlink(tempInput).catch(() => { });
+      await unlink(tempOutput).catch(() => { });
+
       console.log("[Transcribe] Result:", text ? `"${text}"` : "(empty)");
 
       // Return empty text as valid - the client will handle it

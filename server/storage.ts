@@ -1,50 +1,11 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { eq, and, desc } from "drizzle-orm";
-import { Pool } from "@neondatabase/serverless";
-import { randomUUID, scryptSync, randomBytes } from "crypto";
-import {
-  type User,
-  type InsertUser,
-  type Session,
-  type InsertShoppingListItem,
-  type ShoppingListItem,
-  users,
-  sessions,
-  shoppingListItems,
-} from "@shared/schema";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool);
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
-  const testHash = scryptSync(password, salt, 64).toString("hex");
-  return hash === testHash;
-}
-
-function generateToken(): string {
-  return randomBytes(48).toString("hex");
-}
+import { db, auth } from "./firebase";
+import { type User, type InsertUser, type InsertShoppingListItem, type ShoppingListItem } from "@shared/schema";
+import { FieldValue } from "firebase-admin/firestore";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getUserByProvider(provider: string, providerId: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  createSession(userId: string): Promise<Session>;
-  getSessionByToken(token: string): Promise<Session | undefined>;
-  deleteSession(token: string): Promise<void>;
-  deleteExpiredSessions(): Promise<void>;
-  registerWithEmail(email: string, password: string, displayName?: string): Promise<{ user: User; token: string }>;
-  loginWithEmail(email: string, password: string): Promise<{ user: User; token: string }>;
-  loginWithProvider(provider: string, providerId: string, email: string, displayName?: string, profileImage?: string): Promise<{ user: User; token: string }>;
-  getUserFromToken(token: string): Promise<User | undefined>;
+  createUser(user: InsertUser & { id: string }): Promise<User>;
   updateSubscriptionStatus(userId: string, status: string): Promise<void>;
   updateProfileImage(userId: string, profileImage: string): Promise<User | undefined>;
   getShoppingList(userId: string): Promise<ShoppingListItem[]>;
@@ -55,226 +16,145 @@ export interface IStorage {
   clearCheckedItems(userId: string): Promise<void>;
 }
 
-export class DatabaseStorage implements IStorage {
+export class FirestoreStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const doc = await db.collection("users").doc(id).get();
+    if (!doc.exists) return undefined;
+    const data = doc.data()!;
+    return {
+      ...data,
+      id: doc.id,
+      trialStartDate: data.trialStartDate.toDate(),
+      createdAt: data.createdAt.toDate(),
+    } as User;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email.toLowerCase()));
-    return user;
+    const snap = await db.collection("users").where("email", "==", email.toLowerCase()).limit(1).get();
+    if (snap.empty) return undefined;
+    const doc = snap.docs[0];
+    const data = doc.data();
+    return {
+      ...data,
+      id: doc.id,
+      trialStartDate: data.trialStartDate.toDate(),
+      createdAt: data.createdAt.toDate(),
+    } as User;
   }
 
-  async getUserByProvider(
-    provider: string,
-    providerId: string,
-  ): Promise<User | undefined> {
-    const results = await db
-      .select()
-      .from(users)
-      .where(eq(users.providerId, providerId));
-    return results.find((u) => u.authProvider === provider);
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...insertUser,
-        email: insertUser.email.toLowerCase(),
-      })
-      .returning();
-    return user;
-  }
-
-  async createSession(userId: string): Promise<Session> {
-    const token = generateToken();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const [session] = await db
-      .insert(sessions)
-      .values({
-        userId,
-        token,
-        expiresAt,
-      })
-      .returning();
-    return session;
-  }
-
-  async getSessionByToken(token: string): Promise<Session | undefined> {
-    const [session] = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.token, token));
-    if (session && session.expiresAt < new Date()) {
-      await this.deleteSession(token);
-      return undefined;
-    }
-    return session;
-  }
-
-  async deleteSession(token: string): Promise<void> {
-    await db.delete(sessions).where(eq(sessions.token, token));
-  }
-
-  async deleteExpiredSessions(): Promise<void> {
+  async createUser(user: InsertUser & { id: string }): Promise<User> {
     const now = new Date();
-    await db.delete(sessions).where(eq(sessions.token, ""));
-  }
-
-  async registerWithEmail(
-    email: string,
-    password: string,
-    displayName?: string,
-  ): Promise<{ user: User; token: string }> {
-    const existing = await this.getUserByEmail(email);
-    if (existing) {
-      throw new Error("An account with this email already exists");
-    }
-
-    const hashedPassword = hashPassword(password);
-    const user = await this.createUser({
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      displayName: displayName || email.split("@")[0],
-      authProvider: "email",
+    const newUser: User = {
+      ...user,
+      email: user.email.toLowerCase(),
+      authProvider: user.authProvider || "email",
+      trialStartDate: now,
+      subscriptionStatus: "trial",
+      createdAt: now,
+    };
+    await db.collection("users").doc(user.id).set({
+      ...newUser,
+      trialStartDate: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
-
-    const session = await this.createSession(user.id);
-    return { user, token: session.token };
-  }
-
-  async loginWithEmail(
-    email: string,
-    password: string,
-  ): Promise<{ user: User; token: string }> {
-    const user = await this.getUserByEmail(email);
-    if (!user || !user.password) {
-      throw new Error("Invalid email or password");
-    }
-
-    if (!verifyPassword(password, user.password)) {
-      throw new Error("Invalid email or password");
-    }
-
-    const session = await this.createSession(user.id);
-    return { user, token: session.token };
-  }
-
-  async loginWithProvider(
-    provider: string,
-    providerId: string,
-    email: string,
-    displayName?: string,
-    profileImage?: string,
-  ): Promise<{ user: User; token: string }> {
-    let user = await this.getUserByProvider(provider, providerId);
-
-    if (!user) {
-      const existingEmail = await this.getUserByEmail(email);
-      if (existingEmail) {
-        user = existingEmail;
-      } else {
-        user = await this.createUser({
-          email: email.toLowerCase(),
-          displayName: displayName || email.split("@")[0],
-          profileImage,
-          authProvider: provider,
-          providerId,
-        });
-      }
-    }
-
-    const session = await this.createSession(user.id);
-    return { user, token: session.token };
-  }
-
-  async getUserFromToken(token: string): Promise<User | undefined> {
-    const session = await this.getSessionByToken(token);
-    if (!session) return undefined;
-    return this.getUser(session.userId);
+    return newUser;
   }
 
   async updateSubscriptionStatus(userId: string, status: string): Promise<void> {
-    await db
-      .update(users)
-      .set({ subscriptionStatus: status })
-      .where(eq(users.id, userId));
+    await db.collection("users").doc(userId).update({ subscriptionStatus: status });
   }
 
   async updateProfileImage(userId: string, profileImage: string): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ profileImage })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
+    await db.collection("users").doc(userId).update({ profileImage });
+    return this.getUser(userId);
   }
 
   async getShoppingList(userId: string): Promise<ShoppingListItem[]> {
-    return db
-      .select()
-      .from(shoppingListItems)
-      .where(eq(shoppingListItems.userId, userId))
-      .orderBy(desc(shoppingListItems.createdAt));
+    const snap = await db
+      .collection("shoppingListItems")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get();
+    return snap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        createdAt: data.createdAt.toDate(),
+      } as ShoppingListItem;
+    });
   }
 
   async addShoppingListItems(items: InsertShoppingListItem[]): Promise<ShoppingListItem[]> {
     if (items.length === 0) return [];
-    const sanitized = items.map((item) => ({
-      ...item,
-      aisle: item.aisle || "other",
-      inPantry: item.inPantry ?? false,
-      isChecked: item.isChecked ?? false,
-    }));
-    return db
-      .insert(shoppingListItems)
-      .values(sanitized)
-      .returning();
+
+    const batch = db.batch();
+    const results: ShoppingListItem[] = [];
+    const now = new Date();
+
+    for (const item of items) {
+      const ref = db.collection("shoppingListItems").doc();
+      const sanitized = {
+        ...item,
+        aisle: item.aisle || "other",
+        inPantry: item.inPantry ?? false,
+        isChecked: item.isChecked ?? false,
+        createdAt: FieldValue.serverTimestamp(),
+      };
+      batch.set(ref, sanitized);
+      results.push({
+        ...sanitized,
+        id: ref.id,
+        createdAt: now,
+      } as unknown as ShoppingListItem);
+    }
+
+    await batch.commit();
+    return results;
   }
 
   async toggleShoppingListItem(id: string, userId: string): Promise<ShoppingListItem | undefined> {
-    const [existing] = await db
-      .select()
-      .from(shoppingListItems)
-      .where(and(eq(shoppingListItems.id, id), eq(shoppingListItems.userId, userId)));
-    if (!existing) return undefined;
-    const [updated] = await db
-      .update(shoppingListItems)
-      .set({ isChecked: !existing.isChecked })
-      .where(eq(shoppingListItems.id, id))
-      .returning();
-    return updated;
+    const ref = db.collection("shoppingListItems").doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.userId !== userId) return undefined;
+
+    const isChecked = !doc.data()?.isChecked;
+    await ref.update({ isChecked });
+
+    const updated = await ref.get();
+    const data = updated.data()!;
+    return {
+      ...data,
+      id: updated.id,
+      createdAt: data.createdAt.toDate(),
+    } as ShoppingListItem;
   }
 
   async deleteShoppingListItem(id: string, userId: string): Promise<void> {
-    await db
-      .delete(shoppingListItems)
-      .where(and(eq(shoppingListItems.id, id), eq(shoppingListItems.userId, userId)));
+    const ref = db.collection("shoppingListItems").doc(id);
+    const doc = await ref.get();
+    if (doc.exists && doc.data()?.userId === userId) {
+      await ref.delete();
+    }
   }
 
   async clearShoppingList(userId: string): Promise<void> {
-    await db
-      .delete(shoppingListItems)
-      .where(eq(shoppingListItems.userId, userId));
+    const snap = await db.collection("shoppingListItems").where("userId", "==", userId).get();
+    const batch = db.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
   }
 
   async clearCheckedItems(userId: string): Promise<void> {
-    await db
-      .delete(shoppingListItems)
-      .where(
-        and(
-          eq(shoppingListItems.userId, userId),
-          eq(shoppingListItems.isChecked, true),
-        ),
-      );
+    const snap = await db
+      .collection("shoppingListItems")
+      .where("userId", "==", userId)
+      .where("isChecked", "==", true)
+      .get();
+    const batch = db.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new FirestoreStorage();

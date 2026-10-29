@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { StyleSheet, View, Keyboard, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -13,6 +14,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { RecipePreviewCard } from "@/components/RecipePreviewCard";
+import { ExtractProgressOverlay } from "@/components/ExtractProgressOverlay";
 import { useTheme } from "@/hooks/useTheme";
 import { useGenerateRecipe, useSaveRecipe } from "@/hooks/useRecipes";
 import { Spacing, BorderRadius } from "@/constants/theme";
@@ -32,6 +34,8 @@ export default function AddRecipeScreen() {
   const [error, setError] = useState("");
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
+  const [clipboardSuggestion, setClipboardSuggestion] = useState<string | null>(null);
+  const lastHandledClipboardText = useRef<string | null>(null);
 
   const generateRecipe = useGenerateRecipe();
   const saveRecipe = useSaveRecipe();
@@ -43,6 +47,47 @@ export default function AddRecipeScreen() {
       if (platform) setSelectedPlatform(platform);
     }
   }, [route.params?.sharedUrl]);
+
+  // Simmer's share extension (targets/share/ShareViewController.swift) copies
+  // the shared link to the clipboard rather than trying to deep-link back
+  // into the app, since that proved unreliable from inside Instagram's share
+  // sheet. So on each visit to this screen, check whether a matching link is
+  // sitting on the clipboard and offer to use it.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const text = await Clipboard.getStringAsync();
+        if (cancelled || !text) return;
+        const trimmed = text.trim();
+        if (
+          trimmed &&
+          trimmed !== lastHandledClipboardText.current &&
+          trimmed !== url &&
+          isValidUrl(trimmed)
+        ) {
+          setClipboardSuggestion(trimmed);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [url])
+  );
+
+  const useClipboardSuggestion = () => {
+    if (!clipboardSuggestion) return;
+    setUrl(clipboardSuggestion);
+    const platform = getPlatformFromUrl(clipboardSuggestion);
+    if (platform) setSelectedPlatform(platform);
+    lastHandledClipboardText.current = clipboardSuggestion;
+    setClipboardSuggestion(null);
+  };
+
+  const dismissClipboardSuggestion = () => {
+    lastHandledClipboardText.current = clipboardSuggestion;
+    setClipboardSuggestion(null);
+  };
 
   const isValidInstagramUrl = (url: string) => {
     const pattern = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels)\/[\w-]+/i;
@@ -129,6 +174,7 @@ export default function AddRecipeScreen() {
   };
 
   return (
+    <View style={{ flex: 1 }}>
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
       contentContainerStyle={[
@@ -207,6 +253,21 @@ export default function AddRecipeScreen() {
             </ThemedText>
           </View>
 
+          {clipboardSuggestion ? (
+            <Animated.View entering={FadeIn.duration(200)} style={[styles.clipboardBanner, { backgroundColor: theme.primary + "15" }]}>
+              <Feather name="clipboard" size={18} color={theme.primary} />
+              <ThemedText type="small" style={styles.clipboardBannerText} numberOfLines={1}>
+                Found a link on your clipboard
+              </ThemedText>
+              <Pressable onPress={useClipboardSuggestion} style={[styles.clipboardBannerButton, { backgroundColor: theme.primary }]}>
+                <ThemedText type="small" style={{ color: "#FFF", fontWeight: "600" }}>Use it</ThemedText>
+              </Pressable>
+              <Pressable onPress={dismissClipboardSuggestion} hitSlop={8}>
+                <Feather name="x" size={18} color={theme.textSecondary} />
+              </Pressable>
+            </Animated.View>
+          ) : null}
+
           <View style={styles.form}>
             <Input
               placeholder={
@@ -234,20 +295,12 @@ export default function AddRecipeScreen() {
             </Button>
           </View>
 
-          {generateRecipe.isPending ? (
-            <Animated.View entering={FadeIn.duration(300)} style={styles.loadingContainer}>
-              <ThemedText type="small" style={[styles.loadingText, { color: theme.textSecondary }]}>
-                Analyzing the post and extracting recipe details...
-              </ThemedText>
-            </Animated.View>
-          ) : null}
-
           <View style={[styles.shareTip, { backgroundColor: theme.backgroundSecondary }]}>
             <Feather name="share" size={20} color={theme.primary} />
             <View style={styles.shareTipContent}>
               <ThemedText type="small" style={{ fontWeight: "600" }}>Quick tip</ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                Share directly from Instagram, TikTok, or YouTube to Kitch for faster recipe saving
+                Share directly from Instagram, TikTok, or YouTube to Simmer for faster recipe saving
               </ThemedText>
             </View>
           </View>
@@ -270,6 +323,8 @@ export default function AddRecipeScreen() {
         </Animated.View>
       )}
     </KeyboardAwareScrollViewCompat>
+    {generateRecipe.isPending ? <ExtractProgressOverlay /> : null}
+    </View>
   );
 }
 
@@ -281,10 +336,11 @@ const styles = StyleSheet.create({
   platformButton: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.lg, paddingHorizontal: Spacing["lg"], borderRadius: BorderRadius.md, minWidth: 90 },
   title: { marginBottom: Spacing.md, textAlign: "center" },
   subtitle: { textAlign: "center", paddingHorizontal: Spacing.lg, lineHeight: 22 },
+  clipboardBanner: { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.sm, marginBottom: Spacing.lg, gap: Spacing.sm },
+  clipboardBannerText: { flex: 1 },
+  clipboardBannerButton: { paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.sm },
   form: { marginBottom: Spacing["2xl"] },
   generateButton: { marginTop: Spacing.lg },
-  loadingContainer: { alignItems: "center", paddingVertical: Spacing.lg },
-  loadingText: { textAlign: "center" },
   shareTip: { flexDirection: "row", alignItems: "center", padding: Spacing.lg, borderRadius: BorderRadius.sm, marginBottom: Spacing.xl },
   shareTipContent: { marginLeft: Spacing.md, flex: 1 },
   tips: { padding: Spacing.lg, backgroundColor: "transparent" },

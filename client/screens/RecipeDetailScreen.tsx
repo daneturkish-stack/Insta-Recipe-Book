@@ -26,6 +26,7 @@
         import { useRecipe, useDeleteRecipe, useUpdateRecipe, usePantry, useAddToShoppingList } from "@/hooks/useRecipes";
         import { usePreferences } from "@/hooks/usePreferences";
         import { convertIngredients } from "@/lib/unit-conversion";
+        import { ingredientSource, needsReview } from "@/types/recipe";
         import { apiRequest } from "@/lib/query-client";
         import { Spacing, BorderRadius, Shadows, KitchColors, VibeTagColors } from "@/constants/theme";
 
@@ -180,9 +181,16 @@
           if (!recipe) return null;
 
           const displayIngredients = convertIngredients(recipe.ingredients, measurementUnit);
+          const heardCount = displayIngredients.filter((ing) => ingredientSource(ing) === "spoken").length;
+          const estimatedCount = displayIngredients.filter((ing) => ingredientSource(ing) === "inferred").length;
+          const reviewLabel = [
+            heardCount > 0 ? `${heardCount} HEARD` : null,
+            estimatedCount > 0 ? `${estimatedCount} ESTIMATED` : null,
+          ].filter(Boolean).join(" · ");
+          const sourceNote = recipe.recipeSource?.note;
           const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
           const confidenceLevel = recipe.confidence || (recipe.isEstimated ? "medium" : "high");
-          const confidenceColor = confidenceLevel === "high" ? "#059669" : confidenceLevel === "medium" ? "#E8A838" : "#DC2626";
+          const confidenceColor = confidenceLevel === "high" ? KitchColors.sage700 : confidenceLevel === "medium" ? KitchColors.accent : "#DC2626";
 
           return (
             <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -205,12 +213,30 @@
                 <View style={styles.content}>
                   <Animated.View entering={FadeInDown.delay(100)}>
                     {/* Confidence Badge */}
-                    <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor + "15" }]}>
-                      <Feather name="shield" size={12} color={confidenceColor} />
-                      <ThemedText style={[styles.confidenceText, { color: confidenceColor }]}>
-                        {confidenceLevel.toUpperCase()} ACCURACY
-                      </ThemedText>
+                    <View style={styles.badgeRow}>
+                      <View style={[styles.confidenceBadge, { backgroundColor: confidenceColor + "15" }]}>
+                        <Feather name="shield" size={12} color={confidenceColor} />
+                        <ThemedText style={[styles.confidenceText, { color: confidenceColor }]}>
+                          {confidenceLevel.toUpperCase()} ACCURACY
+                        </ThemedText>
+                      </View>
+                      {displayIngredients.some(needsReview) ? (
+                        <Pressable
+                          onPress={() => navigation.navigate("ReviewIngredients", { recipeId })}
+                          style={[styles.confidenceBadge, { backgroundColor: theme.accentLight }]}
+                        >
+                          <View style={[styles.heardDot, { backgroundColor: theme.accent }]} />
+                          <ThemedText style={[styles.confidenceText, { color: KitchColors.accent }]}>
+                            {reviewLabel} · CHECK
+                          </ThemedText>
+                        </Pressable>
+                      ) : null}
                     </View>
+                    {sourceNote ? (
+                      <ThemedText type="caption" style={[styles.sourceNote, { color: theme.textSecondary }]}>
+                        {sourceNote}
+                      </ThemedText>
+                    ) : null}
 
                     <ThemedText type="h2" style={styles.title}>{recipe.title}</ThemedText>
 
@@ -248,8 +274,8 @@
                             <ActivityIndicator size="small" color={theme.primary} />
                           ) : addedToList ? (
                             <>
-                              <Feather name="check-circle" size={14} color="#059669" />
-                              <ThemedText type="caption" style={{ color: "#059669", fontWeight: '700', marginLeft: 6 }}>Added</ThemedText>
+                              <Feather name="check-circle" size={14} color={KitchColors.sage700} />
+                              <ThemedText type="caption" style={{ color: KitchColors.sage700, fontWeight: '700', marginLeft: 6 }}>Added</ThemedText>
                             </>
                           ) : (
                             <>
@@ -268,6 +294,16 @@
                             <ThemedText style={[styles.ingredientText, checkedIngredients.has(i) && styles.checkedText]}>
                               <ThemedText style={{ fontWeight: '700' }}>{scaleIngredientAmount(ing.amount)} {ing.unit}</ThemedText> {ing.name}
                             </ThemedText>
+                            {needsReview(ing) ? (
+                              <Pressable
+                                onPress={() => navigation.navigate("ReviewIngredients", { recipeId })}
+                                style={[styles.heardBadge, { backgroundColor: ingredientSource(ing) === "spoken" ? theme.accentLight : theme.backgroundSecondary }]}
+                              >
+                                <ThemedText type="caption" style={{ color: ingredientSource(ing) === "spoken" ? KitchColors.accent : theme.textSecondary, fontWeight: '700', fontSize: 10 }}>
+                                  {ingredientSource(ing) === "spoken" ? "heard" : "est."}
+                                </ThemedText>
+                              </Pressable>
+                            ) : null}
                           </Pressable>
                         ))}
                       </View>
@@ -321,7 +357,7 @@
                             ? { uri: recipe.creatorAvatar } 
                             : PLATFORM_LOGO_URLS[recipe.platform || '']
                               ? { uri: PLATFORM_LOGO_URLS[recipe.platform || ''] }
-                              : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(recipe.creatorHandle || 'K')}&background=0D9488&color=fff&size=96` }
+                              : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(recipe.creatorHandle || 'S')}&background=c67139&color=fff&size=96` }
                         } 
                         style={[styles.creatorAvatar, { backgroundColor: theme.backgroundSecondary }]} 
                         contentFit={recipe.creatorAvatar ? "cover" : "contain"}
@@ -394,20 +430,42 @@
             padding: Spacing.xl, 
             paddingTop: 32 
           },
-          confidenceBadge: { 
-            flexDirection: 'row', 
-            alignItems: 'center', 
-            alignSelf: 'flex-start', 
-            paddingHorizontal: 12, 
-            paddingVertical: 6, 
-            borderRadius: 9999,
-            marginBottom: 16 
+          badgeRow: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginBottom: 16,
           },
-          confidenceText: { 
-            fontSize: 10, 
-            fontWeight: '800', 
-            marginLeft: 4, 
+          confidenceBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'flex-start',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 9999,
+          },
+          confidenceText: {
+            fontSize: 10,
+            fontWeight: '800',
+            marginLeft: 4,
             letterSpacing: 1
+          },
+          sourceNote: {
+            marginTop: -8,
+            marginBottom: 16,
+            lineHeight: 18,
+          },
+          heardDot: {
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            marginRight: 4,
+          },
+          heardBadge: {
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 9999,
+            marginLeft: 8,
           },
           title: { 
             marginBottom: 24,
@@ -530,11 +588,11 @@
             paddingBottom: 32,
             borderTopWidth: 1,
           },
-          cookButton: { 
-            height: 56, 
+          cookButton: {
+            height: 56,
             borderRadius: 9999,
-            backgroundColor: '#10B981',
-            shadowColor: "#10B981",
+            backgroundColor: KitchColors.primary,
+            shadowColor: KitchColors.primary,
             shadowOpacity: 0.2,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 4 }

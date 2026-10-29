@@ -1,30 +1,30 @@
 {
   "expo": {
-    "name": "Kitch",
+    "name": "Simmer",
     "slug": "kitch",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "kitch",
-    "facebookAppId": "1652831865939554",
-    "facebookScheme": "fb1652831865939554",
-    "facebookDisplayName": "Kitch",
+    "scheme": "simmer",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kitch.app",
-      "associatedDomains": [
-        "applinks:kitch.replit.app"
-      ]
+      "bundleIdentifier": "com.danevanzyl.simmer",
+      "appleTeamId": "9XF8U86QB2",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Simmer connects to your local development server while testing.",
+        "NSBonjourServices": [
+          "_expo._tcp",
+          "_http._tcp"
+        ]
+      }
     },
     "android": {
-      "package": "com.kitch.app",
+      "package": "com.danevanzyl.simmer",
       "adaptiveIcon": {
         "backgroundColor": "#F9F8F4",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
         {
@@ -85,7 +85,10 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset",
+      "@bacons/apple-targets",
+      "expo-font"
     ],
     "experiments": {
       "reactCompiler": true
